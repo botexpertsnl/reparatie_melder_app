@@ -1,0 +1,323 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SYSTEM_ADMIN
+  TENANT_OWNER
+  TENANT_ADMIN
+  EMPLOYEE
+}
+
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  industryType String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  settings TenantSettings?
+  users User[]
+  customers Customer[]
+  assets Asset[]
+  workItems WorkItem[]
+  workflowStages WorkflowStage[]
+  transitionRules StageTransitionRule[]
+  threads ConversationThread[]
+  messages Message[]
+  templates MessageTemplate[]
+  channels TenantMessagingChannel[]
+}
+
+model TenantSettings {
+  id             String   @id @default(cuid())
+  tenantId       String   @unique
+  timezone       String   @default("Europe/Amsterdam")
+  locale         String   @default("nl-NL")
+  dateFormat     String   @default("dd-MM-yyyy")
+  timeFormat     String   @default("24h")
+  defaultTheme   String   @default("dark")
+  businessLabel  String   @default("Business")
+  workItemLabel  String   @default("Work Item")
+  assetLabel     String   @default("Asset")
+  customerLabel  String   @default("Customer")
+  logoUrl        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  name          String
+  email         String   @unique
+  passwordHash  String
+  role          UserRole
+  isSystemAdmin Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+}
+
+model Customer {
+  id                String   @id @default(cuid())
+  tenantId          String
+  firstName         String
+  lastName          String
+  fullName          String
+  phoneNumber       String
+  email             String?
+  notes             String?
+  externalContactId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets Asset[]
+  workItems WorkItem[]
+  threads ConversationThread[]
+  messages Message[]
+
+  @@index([tenantId, phoneNumber])
+  @@unique([tenantId, phoneNumber])
+}
+
+model Asset {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  customerId         String
+  assetType          String
+  displayName        String
+  identifier         String?
+  brand              String?
+  model              String?
+  serialNumber       String?
+  registrationNumber String?
+  year               Int?
+  notes              String?
+  metadata           Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  workItems WorkItem[]
+  threads ConversationThread[]
+}
+
+model WorkItem {
+  id                String   @id @default(cuid())
+  tenantId          String
+  customerId        String
+  assetId           String?
+  title             String
+  description       String?
+  currentStageId    String
+  internalStatus    String
+  priority          String   @default("NORMAL")
+  scheduledAt       DateTime?
+  dueAt             DateTime?
+  completedAt       DateTime?
+  estimateAmount    Decimal?
+  notes             String?
+  customerReference String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  currentStage WorkflowStage @relation(fields: [currentStageId], references: [id])
+  approvalRequests ApprovalRequest[]
+  threads ConversationThread[]
+  messages Message[]
+}
+
+model WorkflowStage {
+  id                         String   @id @default(cuid())
+  tenantId                   String
+  key                        String
+  displayName                String
+  description                String?
+  sortOrder                  Int
+  color                      String   @default("#64748b")
+  icon                       String   @default("circle")
+  isActive                   Boolean  @default(true)
+  isTerminal                 Boolean  @default(false)
+  isDefaultStartStage        Boolean  @default(false)
+  requiresApproval           Boolean  @default(false)
+  customerVisible            Boolean  @default(true)
+  allowOutboundTemplateSuggestions Boolean @default(true)
+  defaultTemplateId          String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workItems WorkItem[]
+
+  @@unique([tenantId, key])
+}
+
+model StageTransitionRule {
+  id          String   @id @default(cuid())
+  tenantId    String
+  fromStageId String
+  toStageId   String
+  isAllowed   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, fromStageId, toStageId])
+}
+
+model ApprovalRequest {
+  id          String   @id @default(cuid())
+  tenantId    String
+  workItemId  String
+  stageId     String?
+  status      String   @default("PENDING")
+  requestedAt DateTime @default(now())
+  respondedAt DateTime?
+  messageId   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+}
+
+model ConversationThread {
+  id                     String   @id @default(cuid())
+  tenantId               String
+  customerId             String
+  assetId                String?
+  workItemId             String?
+  externalConversationId String?
+  externalChannelId      String
+  phoneNumber            String
+  unreadCount            Int      @default(0)
+  lastMessageAt          DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  workItem WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  messages Message[]
+
+  @@index([tenantId, externalChannelId])
+  @@unique([tenantId, externalChannelId, externalConversationId])
+}
+
+model Message {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  threadId           String
+  customerId         String?
+  workItemId         String?
+  direction          Direction
+  type               String
+  body               String
+  status             MessageStatus
+  externalMessageId  String?
+  externalTemplateId String?
+  rawPayload         Json?
+  sentAt             DateTime?
+  receivedAt         DateTime?
+  deliveredAt        DateTime?
+  readAt             DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  thread ConversationThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  workItem WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, externalMessageId])
+  @@unique([tenantId, externalMessageId])
+}
+
+model MessageTemplate {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  name               String
+  category           String
+  language           String
+  bodyPreview        String
+  externalTemplateId String?
+  variablesSchema    Json?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model TenantMessagingChannel {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  provider            String   @default("SPOTLER")
+  externalChannelId   String
+  whatsappPhoneNumber String
+  displayName         String
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalChannelId])
+}
+
+model WebhookEvent {
+  id                String   @id @default(cuid())
+  tenantId          String?
+  provider          String
+  eventType         String
+  externalChannelId String?
+  externalMessageId String?
+  payload           Json
+  processingStatus  String   @default("RECEIVED")
+  processingError   String?
+  receivedAt        DateTime @default(now())
+  processedAt       DateTime?
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
