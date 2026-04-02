@@ -1,40 +1,23 @@
-import { getSystemAdminStats, getTenantDashboardStats } from "@/server/repositories/tenant-repository";
+import { demoCustomers, demoThreads, demoWorkItems } from "@/lib/dummy-data";
 
-async function getData() {
-  try {
-    return {
-      tenant: await getTenantDashboardStats(process.env.DEMO_TENANT_ID ?? ""),
-      admin: await getSystemAdminStats()
-    };
-  } catch {
-    return {
-      tenant: { active: 0, waitingApproval: 0, completedToday: 0, unreadConversations: 0, messagesSentToday: 0 },
-      admin: { totalTenants: 0, activeTenants: 0, tenantsWithActiveChannel: 0, recentWebhookFailures: 0 }
-    };
-  }
-}
-
-export default async function DashboardPage() {
-  const { tenant, admin } = await getData();
+export default function DashboardPage() {
+  const waitingApproval = demoWorkItems.filter((x) => x.stage.includes("approval")).length;
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Operational Dashboard</h1>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {Object.entries(tenant).map(([k, v]) => (
-          <div key={k} className="card">
-            <div className="text-sm text-slate-400">{k}</div>
-            <div className="mt-2 text-2xl font-semibold">{v}</div>
-          </div>
-        ))}
-      </section>
-      <h2 className="text-xl font-semibold">System Admin Snapshot</h2>
+      <h1 className="text-2xl font-semibold">Operational Dashboard (Dummy Data)</h1>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Object.entries(admin).map(([k, v]) => (
-          <div key={k} className="card">
-            <div className="text-sm text-slate-400">{k}</div>
-            <div className="mt-2 text-2xl font-semibold">{v}</div>
-          </div>
-        ))}
+        <div className="card"><div className="text-sm text-slate-400">Active work items</div><div className="mt-2 text-2xl font-semibold">{demoWorkItems.length}</div></div>
+        <div className="card"><div className="text-sm text-slate-400">Waiting approval</div><div className="mt-2 text-2xl font-semibold">{waitingApproval}</div></div>
+        <div className="card"><div className="text-sm text-slate-400">Customers</div><div className="mt-2 text-2xl font-semibold">{demoCustomers.length}</div></div>
+        <div className="card"><div className="text-sm text-slate-400">Unread conversations</div><div className="mt-2 text-2xl font-semibold">{demoThreads.reduce((a, b) => a + b.unread, 0)}</div></div>
+      </section>
+      <section className="card">
+        <h2 className="font-medium">Recent replies</h2>
+        <ul className="mt-2 space-y-2 text-sm text-slate-300">
+          {demoThreads.map((thread) => (
+            <li key={thread.id}>• {thread.preview}</li>
+          ))}
+        </ul>
       </section>
     </div>
   );
