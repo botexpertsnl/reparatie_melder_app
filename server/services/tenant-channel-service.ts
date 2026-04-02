@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/prisma";
 
 export async function resolveTenantChannel(tenantId: string) {
   const channel = await prisma.tenantMessagingChannel.findFirst({

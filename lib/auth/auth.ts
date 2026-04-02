@@ -1,7 +1,7 @@
 import NextAuth, { getServerSession } from "next-auth/next";
 import Credentials from "next-auth/providers/credentials";
 import { compareSync } from "bcryptjs";
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/prisma";
 
 type TokenShape = {
   id?: string;
@@ -33,11 +33,12 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        if (!process.env.DATABASE_URL) return null;
+
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
-
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({ where: { email } }).catch(() => null);
         if (!user || !user.isActive) return null;
         if (!compareSync(password, user.passwordHash)) return null;
 

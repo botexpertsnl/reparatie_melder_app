@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/prisma";
 import { spotlerFetch } from "@/lib/spotler/client";
 import { resolveTenantChannel } from "./tenant-channel-service";
 

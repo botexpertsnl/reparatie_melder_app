@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/prisma";
 
 export async function getTenantDashboardStats(tenantId: string) {
   const [active, waitingApproval, completedToday, unreadConversations, messagesSentToday] = await Promise.all([

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "@/lib/prisma";
 import { resolveTenantByExternalChannel } from "@/server/services/tenant-channel-service";
 import { normalizeToE164 } from "@/lib/phone/normalize";
 
