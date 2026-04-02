@@ -42,17 +42,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const customer = await prisma.customer.upsert({
-      where: { tenantId_phoneNumber: { tenantId, phoneNumber: phone } },
-      create: {
-        tenantId,
-        firstName: payload?.contact?.name ?? "Unknown",
-        lastName: "",
-        fullName: payload?.contact?.name ?? "Unknown",
-        phoneNumber: phone
-      },
-      update: {}
+    const existingCustomer = await prisma.customer.findFirst({
+      where: { tenantId, phoneNumber: phone }
     });
+
+    const customer = existingCustomer
+      ? existingCustomer
+      : await prisma.customer.create({
+          data: {
+            tenantId,
+            firstName: payload?.contact?.name ?? "Unknown",
+            lastName: "",
+            fullName: payload?.contact?.name ?? "Unknown",
+            phoneNumber: phone
+          }
+        });
 
     const externalConversationId = payload?.thread_id as string | undefined;
     const existingThread = externalConversationId
