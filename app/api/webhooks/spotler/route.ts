@@ -27,9 +27,23 @@ export async function POST(request: NextRequest) {
 
     const tenantId = channel.tenantId;
     const phone = normalizeToE164(payload?.from ?? payload?.contact?.phone ?? "");
+    if (!phone) throw new Error("Missing sender phone");
+
+    if (externalMessageId) {
+      const existingMessage = await prisma.message.findFirst({
+        where: { tenantId, externalMessageId }
+      });
+      if (existingMessage) {
+        await prisma.webhookEvent.update({
+          where: { id: event.id },
+          data: { tenantId, processingStatus: "PROCESSED", processedAt: new Date() }
+        });
+        return NextResponse.json({ ok: true, deduplicated: true });
+      }
+    }
 
     const customer = await prisma.customer.upsert({
-      where: { tenantId_phoneNumber: { tenantId, phoneNumber: phone } as never },
+      where: { tenantId_phoneNumber: { tenantId, phoneNumber: phone } },
       create: {
         tenantId,
         firstName: payload?.contact?.name ?? "Unknown",
@@ -38,35 +52,31 @@ export async function POST(request: NextRequest) {
         phoneNumber: phone
       },
       update: {}
-    }).catch(async () => {
-      return prisma.customer.findFirstOrThrow({ where: { tenantId, phoneNumber: phone } });
     });
 
-    const thread = await prisma.conversationThread.upsert({
-      where: { id: payload?.thread_id ?? "" },
-      create: {
-        tenantId,
-        customerId: customer.id,
-        externalChannelId,
-        phoneNumber: phone,
-        externalConversationId: payload?.thread_id,
-        unreadCount: 1,
-        lastMessageAt: new Date()
-      },
-      update: { unreadCount: { increment: 1 }, lastMessageAt: new Date() }
-    }).catch(async () => {
-      return prisma.conversationThread.create({
-        data: {
-          tenantId,
-          customerId: customer.id,
-          externalChannelId,
-          phoneNumber: phone,
-          externalConversationId: payload?.thread_id,
-          unreadCount: 1,
-          lastMessageAt: new Date()
-        }
-      });
-    });
+    const externalConversationId = payload?.thread_id as string | undefined;
+    const existingThread = externalConversationId
+      ? await prisma.conversationThread.findFirst({
+          where: { tenantId, externalChannelId, externalConversationId }
+        })
+      : null;
+
+    const thread = existingThread
+      ? await prisma.conversationThread.update({
+          where: { id: existingThread.id },
+          data: { unreadCount: { increment: 1 }, lastMessageAt: new Date() }
+        })
+      : await prisma.conversationThread.create({
+          data: {
+            tenantId,
+            customerId: customer.id,
+            externalChannelId,
+            phoneNumber: phone,
+            externalConversationId,
+            unreadCount: 1,
+            lastMessageAt: new Date()
+          }
+        });
 
     await prisma.message.create({
       data: {

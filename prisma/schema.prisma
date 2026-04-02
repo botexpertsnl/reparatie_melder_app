@@ -103,6 +103,7 @@ model Customer {
   messages Message[]
 
   @@index([tenantId, phoneNumber])
+  @@unique([tenantId, phoneNumber])
 }
 
 model Asset {
@@ -232,6 +233,7 @@ model ConversationThread {
   messages Message[]
 
   @@index([tenantId, externalChannelId])
+  @@unique([tenantId, externalChannelId, externalConversationId])
 }
 
 model Message {
@@ -260,6 +262,7 @@ model Message {
   workItem WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, externalMessageId])
+  @@unique([tenantId, externalMessageId])
 }
 
 model MessageTemplate {
