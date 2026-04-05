@@ -75,22 +75,22 @@ export default function WorkItemsPage() {
     <div className="space-y-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-5xl font-bold tracking-tight text-white">Repairs</h1>
-          <p className="mt-2 text-3xl text-slate-400">Manage ongoing repairs</p>
+          <h1 className="text-2xl font-semibold text-white">Repairs</h1>
+          <p className="mt-1 text-sm text-slate-400">Manage ongoing repairs</p>
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <button className="inline-flex h-12 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-2xl text-slate-500">
+          <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">
             All
             <ChevronDown className="ml-4 h-5 w-5" />
           </button>
 
-          <label className="flex h-12 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-slate-400">
+          <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">
             <Search className="h-5 w-5" />
-            <span className="text-2xl">Search...</span>
+            <span className="text-sm">Search...</span>
           </label>
 
-          <button className="inline-flex h-12 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-2xl font-semibold text-[#022a36]">
+          <button className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]">
             <Plus className="h-5 w-5" />
             New Repair
           </button>
@@ -99,7 +99,7 @@ export default function WorkItemsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
         <table className="w-full table-fixed">
-          <thead className="border-b border-[#253149] text-left text-2xl text-slate-400">
+          <thead className="border-b border-[#253149] text-left text-sm text-slate-400">
             <tr>
               <th className="w-[37%] px-5 py-4">Title</th>
               <th className="w-[20%] px-5 py-4">Customer</th>
@@ -113,10 +113,10 @@ export default function WorkItemsPage() {
             {repairs.map((repair) => (
               <tr key={repair.id} className="border-b border-[#253149] last:border-b-0">
                 <td className="px-5 py-4 align-middle">
-                  <div className="text-[2rem] font-semibold leading-tight text-white">{repair.title}</div>
-                  <div className="mt-1 text-2xl text-slate-500">{repair.vehicle}</div>
+                  <div className="text-lg font-semibold leading-tight text-white">{repair.title}</div>
+                  <div className="mt-1 text-sm text-slate-500">{repair.vehicle}</div>
                 </td>
-                <td className="px-5 py-4 align-middle text-[2rem] font-semibold text-white">{repair.customer}</td>
+                <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customer}</td>
                 <td className="px-5 py-4 align-middle">
                   <StageBadge stage={repair.stage} />
                 </td>
