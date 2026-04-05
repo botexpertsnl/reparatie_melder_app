@@ -6,18 +6,28 @@ import { Plus, Search, ChevronDown, MoreHorizontal, X } from "lucide-react";
 type RepairItem = {
   id: string;
   title: string;
-  vehicle: string;
+  description: string;
   customer: string;
-  stage: "Awaiting Approval" | "New";
+  stage: "Awaiting Approval" | "New" | "In Progress" | "Ready for Pickup";
   priority: "High" | "Medium" | "Low";
   status: "Open";
 };
 
-const repairs: RepairItem[] = [
+type NewRepairFormValues = {
+  name: string;
+  countryCode: string;
+  phone: string;
+  repairTitle: string;
+  description: string;
+  repairStage: RepairItem["stage"];
+  priority: RepairItem["priority"];
+};
+
+const initialRepairs: RepairItem[] = [
   {
     id: "repair_1",
     title: "Annual service + brake inspection",
-    vehicle: "VW Golf - 78-ZKL-3",
+    description: "Inspect front and rear brakes during annual service",
     customer: "Jan Bakker",
     stage: "Awaiting Approval",
     priority: "Medium",
@@ -26,7 +36,7 @@ const repairs: RepairItem[] = [
   {
     id: "repair_2",
     title: "AC system not cooling",
-    vehicle: "Toyota Yaris - AB-123-CD",
+    description: "Diagnose compressor and refrigerant pressure issues",
     customer: "Maria Smits",
     stage: "Awaiting Approval",
     priority: "High",
@@ -35,7 +45,7 @@ const repairs: RepairItem[] = [
   {
     id: "repair_3",
     title: "Tyre replacement - 4x summer tyres",
-    vehicle: "BMW 3 Series - GH-456-IJ",
+    description: "Replace all four tyres and perform wheel balancing",
     customer: "Peter van der Berg",
     stage: "New",
     priority: "Low",
@@ -50,6 +60,16 @@ const countryCodes = [
   { label: "FR (+33)", value: "+33" }
 ];
 
+const initialFormValues: NewRepairFormValues = {
+  name: "",
+  countryCode: "+31",
+  phone: "",
+  repairTitle: "",
+  description: "",
+  repairStage: "New",
+  priority: "Medium"
+};
+
 function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
   if (stage === "Awaiting Approval") {
     return (
@@ -60,9 +80,18 @@ function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
     );
   }
 
+  if (stage === "New") {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">
+        <span className="h-2 w-2 rounded-full bg-slate-500" />
+        {stage}
+      </span>
+    );
+  }
+
   return (
-    <span className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">
-      <span className="h-2 w-2 rounded-full bg-slate-500" />
+    <span className="inline-flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">
+      <span className="h-2 w-2 rounded-full bg-blue-300" />
       {stage}
     </span>
   );
@@ -80,7 +109,20 @@ function PriorityBadge({ priority }: { priority: RepairItem["priority"] }) {
   return <span className="inline-flex rounded-xl border border-slate-700 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">{priority}</span>;
 }
 
-function AddRepairModal({ onClose }: { onClose: () => void }) {
+function AddRepairModal({
+  onClose,
+  onCreate
+}: {
+  onClose: () => void;
+  onCreate: (payload: NewRepairFormValues) => void;
+}) {
+  const [formValues, setFormValues] = useState<NewRepairFormValues>(initialFormValues);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onCreate(formValues);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/75 px-4 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-2xl border border-[#253149] bg-[#0f1626] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
@@ -93,17 +135,25 @@ function AddRepairModal({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800/70 hover:text-slate-200"
             aria-label="Close add repair dialog"
+            type="button"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form className="space-y-5 px-6 py-5">
+        <form className="space-y-5 px-6 py-5" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="customer-name" className="mb-2 block text-sm font-medium text-slate-300">
               Name
             </label>
-            <input id="customer-name" className="input" placeholder="Customer name" />
+            <input
+              id="customer-name"
+              className="input"
+              placeholder="Customer name"
+              required
+              value={formValues.name}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, name: event.target.value }))}
+            />
           </div>
 
           <div>
@@ -111,14 +161,25 @@ function AddRepairModal({ onClose }: { onClose: () => void }) {
               Phone
             </label>
             <div className="grid gap-3 sm:grid-cols-[170px_1fr]">
-              <select defaultValue="+31" className="input">
+              <select
+                value={formValues.countryCode}
+                className="input"
+                onChange={(event) => setFormValues((prev) => ({ ...prev, countryCode: event.target.value }))}
+              >
                 {countryCodes.map((country) => (
                   <option key={country.value} value={country.value}>
                     {country.label}
                   </option>
                 ))}
               </select>
-              <input id="phone" className="input" placeholder="6 1234 5678" />
+              <input
+                id="phone"
+                className="input"
+                placeholder="6 1234 5678"
+                required
+                value={formValues.phone}
+                onChange={(event) => setFormValues((prev) => ({ ...prev, phone: event.target.value }))}
+              />
             </div>
           </div>
 
@@ -126,7 +187,28 @@ function AddRepairModal({ onClose }: { onClose: () => void }) {
             <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-300">
               Repair Title
             </label>
-            <input id="repair-title" className="input" placeholder="Describe the requested repair" />
+            <input
+              id="repair-title"
+              className="input"
+              placeholder="Describe the requested repair"
+              required
+              value={formValues.repairTitle}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="description" className="mb-2 block text-sm font-medium text-slate-300">
+              Description
+            </label>
+            <textarea
+              id="description"
+              className="input min-h-24 resize-y"
+              placeholder="Additional details for this repair"
+              required
+              value={formValues.description}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
+            />
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
@@ -134,7 +216,12 @@ function AddRepairModal({ onClose }: { onClose: () => void }) {
               <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-300">
                 Repair Stage
               </label>
-              <select id="repair-stage" className="input" defaultValue="New">
+              <select
+                id="repair-stage"
+                className="input"
+                value={formValues.repairStage}
+                onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}
+              >
                 <option>New</option>
                 <option>Awaiting Approval</option>
                 <option>In Progress</option>
@@ -145,7 +232,12 @@ function AddRepairModal({ onClose }: { onClose: () => void }) {
               <label htmlFor="priority" className="mb-2 block text-sm font-medium text-slate-300">
                 Priority
               </label>
-              <select id="priority" className="input" defaultValue="Medium">
+              <select
+                id="priority"
+                className="input"
+                value={formValues.priority}
+                onChange={(event) => setFormValues((prev) => ({ ...prev, priority: event.target.value as RepairItem["priority"] }))}
+              >
                 <option>Low</option>
                 <option>Medium</option>
                 <option>High</option>
@@ -153,18 +245,11 @@ function AddRepairModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="notes" className="mb-2 block text-sm font-medium text-slate-300">
-              Notes
-            </label>
-            <textarea id="notes" className="input min-h-28 resize-y" placeholder="Additional details for this repair" />
-          </div>
-
           <div className="flex items-center justify-end gap-3 border-t border-[#253149] pt-5">
             <button type="button" onClick={onClose} className="rounded-xl border border-[#253149] bg-[#0a111f] px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900/70">
               Cancel
             </button>
-            <button type="button" className="btn px-5 py-2">
+            <button type="submit" className="btn px-5 py-2">
               Create Repair
             </button>
           </div>
@@ -176,6 +261,22 @@ function AddRepairModal({ onClose }: { onClose: () => void }) {
 
 export default function WorkItemsPage() {
   const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
+  const [repairs, setRepairs] = useState<RepairItem[]>(initialRepairs);
+
+  const handleCreateRepair = (payload: NewRepairFormValues) => {
+    const newRepair: RepairItem = {
+      id: `repair_${Date.now()}`,
+      title: payload.repairTitle,
+      description: payload.description,
+      customer: payload.name,
+      stage: payload.repairStage,
+      priority: payload.priority,
+      status: "Open"
+    };
+
+    setRepairs((prev) => [newRepair, ...prev]);
+    setIsAddRepairOpen(false);
+  };
 
   return (
     <>
@@ -221,7 +322,7 @@ export default function WorkItemsPage() {
                 <tr key={repair.id} className="border-b border-[#253149] last:border-b-0">
                   <td className="px-5 py-4 align-middle">
                     <div className="text-lg font-semibold leading-tight text-white">{repair.title}</div>
-                    <div className="mt-1 text-sm text-slate-500">{repair.vehicle}</div>
+                    <div className="mt-1 text-sm text-slate-500">{repair.description}</div>
                   </td>
                   <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customer}</td>
                   <td className="px-5 py-4 align-middle">
@@ -245,7 +346,7 @@ export default function WorkItemsPage() {
         </section>
       </div>
 
-      {isAddRepairOpen ? <AddRepairModal onClose={() => setIsAddRepairOpen(false)} /> : null}
+      {isAddRepairOpen ? <AddRepairModal onClose={() => setIsAddRepairOpen(false)} onCreate={handleCreateRepair} /> : null}
     </>
   );
 }
