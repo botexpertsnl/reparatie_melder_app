@@ -255,6 +255,46 @@ function AddRepairModal({
           </div>
         </form>
       </div>
+
+      <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
+        <table className="w-full table-fixed">
+          <thead className="border-b border-[#253149] text-left text-sm text-slate-400">
+            <tr>
+              <th className="w-[37%] px-5 py-4">Title</th>
+              <th className="w-[20%] px-5 py-4">Customer</th>
+              <th className="w-[19%] px-5 py-4">Stage</th>
+              <th className="w-[10%] px-5 py-4">Priority</th>
+              <th className="w-[9%] px-5 py-4">Status</th>
+              <th className="w-[5%] px-5 py-4" />
+            </tr>
+          </thead>
+          <tbody>
+            {repairs.map((repair) => (
+              <tr key={repair.id} className="border-b border-[#253149] last:border-b-0">
+                <td className="px-5 py-4 align-middle">
+                  <div className="text-lg font-semibold leading-tight text-white">{repair.title}</div>
+                  <div className="mt-1 text-sm text-slate-500">{repair.vehicle}</div>
+                </td>
+                <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customer}</td>
+                <td className="px-5 py-4 align-middle">
+                  <StageBadge stage={repair.stage} />
+                </td>
+                <td className="px-5 py-4 align-middle">
+                  <PriorityBadge priority={repair.priority} />
+                </td>
+                <td className="px-5 py-4 align-middle">
+                  <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{repair.status}</span>
+                </td>
+                <td className="px-5 py-4 align-middle text-center text-slate-400">
+                  <button className="rounded-md p-1 hover:bg-slate-800/70" aria-label="Open row actions">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 }
