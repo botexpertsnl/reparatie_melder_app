@@ -23,14 +23,14 @@ const navSections = [
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
       { name: "Repairs", href: "/work-items", icon: Wrench },
-      { name: "Conversations", href: "/conversations", icon: MessagesSquare },
-      { name: "Templates", href: "/templates", icon: FileText }
+      { name: "Conversations", href: "/conversations", icon: MessagesSquare }
     ]
   },
   {
     label: "Settings",
     items: [
       { name: "Workflow", href: "/settings/advanced", icon: Workflow },
+      { name: "Templates", href: "/templates", icon: FileText },
       { name: "Tenant Settings", href: "/customers", icon: Settings }
     ]
   },
