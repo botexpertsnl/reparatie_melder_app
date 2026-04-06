@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, MoreHorizontal, X, ChevronDown } from "lucide-react";
+import { Plus, MoreHorizontal, X, ChevronDown, Pencil, Copy, Trash2 } from "lucide-react";
 import clsx from "clsx";
 
 type Template = {
@@ -65,15 +65,42 @@ function categoryBadgeClass(category: string) {
   return "border-slate-600 bg-slate-700/30 text-slate-300";
 }
 
-function TemplateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (values: TemplateFormValues) => void }) {
-  const [values, setValues] = useState<TemplateFormValues>(emptyTemplateForm);
+function templateToFormValues(template: Template): TemplateFormValues {
+  const languageMap: Record<string, string> = {
+    nl: "Dutch",
+    en: "English",
+    de: "German"
+  };
+
+  return {
+    name: template.name,
+    category: template.category,
+    language: languageMap[template.language] ?? "Dutch",
+    body: template.body,
+    spotlerId: template.spotlerId,
+    active: template.active
+  };
+}
+
+function TemplateModal({
+  mode,
+  initialValues,
+  onClose,
+  onSubmit
+}: {
+  mode: "create" | "edit";
+  initialValues: TemplateFormValues;
+  onClose: () => void;
+  onSubmit: (values: TemplateFormValues) => void;
+}) {
+  const [values, setValues] = useState<TemplateFormValues>(initialValues);
   const isValid = values.name.trim().length > 0 && values.body.trim().length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-2xl font-semibold">Create Template</h2>
+          <h2 className="text-2xl font-semibold">{mode === "create" ? "Create Template" : "Edit Template"}</h2>
           <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close template modal">
             <X className="h-5 w-5" />
           </button>
@@ -84,7 +111,7 @@ function TemplateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
           onSubmit={(event) => {
             event.preventDefault();
             if (!isValid) return;
-            onCreate(values);
+            onSubmit(values);
           }}
         >
           <div>
@@ -198,7 +225,7 @@ function TemplateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
               )}
               disabled={!isValid}
             >
-              Create
+              {mode === "create" ? "Create" : "Save"}
             </button>
           </div>
         </form>
@@ -207,16 +234,50 @@ function TemplateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
   );
 }
 
+function DeleteTemplateModal({ templateName, onCancel, onConfirm }: { templateName: string; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <h2 className="text-xl font-semibold">Delete template</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          This template will be permanently deleted: <span className="font-semibold">{templateName}</span>.
+        </p>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const editingTemplate = templates.find((template) => template.id === editingTemplateId) ?? null;
+  const deletingTemplate = templates.find((template) => template.id === deletingTemplateId) ?? null;
+
+  const toStoredLanguage = (language: string) => {
+    if (language === "Dutch") return "nl";
+    if (language === "English") return "en";
+    return "de";
+  };
 
   const handleCreateTemplate = (values: TemplateFormValues) => {
     const newTemplate: Template = {
       id: `tpl_${Date.now()}`,
       name: values.name.trim(),
       category: values.category,
-      language: values.language === "Dutch" ? "nl" : values.language.toLowerCase(),
+      language: toStoredLanguage(values.language),
       body: values.body.trim(),
       spotlerId: values.spotlerId.trim(),
       active: values.active
@@ -224,6 +285,39 @@ export default function TemplatesPage() {
 
     setTemplates((prev) => [newTemplate, ...prev]);
     setIsCreateModalOpen(false);
+  };
+
+  const handleEditTemplate = (templateId: string, values: TemplateFormValues) => {
+    setTemplates((prev) =>
+      prev.map((template) => {
+        if (template.id !== templateId) return template;
+
+        return {
+          ...template,
+          name: values.name.trim(),
+          category: values.category,
+          language: toStoredLanguage(values.language),
+          body: values.body.trim(),
+          spotlerId: values.spotlerId.trim(),
+          active: values.active
+        };
+      })
+    );
+
+    setEditingTemplateId(null);
+  };
+
+  const handleDeleteTemplate = (templateId: string) => {
+    setTemplates((prev) => prev.filter((template) => template.id !== templateId));
+    setDeletingTemplateId(null);
+  };
+
+  const handleCopyBody = async (body: string) => {
+    try {
+      await navigator.clipboard.writeText(body);
+    } catch {
+      // no-op fallback in restricted browsers
+    }
   };
 
   return (
@@ -247,13 +341,55 @@ export default function TemplatesPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           {templates.map((template) => (
-            <article key={template.id} className="rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5">
+            <article key={template.id} className="relative rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5">
               <div className="flex items-start justify-between">
                 <h2 className="text-lg font-semibold text-white">{template.name}</h2>
-                <button className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70" aria-label={`Open actions for ${template.name}`}>
+                <button
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
+                  aria-label={`Open actions for ${template.name}`}
+                  onClick={() => setOpenMenuId((prev) => (prev === template.id ? null : template.id))}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
               </div>
+
+              {openMenuId === template.id ? (
+                <div className="absolute right-6 top-14 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
+                    onClick={() => {
+                      setEditingTemplateId(template.id);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
+                    onClick={async () => {
+                      await handleCopyBody(template.body);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy body
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+                    onClick={() => {
+                      setDeletingTemplateId(template.id);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </button>
+                </div>
+              ) : null}
 
               <div className={clsx("mt-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold", categoryBadgeClass(template.category))}>{template.category}</div>
 
@@ -265,7 +401,26 @@ export default function TemplatesPage() {
         </section>
       </div>
 
-      {isCreateModalOpen ? <TemplateModal onClose={() => setIsCreateModalOpen(false)} onCreate={handleCreateTemplate} /> : null}
+      {isCreateModalOpen ? (
+        <TemplateModal mode="create" initialValues={emptyTemplateForm} onClose={() => setIsCreateModalOpen(false)} onSubmit={handleCreateTemplate} />
+      ) : null}
+
+      {editingTemplate ? (
+        <TemplateModal
+          mode="edit"
+          initialValues={templateToFormValues(editingTemplate)}
+          onClose={() => setEditingTemplateId(null)}
+          onSubmit={(values) => handleEditTemplate(editingTemplate.id, values)}
+        />
+      ) : null}
+
+      {deletingTemplate ? (
+        <DeleteTemplateModal
+          templateName={deletingTemplate.name}
+          onCancel={() => setDeletingTemplateId(null)}
+          onConfirm={() => handleDeleteTemplate(deletingTemplate.id)}
+        />
+      ) : null}
     </>
   );
 }
