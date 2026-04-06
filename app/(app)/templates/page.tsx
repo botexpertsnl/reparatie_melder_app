@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, MoreHorizontal, X, ChevronDown, Pencil, Copy, Trash2 } from "lucide-react";
 import clsx from "clsx";
+
+import { readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
 
 type Template = {
   id: string;
@@ -257,13 +259,19 @@ function DeleteTemplateModal({ templateName, onCancel, onConfirm }: { templateNa
 }
 
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>(initialTemplates);
+  const [templates, setTemplates] = useState<Template[]>(() => readStoredTemplates(initialTemplates));
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const editingTemplate = templates.find((template) => template.id === editingTemplateId) ?? null;
+
+  useEffect(() => {
+    writeStoredTemplates(templates);
+  }, [templates]);
+
+  
   const deletingTemplate = templates.find((template) => template.id === deletingTemplateId) ?? null;
 
   const toStoredLanguage = (language: string) => {
