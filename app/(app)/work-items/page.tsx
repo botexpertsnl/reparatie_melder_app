@@ -1,18 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown, MoreHorizontal, Plus, Search, X } from "lucide-react";
-
-type RepairStage = "Awaiting Approval" | "New" | "In Progress" | "Ready for Pickup";
-type RepairPriority = "High" | "Medium" | "Low";
+import { useState } from "react";
+import { Plus, Search, ChevronDown, MoreHorizontal, X } from "lucide-react";
 
 type RepairItem = {
   id: string;
   title: string;
   description: string;
   customer: string;
-  stage: RepairStage;
-  priority: RepairPriority;
+  stage: "Awaiting Approval" | "New" | "In Progress" | "Ready for Pickup";
+  priority: "High" | "Medium" | "Low";
   status: "Open";
 };
 
@@ -22,8 +19,8 @@ type NewRepairFormValues = {
   phone: string;
   repairTitle: string;
   description: string;
-  repairStage: RepairStage;
-  priority: RepairPriority;
+  repairStage: RepairItem["stage"];
+  priority: RepairItem["priority"];
 };
 
 const initialRepairs: RepairItem[] = [
@@ -102,26 +99,14 @@ function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
 
 function PriorityBadge({ priority }: { priority: RepairItem["priority"] }) {
   if (priority === "High") {
-    return (
-      <span className="inline-flex rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-400">
-        {priority}
-      </span>
-    );
+    return <span className="inline-flex rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-400">{priority}</span>;
   }
 
   if (priority === "Medium") {
-    return (
-      <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">
-        {priority}
-      </span>
-    );
+    return <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{priority}</span>;
   }
 
-  return (
-    <span className="inline-flex rounded-xl border border-slate-700 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">
-      {priority}
-    </span>
-  );
+  return <span className="inline-flex rounded-xl border border-slate-700 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">{priority}</span>;
 }
 
 function AddRepairModal({
@@ -136,7 +121,6 @@ function AddRepairModal({
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onCreate(formValues);
-    setFormValues(initialFormValues);
   };
 
   return (
@@ -168,12 +152,7 @@ function AddRepairModal({
               placeholder="Customer name"
               required
               value={formValues.name}
-              onChange={(event) =>
-                setFormValues((prev) => ({
-                  ...prev,
-                  name: event.target.value
-                }))
-              }
+              onChange={(event) => setFormValues((prev) => ({ ...prev, name: event.target.value }))}
             />
           </div>
 
@@ -185,12 +164,7 @@ function AddRepairModal({
               <select
                 value={formValues.countryCode}
                 className="input"
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    countryCode: event.target.value
-                  }))
-                }
+                onChange={(event) => setFormValues((prev) => ({ ...prev, countryCode: event.target.value }))}
               >
                 {countryCodes.map((country) => (
                   <option key={country.value} value={country.value}>
@@ -198,19 +172,13 @@ function AddRepairModal({
                   </option>
                 ))}
               </select>
-
               <input
                 id="phone"
                 className="input"
                 placeholder="6 1234 5678"
                 required
                 value={formValues.phone}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    phone: event.target.value
-                  }))
-                }
+                onChange={(event) => setFormValues((prev) => ({ ...prev, phone: event.target.value }))}
               />
             </div>
           </div>
@@ -225,12 +193,7 @@ function AddRepairModal({
               placeholder="Describe the requested repair"
               required
               value={formValues.repairTitle}
-              onChange={(event) =>
-                setFormValues((prev) => ({
-                  ...prev,
-                  repairTitle: event.target.value
-                }))
-              }
+              onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))}
             />
           </div>
 
@@ -244,12 +207,7 @@ function AddRepairModal({
               placeholder="Additional details for this repair"
               required
               value={formValues.description}
-              onChange={(event) =>
-                setFormValues((prev) => ({
-                  ...prev,
-                  description: event.target.value
-                }))
-              }
+              onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
             />
           </div>
 
@@ -262,20 +220,14 @@ function AddRepairModal({
                 id="repair-stage"
                 className="input"
                 value={formValues.repairStage}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    repairStage: event.target.value as RepairItem["stage"]
-                  }))
-                }
+                onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}
               >
-                <option value="New">New</option>
-                <option value="Awaiting Approval">Awaiting Approval</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Ready for Pickup">Ready for Pickup</option>
+                <option>New</option>
+                <option>Awaiting Approval</option>
+                <option>In Progress</option>
+                <option>Ready for Pickup</option>
               </select>
             </div>
-
             <div>
               <label htmlFor="priority" className="mb-2 block text-sm font-medium text-slate-300">
                 Priority
@@ -284,26 +236,17 @@ function AddRepairModal({
                 id="priority"
                 className="input"
                 value={formValues.priority}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    priority: event.target.value as RepairItem["priority"]
-                  }))
-                }
+                onChange={(event) => setFormValues((prev) => ({ ...prev, priority: event.target.value as RepairItem["priority"] }))}
               >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
               </select>
             </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t border-[#253149] pt-5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-[#253149] bg-[#0a111f] px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900/70"
-            >
+            <button type="button" onClick={onClose} className="rounded-xl border border-[#253149] bg-[#0a111f] px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900/70">
               Cancel
             </button>
             <button type="submit" className="btn px-5 py-2">
@@ -319,25 +262,6 @@ function AddRepairModal({
 export default function WorkItemsPage() {
   const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
   const [repairs, setRepairs] = useState<RepairItem[]>(initialRepairs);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const filteredRepairs = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) {
-      return repairs;
-    }
-
-    return repairs.filter((repair) => {
-      return (
-        repair.title.toLowerCase().includes(query) ||
-        repair.description.toLowerCase().includes(query) ||
-        repair.customer.toLowerCase().includes(query) ||
-        repair.stage.toLowerCase().includes(query) ||
-        repair.priority.toLowerCase().includes(query)
-      );
-    });
-  }, [repairs, searchQuery]);
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
     const newRepair: RepairItem = {
@@ -364,30 +288,17 @@ export default function WorkItemsPage() {
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400"
-            >
+            <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">
               All
               <ChevronDown className="ml-4 h-5 w-5" />
             </button>
 
             <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">
               <Search className="h-5 w-5" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search..."
-                className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
-              />
+              <span className="text-sm">Search...</span>
             </label>
 
-            <button
-              type="button"
-              onClick={() => setIsAddRepairOpen(true)}
-              className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"
-            >
+            <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]">
               <Plus className="h-5 w-5" />
               New Repair
             </button>
@@ -395,68 +306,47 @@ export default function WorkItemsPage() {
         </div>
 
         <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] table-fixed">
-              <thead className="border-b border-[#253149] text-left text-sm text-slate-400">
-                <tr>
-                  <th className="w-[37%] px-5 py-4">Title</th>
-                  <th className="w-[20%] px-5 py-4">Customer</th>
-                  <th className="w-[19%] px-5 py-4">Stage</th>
-                  <th className="w-[10%] px-5 py-4">Priority</th>
-                  <th className="w-[9%] px-5 py-4">Status</th>
-                  <th className="w-[5%] px-5 py-4" />
+          <table className="w-full table-fixed">
+            <thead className="border-b border-[#253149] text-left text-sm text-slate-400">
+              <tr>
+                <th className="w-[37%] px-5 py-4">Title</th>
+                <th className="w-[20%] px-5 py-4">Customer</th>
+                <th className="w-[19%] px-5 py-4">Stage</th>
+                <th className="w-[10%] px-5 py-4">Priority</th>
+                <th className="w-[9%] px-5 py-4">Status</th>
+                <th className="w-[5%] px-5 py-4" />
+              </tr>
+            </thead>
+            <tbody>
+              {repairs.map((repair) => (
+                <tr key={repair.id} className="border-b border-[#253149] last:border-b-0">
+                  <td className="px-5 py-4 align-middle">
+                    <div className="text-lg font-semibold leading-tight text-white">{repair.title}</div>
+                    <div className="mt-1 text-sm text-slate-500">{repair.description}</div>
+                  </td>
+                  <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customer}</td>
+                  <td className="px-5 py-4 align-middle">
+                    <StageBadge stage={repair.stage} />
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <PriorityBadge priority={repair.priority} />
+                  </td>
+                  <td className="px-5 py-4 align-middle">
+                    <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{repair.status}</span>
+                  </td>
+                  <td className="px-5 py-4 align-middle text-center text-slate-400">
+                    <button className="rounded-md p-1 hover:bg-slate-800/70" aria-label="Open row actions">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredRepairs.length > 0 ? (
-                  filteredRepairs.map((repair) => (
-                    <tr key={repair.id} className="border-b border-[#253149] last:border-b-0">
-                      <td className="px-5 py-4 align-middle">
-                        <div className="text-lg font-semibold leading-tight text-white">{repair.title}</div>
-                        <div className="mt-1 text-sm text-slate-500">{repair.description}</div>
-                      </td>
-                      <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customer}</td>
-                      <td className="px-5 py-4 align-middle">
-                        <StageBadge stage={repair.stage} />
-                      </td>
-                      <td className="px-5 py-4 align-middle">
-                        <PriorityBadge priority={repair.priority} />
-                      </td>
-                      <td className="px-5 py-4 align-middle">
-                        <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">
-                          {repair.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 align-middle text-center text-slate-400">
-                        <button
-                          type="button"
-                          className="rounded-md p-1 hover:bg-slate-800/70"
-                          aria-label="Open row actions"
-                        >
-                          <MoreHorizontal className="h-5 w-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">
-                      No repairs found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </section>
       </div>
 
-      {isAddRepairOpen ? (
-        <AddRepairModal
-          onClose={() => setIsAddRepairOpen(false)}
-          onCreate={handleCreateRepair}
-        />
-      ) : null}
+      {isAddRepairOpen ? <AddRepairModal onClose={() => setIsAddRepairOpen(false)} onCreate={handleCreateRepair} /> : null}
     </>
   );
 }

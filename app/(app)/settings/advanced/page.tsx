@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   Plus,
-  Eye,
   Pencil,
   Trash2,
   ChevronUp,
@@ -119,7 +118,7 @@ const initialStages: Stage[] = [
   }
 ];
 
-const initialFormValues: StageFormValues = {
+const emptyFormValues: StageFormValues = {
   name: "",
   description: "",
   color: "#4e8de8",
@@ -127,10 +126,32 @@ const initialFormValues: StageFormValues = {
   templateMessage: ""
 };
 
-function AddStageModal({ onClose, onCreate }: { onClose: () => void; onCreate: (values: StageFormValues) => void }) {
-  const [values, setValues] = useState<StageFormValues>(initialFormValues);
+function stageToFormValues(stage: Stage): StageFormValues {
+  return {
+    name: stage.name,
+    description: stage.description,
+    color: stage.color,
+    templateAutomationEnabled: Boolean(stage.templateAutomationEnabled),
+    templateMessage: stage.templateMessage ?? ""
+  };
+}
 
-  const canCreate = useMemo(() => {
+function StageModal({
+  title,
+  confirmLabel,
+  initialValues,
+  onClose,
+  onSubmit
+}: {
+  title: string;
+  confirmLabel: string;
+  initialValues: StageFormValues;
+  onClose: () => void;
+  onSubmit: (values: StageFormValues) => void;
+}) {
+  const [values, setValues] = useState<StageFormValues>(initialValues);
+
+  const canSubmit = useMemo(() => {
     if (!values.name.trim() || !values.description.trim()) {
       return false;
     }
@@ -146,8 +167,8 @@ function AddStageModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-3xl font-semibold">Add Stage</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close add stage dialog">
+          <h2 className="text-2xl font-semibold">{title}</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close stage dialog">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -156,8 +177,8 @@ function AddStageModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
           className="space-y-5 px-6 pb-6"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!canCreate) return;
-            onCreate(values);
+            if (!canSubmit) return;
+            onSubmit(values);
           }}
         >
           <div>
@@ -269,11 +290,11 @@ function AddStageModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
               type="submit"
               className={clsx(
                 "rounded-xl px-5 py-2 text-sm font-semibold text-white",
-                canCreate ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
+                canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
               )}
-              disabled={!canCreate}
+              disabled={!canSubmit}
             >
-              Create
+              {confirmLabel}
             </button>
           </div>
         </form>
@@ -282,9 +303,36 @@ function AddStageModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
   );
 }
 
+function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: string; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <h2 className="text-xl font-semibold">Delete stage</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Are you sure you want to delete <span className="font-semibold">{stageName}</span>? This action cannot be undone.
+        </p>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+            No
+          </button>
+          <button type="button" onClick={onConfirm} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">
+            Yes, delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdvancedSettingsPage() {
   const [stages, setStages] = useState<Stage[]>(initialStages);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
+
+  const editingStage = stages.find((stage) => stage.id === editingStageId) ?? null;
+  const deletingStage = stages.find((stage) => stage.id === deletingStageId) ?? null;
 
   const moveStage = (index: number, direction: "up" | "down") => {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -311,7 +359,32 @@ export default function AdvancedSettingsPage() {
     };
 
     setStages((prev) => [...prev, newStage]);
-    setIsModalOpen(false);
+    setIsAddModalOpen(false);
+  };
+
+  const handleEditStage = (stageId: string, values: StageFormValues) => {
+    setStages((prev) =>
+      prev.map((stage) => {
+        if (stage.id !== stageId) return stage;
+
+        return {
+          ...stage,
+          name: values.name.trim(),
+          key: values.name.trim().toLowerCase().replace(/\s+/g, "_"),
+          description: values.description.trim(),
+          color: values.color,
+          templateAutomationEnabled: values.templateAutomationEnabled,
+          templateMessage: values.templateAutomationEnabled ? values.templateMessage : undefined
+        };
+      })
+    );
+
+    setEditingStageId(null);
+  };
+
+  const handleDeleteStage = (stageId: string) => {
+    setStages((prev) => prev.filter((stage) => stage.id !== stageId));
+    setDeletingStageId(null);
   };
 
   return (
@@ -319,12 +392,12 @@ export default function AdvancedSettingsPage() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-semibold text-white">Workflow Stages</h1>
-            <p className="mt-2 text-slate-400">Configure stages for your repairs</p>
+            <h1 className="text-2xl font-semibold text-white">Workflow Stages</h1>
+            <p className="mt-1 text-sm text-slate-400">Configure stages for your repairs</p>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#28d9c6] px-5 py-2.5 text-sm font-semibold text-[#022a36]"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"
           >
             <Plus className="h-4 w-4" />
             Add Stage
@@ -348,7 +421,7 @@ export default function AdvancedSettingsPage() {
 
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-3xl font-semibold text-white">{stage.name}</div>
+                    <div className="text-lg font-semibold text-white">{stage.name}</div>
                     <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-xs text-slate-400">{stage.key}</span>
                     {stage.isStart ? <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Start</span> : null}
                     {stage.isTerminal ? <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-300">Terminal</span> : null}
@@ -356,10 +429,6 @@ export default function AdvancedSettingsPage() {
                   </div>
 
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
-                    <span className="inline-flex items-center gap-1">
-                      <Eye className="h-3.5 w-3.5" />
-                      {stage.visibleToCustomer ? "Visible to customer" : "Internal only"}
-                    </span>
                     <span>{stage.description}</span>
                     {stage.templateAutomationEnabled && stage.templateMessage ? (
                       <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
@@ -371,10 +440,10 @@ export default function AdvancedSettingsPage() {
               </div>
 
               <div className="flex items-center gap-4 pr-2">
-                <button type="button" className="text-slate-300 hover:text-white" aria-label={`Edit ${stage.name}`}>
+                <button type="button" className="text-slate-300 hover:text-white" aria-label={`Edit ${stage.name}`} onClick={() => setEditingStageId(stage.id)}>
                   <Pencil className="h-4 w-4" />
                 </button>
-                <button type="button" className="text-red-400 hover:text-red-300" aria-label={`Delete ${stage.name}`}>
+                <button type="button" className="text-red-400 hover:text-red-300" aria-label={`Delete ${stage.name}`} onClick={() => setDeletingStageId(stage.id)}>
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -383,7 +452,33 @@ export default function AdvancedSettingsPage() {
         </section>
       </div>
 
-      {isModalOpen ? <AddStageModal onClose={() => setIsModalOpen(false)} onCreate={handleAddStage} /> : null}
+      {isAddModalOpen ? (
+        <StageModal
+          title="Add Stage"
+          confirmLabel="Create"
+          initialValues={emptyFormValues}
+          onClose={() => setIsAddModalOpen(false)}
+          onSubmit={handleAddStage}
+        />
+      ) : null}
+
+      {editingStage ? (
+        <StageModal
+          title={`Edit Stage: ${editingStage.name}`}
+          confirmLabel="Save"
+          initialValues={stageToFormValues(editingStage)}
+          onClose={() => setEditingStageId(null)}
+          onSubmit={(values) => handleEditStage(editingStage.id, values)}
+        />
+      ) : null}
+
+      {deletingStage ? (
+        <DeleteStageModal
+          stageName={deletingStage.name}
+          onCancel={() => setDeletingStageId(null)}
+          onConfirm={() => handleDeleteStage(deletingStage.id)}
+        />
+      ) : null}
     </>
   );
 }
