@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, MoreHorizontal, X, ChevronDown, Pencil, Copy, Trash2 } from "lucide-react";
+import { Plus, MoreHorizontal, X, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
 
 import { readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
@@ -320,13 +320,7 @@ export default function TemplatesPage() {
     setDeletingTemplateId(null);
   };
 
-  const handleCopyBody = async (body: string) => {
-    try {
-      await navigator.clipboard.writeText(body);
-    } catch {
-      // no-op fallback in restricted browsers
-    }
-  };
+
 
   return (
     <>
@@ -373,17 +367,6 @@ export default function TemplatesPage() {
                   >
                     <Pencil className="h-4 w-4" />
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
-                    onClick={async () => {
-                      await handleCopyBody(template.body);
-                      setOpenMenuId(null);
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copy body
                   </button>
                   <button
                     type="button"
