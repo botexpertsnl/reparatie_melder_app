@@ -1,18 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 
 export default function ConversationsPage() {
   const [threads, setThreads] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => readStoredConversations(defaultConversations)[0]?.id ?? "");
   const [message, setMessage] = useState("");
+  const messageWindowRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     writeStoredConversations(threads);
   }, [threads]);
 
   const selectedThread = useMemo(() => threads.find((thread) => thread.id === selectedThreadId) ?? null, [threads, selectedThreadId]);
+
+  useEffect(() => {
+    if (!messageWindowRef.current) return;
+    messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
+  }, [selectedThreadId, selectedThread?.messages.length]);
 
   const sendMessage = (closeAfterSend: boolean) => {
     if (!selectedThread || !message.trim()) return;
@@ -78,7 +84,7 @@ export default function ConversationsPage() {
                 <span className={`rounded-full px-2 py-1 text-xs ${selectedThread.open ? "bg-amber-500/20 text-amber-300" : "bg-slate-700/40 text-slate-400"}`}>{selectedThread.open ? "Open" : "Closed"}</span>
               </div>
 
-              <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-[#253149] bg-[#0b1323] p-3">
+              <div ref={messageWindowRef} className="h-[56vh] min-h-[360px] space-y-2 overflow-y-auto rounded-xl border border-[#253149] bg-[#0b1323] p-3">
                 {selectedThread.messages.map((msg) => (
                   <div key={msg.id} className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${msg.role === "agent" ? "ml-auto bg-[#25d3c4]/20 text-[#9ff8ec]" : "bg-slate-700/40 text-slate-200"}`}>
                     {msg.text}

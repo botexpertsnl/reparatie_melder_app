@@ -3,7 +3,9 @@ const IMPERSONATING_KEY = "statusflow.impersonating-tenant";
 
 export function isSuperAdmin() {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(SUPER_ADMIN_KEY) === "1";
+  const value = window.localStorage.getItem(SUPER_ADMIN_KEY);
+  if (value === null) return true;
+  return value === "1";
 }
 
 export function setSuperAdmin(enabled: boolean) {
