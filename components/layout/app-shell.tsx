@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MessageSquareText,
   Building2,
@@ -17,6 +17,7 @@ import {
   ChevronLeft
 } from "lucide-react";
 import clsx from "clsx";
+import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
 
 const navSections = [
   {
@@ -44,6 +45,23 @@ const navSections = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [openConversationCount, setOpenConversationCount] = useState(0);
+
+  useEffect(() => {
+    const refreshOpenCount = () => {
+      const count = readStoredConversations(defaultConversations).filter((thread) => thread.open).length;
+      setOpenConversationCount(count);
+    };
+
+    refreshOpenCount();
+    window.addEventListener("conversations:changed", refreshOpenCount);
+    window.addEventListener("storage", refreshOpenCount);
+
+    return () => {
+      window.removeEventListener("conversations:changed", refreshOpenCount);
+      window.removeEventListener("storage", refreshOpenCount);
+    };
+  }, []);
 
   return (
     <div className={clsx("min-h-screen bg-[#040914] text-slate-100 md:grid", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")}>
@@ -109,7 +127,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-screen flex-col">
         <header className="flex h-[69px] items-center justify-end border-b border-[#1a2436] bg-[#101722] px-8">
-          <div className="rounded-lg bg-[#182334] px-4 py-2 text-sm text-slate-400">AutoGarage De Vries</div>
+          <div className="flex items-center gap-2 rounded-lg bg-[#182334] px-4 py-2 text-sm text-slate-400">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300">{openConversationCount}</span>
+            AutoGarage De Vries
+          </div>
         </header>
         <main className="flex-1 px-10 py-8">{children}</main>
       </div>
