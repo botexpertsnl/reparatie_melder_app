@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Pencil } from "lucide-react";
+import { setSuperAdmin, startImpersonation, stopImpersonation } from "@/lib/impersonation-store";
 
 type TenantUser = { id: string; name: string; email: string; role: "Owner" | "Manager" | "Operator" };
 type Tenant = {
@@ -37,6 +38,11 @@ export default function DiagnosticsPage() {
   const [selectedTenantId, setSelectedTenantId] = useState<string>(initialTenants[0].id);
 
   const selectedTenant = tenants.find((tenant) => tenant.id === selectedTenantId) ?? tenants[0];
+
+  useEffect(() => {
+    setSuperAdmin(true);
+    stopImpersonation();
+  }, []);
 
   const addUser = () => {
     const name = window.prompt("User name");
@@ -92,6 +98,11 @@ export default function DiagnosticsPage() {
     );
   };
 
+  const impersonateTenant = () => {
+    startImpersonation(selectedTenant.name);
+    window.location.href = "/dashboard";
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -127,6 +138,10 @@ export default function DiagnosticsPage() {
                 Add User
               </button>
             </div>
+
+            <button type="button" onClick={impersonateTenant} className="mt-3 rounded-xl border border-[#28d9c6]/60 bg-[#28d9c6]/10 px-4 py-2 text-sm font-semibold text-[#7ff5e9]">
+              Impersonate customer account
+            </button>
 
             <div className="mt-4 space-y-2">
               {selectedTenant.users.map((user) => (

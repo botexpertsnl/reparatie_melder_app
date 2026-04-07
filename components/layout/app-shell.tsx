@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
+import { getImpersonatingTenant, isSuperAdmin, stopImpersonation } from "@/lib/impersonation-store";
 
 const navSections = [
   {
@@ -46,6 +47,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
+  const [superAdmin, setSuperAdminState] = useState(false);
+  const [impersonatingTenant, setImpersonatingTenant] = useState<string | null>(null);
 
   useEffect(() => {
     const refreshOpenCount = () => {
@@ -62,6 +65,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       window.removeEventListener("storage", refreshOpenCount);
     };
   }, []);
+
+  useEffect(() => {
+    setSuperAdminState(isSuperAdmin());
+    setImpersonatingTenant(getImpersonatingTenant());
+  }, [pathname]);
+
+  const visibleSections = navSections.filter((section) => (section.label === "System" ? superAdmin && !impersonatingTenant : true));
 
   return (
     <div className={clsx("min-h-screen bg-[#040914] text-slate-100 md:grid", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")}>
@@ -88,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
 
           <nav className="mt-8 space-y-8">
-            {navSections.map((section) => (
+            {visibleSections.map((section) => (
               <div key={section.label}>
                 <h2 className={clsx("px-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500", collapsed ? "hidden" : "block")}>{section.label}</h2>
                 <ul className="mt-3 space-y-1">
@@ -129,7 +139,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="flex h-[69px] items-center justify-end border-b border-[#1a2436] bg-[#101722] px-8">
           <div className="flex items-center gap-2 rounded-lg bg-[#182334] px-4 py-2 text-sm text-slate-400">
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300">{openConversationCount}</span>
-            AutoGarage De Vries
+            {superAdmin && impersonatingTenant ? (
+              <button
+                type="button"
+                className="font-medium text-slate-200 hover:text-white"
+                onClick={() => {
+                  stopImpersonation();
+                  window.location.href = "/admin/diagnostics";
+                }}
+              >
+                {impersonatingTenant}
+              </button>
+            ) : (
+              "AutoGarage De Vries"
+            )}
           </div>
         </header>
         <main className="flex-1 px-10 py-8">{children}</main>
