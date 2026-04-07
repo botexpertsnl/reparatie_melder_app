@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight } from "lucide-react";
+import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft } from "lucide-react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { defaultRepairs, readStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 
@@ -54,6 +54,7 @@ export default function ConversationsPage() {
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => readStoredConversations(defaultConversations)[0]?.id ?? "");
   const [message, setMessage] = useState("");
   const [showRepairPanel, setShowRepairPanel] = useState(false);
+  const [listCollapsed, setListCollapsed] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState>({ open: false, threadId: null });
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
 
@@ -125,9 +126,27 @@ export default function ConversationsPage() {
     setLinkModal({ open: false, threadId: null });
   };
 
+  const toggleConversationList = () => {
+    setListCollapsed((prev) => {
+      const next = !prev;
+      if (next) {
+        setShowRepairPanel(true);
+      }
+      return next;
+    });
+  };
+
   return (
-    <div className="-mx-10 -my-8 grid h-[calc(100vh-69px)] grid-cols-[380px_1fr] gap-0 overflow-hidden bg-[#0b1221]">
-      <aside className="border-r border-[#253149] bg-[#121b2b]/65">
+    <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden bg-[#0b1221] transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[0px_1fr]" : "grid-cols-[380px_1fr]"}`}>
+      <aside className={`relative border-r border-[#253149] bg-[#121b2b]/65 transition-all duration-300 ${listCollapsed ? "overflow-hidden opacity-0" : "opacity-100"}`}>
+        <button
+          type="button"
+          onClick={toggleConversationList}
+          className="absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#253149] bg-[#0a111f] text-slate-300 hover:bg-[#182236]"
+          aria-label="Collapse conversations list"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
         <div className="p-4">
           <h1 className="text-2xl font-semibold text-white">Conversations</h1>
           <label className="mt-3 flex items-center gap-2 rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-slate-400">
@@ -150,7 +169,7 @@ export default function ConversationsPage() {
         </div>
       </aside>
 
-      <section className="relative flex flex-col overflow-hidden">
+      <section className={`relative flex flex-col overflow-hidden transition-transform duration-300 ${listCollapsed ? "translate-x-5" : "translate-x-0"}`}>
         {selectedThread ? (
           <>
             <header className="flex items-center justify-between border-b border-[#253149] px-5 py-3">
@@ -159,19 +178,27 @@ export default function ConversationsPage() {
                 <div className="text-sm text-slate-500">{selectedThread.customerPhone}</div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRepairPanel(true)}
-                  disabled={!selectedThread.linkedRepairId}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Wrench className="h-4 w-4" />
-                  Repair Details
-                </button>
-                <button type="button" onClick={() => setLinkModal({ open: true, threadId: selectedThread.id })} className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300">
-                  <LinkIcon className="h-4 w-4" />
-                  {selectedThread.linkedRepairId ? "Change Link" : "Link Repair"}
-                </button>
+                {selectedThread.linkedRepairId ? (
+                  <button type="button" onClick={() => setShowRepairPanel(true)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
+                    <Wrench className="h-4 w-4" />
+                    Repair Details
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setLinkModal({ open: true, threadId: selectedThread.id })} className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300">
+                    <LinkIcon className="h-4 w-4" />
+                    Link Repair
+                  </button>
+                )}
+                {listCollapsed ? (
+                  <button
+                    type="button"
+                    onClick={toggleConversationList}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#253149] bg-[#0a111f] text-slate-300 hover:bg-[#182236]"
+                    aria-label="Expand conversations list"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                ) : null}
               </div>
             </header>
 
@@ -188,7 +215,6 @@ export default function ConversationsPage() {
               <div className="flex items-center gap-2">
                 <input className="input" placeholder="Type a message..." value={message} onChange={(event) => setMessage(event.target.value)} />
                 <button type="button" onClick={sendMessage} className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#28d9c6] text-[#022a36]"><Send className="h-4 w-4" /></button>
-                <button type="button" onClick={() => setShowRepairPanel(true)} className="rounded-xl border border-[#253149] px-3 py-2 text-sm font-medium text-slate-300">Repair Details</button>
               </div>
             </div>
           </>
@@ -224,6 +250,14 @@ export default function ConversationsPage() {
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => selectedThread && setLinkModal({ open: true, threadId: selectedThread.id })}
+                className="absolute bottom-5 right-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#25d3c4]/50 bg-[#25d3c4]/10 text-[#69f0df] hover:bg-[#25d3c4]/20"
+                aria-label="Change linked repair"
+              >
+                <LinkIcon className="h-4 w-4" />
+              </button>
             </>
           ) : (
             <div className="text-sm text-slate-400">No repair linked to this conversation.</div>
