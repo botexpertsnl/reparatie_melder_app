@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   MessageSquareText,
-  Building2,
-  ChevronDown,
   LayoutGrid,
   Wrench,
   MessagesSquare,
@@ -89,15 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className={clsx("flex-1 py-6", collapsed ? "px-2" : "px-4")}>
-          <button className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-slate-900/70">
-            <span className="flex items-center gap-3 text-base font-medium">
-              <Building2 className="h-5 w-5 text-slate-400" />
-              {collapsed ? null : "AutoGarage De Vries"}
-            </span>
-            {collapsed ? null : <ChevronDown className="h-4 w-4 text-slate-500" />}
-          </button>
-
-          <nav className="mt-8 space-y-8">
+          <nav className="space-y-8">
             {visibleSections.map((section) => (
               <div key={section.label}>
                 <h2 className={clsx("px-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500", collapsed ? "hidden" : "block")}>{section.label}</h2>

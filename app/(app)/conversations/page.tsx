@@ -53,7 +53,7 @@ export default function ConversationsPage() {
   const [repairs, setRepairs] = useState<StoredRepair[]>(() => readStoredRepairs(defaultRepairs));
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => readStoredConversations(defaultConversations)[0]?.id ?? "");
   const [message, setMessage] = useState("");
-  const [showRepairPanel, setShowRepairPanel] = useState(true);
+  const [showRepairPanel, setShowRepairPanel] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState>({ open: false, threadId: null });
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
 
@@ -126,7 +126,7 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div className="grid h-[calc(100vh-140px)] grid-cols-[380px_1fr_auto] gap-0 overflow-hidden rounded-2xl border border-[#253149] bg-[#0b1221]">
+    <div className="-mx-10 -my-8 grid h-[calc(100vh-69px)] grid-cols-[380px_1fr] gap-0 overflow-hidden bg-[#0b1221]">
       <aside className="border-r border-[#253149] bg-[#121b2b]/65">
         <div className="p-4">
           <h1 className="text-2xl font-semibold text-white">Conversations</h1>
@@ -150,7 +150,7 @@ export default function ConversationsPage() {
         </div>
       </aside>
 
-      <section className="flex flex-col">
+      <section className="relative flex flex-col overflow-hidden">
         {selectedThread ? (
           <>
             <header className="flex items-center justify-between border-b border-[#253149] px-5 py-3">
@@ -158,10 +158,21 @@ export default function ConversationsPage() {
                 <div className="font-semibold text-slate-200">{selectedThread.customerName || selectedThread.customerPhone}</div>
                 <div className="text-sm text-slate-500">{selectedThread.customerPhone}</div>
               </div>
-              <button type="button" onClick={() => setLinkModal({ open: true, threadId: selectedThread.id })} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
-                <LinkIcon className="h-4 w-4" />
-                {selectedThread.linkedRepairId ? "Change Repair" : "Link Repair"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRepairPanel(true)}
+                  disabled={!selectedThread.linkedRepairId}
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Wrench className="h-4 w-4" />
+                  Repair Details
+                </button>
+                <button type="button" onClick={() => setLinkModal({ open: true, threadId: selectedThread.id })} className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300">
+                  <LinkIcon className="h-4 w-4" />
+                  {selectedThread.linkedRepairId ? "Change Link" : "Link Repair"}
+                </button>
+              </div>
             </header>
 
             <div ref={messageWindowRef} className="flex-1 space-y-3 overflow-y-auto p-4">
@@ -177,33 +188,48 @@ export default function ConversationsPage() {
               <div className="flex items-center gap-2">
                 <input className="input" placeholder="Type a message..." value={message} onChange={(event) => setMessage(event.target.value)} />
                 <button type="button" onClick={sendMessage} className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#28d9c6] text-[#022a36]"><Send className="h-4 w-4" /></button>
-                <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="rounded-xl border border-[#253149] px-3 py-2 text-sm font-medium text-slate-300">Repair</button>
+                <button type="button" onClick={() => setShowRepairPanel(true)} className="rounded-xl border border-[#253149] px-3 py-2 text-sm font-medium text-slate-300">Repair Details</button>
               </div>
             </div>
           </>
         ) : null}
-      </section>
-
-      {showRepairPanel && selectedThread?.linkedRepairId && linkedRepair ? (
-        <aside className="w-[360px] border-l border-[#253149] bg-[#0b1221] p-5">
-          <div className="mb-4 flex items-center gap-2 text-xl font-semibold text-white"><Wrench className="h-5 w-5 text-[#25d3c4]" />Repair Details</div>
-          <h3 className="text-2xl font-semibold text-white">{linkedRepair.title}</h3>
-          <div className="mt-2 text-sm text-slate-400">{linkedRepair.customerName} · {linkedRepair.assetName}</div>
-          <div className="mt-4 border-t border-[#253149] pt-4 text-sm text-slate-300">{linkedRepair.description}</div>
-          <div className="mt-5 space-y-2">
-            {[
-              "Diagnosing",
-              "Repairing",
-              "Ready for Pickup"
-            ].map((step) => (
-              <button key={step} type="button" className="flex w-full items-center justify-between rounded-xl border border-[#253149] px-3 py-2 text-left text-sm text-slate-200 hover:bg-[#182236]">
-                {step}
-                <ChevronRight className="h-4 w-4 text-slate-500" />
-              </button>
-            ))}
-          </div>
+        <div
+          className={`absolute inset-0 z-20 bg-black/40 transition-opacity ${showRepairPanel && linkedRepair ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          onClick={() => setShowRepairPanel(false)}
+        />
+        <aside
+          className={`absolute inset-y-0 right-0 z-30 w-[380px] border-l border-[#253149] bg-[#0b1221] p-5 transition-transform duration-300 ${
+            showRepairPanel && linkedRepair ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          {linkedRepair ? (
+            <>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xl font-semibold text-white">
+                  <Wrench className="h-5 w-5 text-[#25d3c4]" />
+                  Repair Details
+                </div>
+                <button type="button" className="rounded-md p-1 text-slate-400 hover:bg-[#182236] hover:text-white" onClick={() => setShowRepairPanel(false)}>
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <h3 className="text-2xl font-semibold text-white">{linkedRepair.title}</h3>
+              <div className="mt-2 text-sm text-slate-400">{linkedRepair.customerName} · {linkedRepair.assetName}</div>
+              <div className="mt-4 border-t border-[#253149] pt-4 text-sm text-slate-300">{linkedRepair.description}</div>
+              <div className="mt-5 space-y-2">
+                {["Diagnosing", "Repairing", "Ready for Pickup"].map((step) => (
+                  <button key={step} type="button" className="flex w-full items-center justify-between rounded-xl border border-[#253149] px-3 py-2 text-left text-sm text-slate-200 hover:bg-[#182236]">
+                    {step}
+                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-slate-400">No repair linked to this conversation.</div>
+          )}
         </aside>
-      ) : null}
+      </section>
 
       {linkModal.open && linkModal.threadId ? (
         <LinkRepairModal repairs={repairs.filter((repair) => repair.status === "Open")} onClose={() => setLinkModal({ open: false, threadId: null })} onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)} />
