@@ -1,21 +1,157 @@
-import Link from "next/link";
-import { demoWorkItems } from "@/lib/dummy-data";
+"use client";
 
-export default function WorkItemsPage() {
+import { useEffect, useState } from "react";
+import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react";
+import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
+
+type RepairItem = StoredRepair;
+
+type NewRepairFormValues = {
+  customerName: string;
+  customerPhone: string;
+  assetName: string;
+  repairTitle: string;
+  description: string;
+  repairStage: RepairItem["stage"];
+  priority: RepairItem["priority"];
+};
+
+const initialFormValues: NewRepairFormValues = {
+  customerName: "",
+  customerPhone: "+31 ",
+  assetName: "",
+  repairTitle: "",
+  description: "",
+  repairStage: "New",
+  priority: "Medium"
+};
+
+function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
+  if (stage === "Awaiting Approval") {
+    return <span className="inline-flex rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-400">{stage}</span>;
+  }
+  if (stage === "New") {
+    return <span className="inline-flex rounded-xl border border-slate-700 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">{stage}</span>;
+  }
+  return <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{stage}</span>;
+}
+
+function AddRepairModal({ mode, initialValues, onClose, onSubmit }: { mode: "create" | "edit"; initialValues: NewRepairFormValues; onClose: () => void; onSubmit: (payload: NewRepairFormValues) => void }) {
+  const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
+
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Work Items</h1>
-      <div className="space-y-3">
-        {demoWorkItems.map((item) => (
-          <div key={item.id} className="card flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="font-medium">{item.title}</div>
-              <div className="text-xs text-slate-400">Stage: {item.stage} · Priority: {item.priority}</div>
-            </div>
-            <Link className="btn" href={`/work-items/${item.id}`}>Open</Link>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/75 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-2xl border border-[#253149] bg-[#0f1626] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+        <div className="flex items-center justify-between border-b border-[#253149] px-6 py-4">
+          <h2 className="text-xl font-semibold text-white">{mode === "create" ? "New Repair" : "Edit Repair"}</h2>
+          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800/70" type="button"><X className="h-5 w-5" /></button>
+        </div>
+
+        <form className="space-y-4 px-6 py-5" onSubmit={(event) => { event.preventDefault(); onSubmit(formValues); }}>
+          <input className="input" placeholder="Customer name" value={formValues.customerName} onChange={(event) => setFormValues((prev) => ({ ...prev, customerName: event.target.value }))} />
+          <input className="input" placeholder="Customer phone" value={formValues.customerPhone} onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))} />
+          <input className="input" placeholder="Device / asset" value={formValues.assetName} onChange={(event) => setFormValues((prev) => ({ ...prev, assetName: event.target.value }))} />
+          <input className="input" placeholder="Repair title" value={formValues.repairTitle} onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))} />
+          <textarea className="input min-h-24" placeholder="Description" value={formValues.description} onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))} />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <select className="input" value={formValues.repairStage} onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}>
+              <option>New</option><option>Awaiting Approval</option><option>In Progress</option><option>Ready for Pickup</option>
+            </select>
+            <select className="input" value={formValues.priority} onChange={(event) => setFormValues((prev) => ({ ...prev, priority: event.target.value as RepairItem["priority"] }))}>
+              <option>Low</option><option>Medium</option><option>High</option>
+            </select>
           </div>
-        ))}
+
+          <div className="flex justify-end gap-2 border-t border-[#253149] pt-4">
+            <button type="button" onClick={onClose} className="rounded-xl border border-[#253149] px-4 py-2 text-sm text-slate-300">Cancel</button>
+            <button type="submit" className="btn px-5 py-2">{mode === "create" ? "Create Repair" : "Save Repair"}</button>
+          </div>
+        </form>
       </div>
     </div>
+  );
+}
+
+export default function WorkItemsPage() {
+  const [repairs, setRepairs] = useState<RepairItem[]>(() => readStoredRepairs(defaultRepairs));
+  const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
+  const [deletingRepairId, setDeletingRepairId] = useState<string | null>(null);
+
+  useEffect(() => {
+    writeStoredRepairs(repairs);
+  }, [repairs]);
+
+  useEffect(() => {
+    const handle = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-action-menu='true']")) return;
+      setOpenMenuId(null);
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
+  const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
+
+  const handleCreateRepair = (payload: NewRepairFormValues) => {
+    setRepairs((prev) => [{ id: `repair_${Date.now()}`, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: payload.priority, status: "Open" }, ...prev]);
+    setIsAddRepairOpen(false);
+  };
+
+  const handleEditRepair = (repairId: string, payload: NewRepairFormValues) => {
+    setRepairs((prev) => prev.map((repair) => (repair.id === repairId ? { ...repair, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: payload.priority } : repair)));
+    setEditingRepairId(null);
+  };
+
+  const toFormValues = (repair: RepairItem): NewRepairFormValues => ({ customerName: repair.customerName, customerPhone: repair.customerPhone, assetName: repair.assetName, repairTitle: repair.title, description: repair.description, repairStage: repair.stage, priority: repair.priority });
+
+  return (
+    <>
+      <div className="space-y-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div><h1 className="text-2xl font-semibold text-white">Repairs</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing repairs</p></div>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
+            <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400"><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
+            <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"><Plus className="h-5 w-5" />New Repair</button>
+          </div>
+        </div>
+
+        <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
+          <table className="w-full table-fixed">
+            <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[37%] px-5 py-4">Title</th><th className="w-[24%] px-5 py-4">Customer</th><th className="w-[22%] px-5 py-4">Stage</th><th className="w-[12%] px-5 py-4">Status</th><th className="w-[5%] px-5 py-4" /></tr></thead>
+            <tbody>
+              {repairs.map((repair) => (
+                <tr key={repair.id} className="border-b border-[#253149] last:border-b-0">
+                  <td className="px-5 py-4 align-middle"><div className="text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 text-sm text-slate-500">{repair.assetName} · {repair.description}</div></td>
+                  <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customerName}</td>
+                  <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
+                  <td className="px-5 py-4 align-middle"><span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{repair.status}</span></td>
+                  <td className="relative px-5 py-4 align-middle text-center text-slate-400">
+                    <button data-action-menu="true" className="rounded-md p-1 hover:bg-slate-800/70" onClick={() => setOpenMenuId((prev) => (prev === repair.id ? null : repair.id))}><MoreHorizontal className="h-5 w-5" /></button>
+                    {openMenuId === repair.id ? (
+                      <div data-action-menu="true" className="absolute right-7 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
+                        <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200" onClick={() => { setEditingRepairId(repair.id); setOpenMenuId(null); }}><Pencil className="h-4 w-4" />Edit</button>
+                        <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50" onClick={() => { setDeletingRepairId(repair.id); setOpenMenuId(null); }}><Trash2 className="h-4 w-4" />Delete</button>
+                      </div>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={initialFormValues} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
+      {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
+      {deletingRepair ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"><h2 className="text-xl font-semibold">Delete repair</h2><p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p><div className="mt-6 flex items-center justify-end gap-3"><button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button><button type="button" onClick={() => { setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id)); setDeletingRepairId(null); }} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Delete</button></div></div></div>
+      ) : null}
+    </>
   );
 }
