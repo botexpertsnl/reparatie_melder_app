@@ -1,9 +1,11 @@
 export type StoredConversation = {
   id: string;
   customerName: string;
+  customerPhone: string;
   preview: string;
   updatedAt: string;
   open: boolean;
+  linkedRepairId?: string;
   messages: { id: string; role: "customer" | "agent"; text: string; at: string }[];
 };
 
@@ -12,27 +14,22 @@ const STORAGE_KEY = "statusflow.conversations";
 export const defaultConversations: StoredConversation[] = [
   {
     id: "th_1",
-    customerName: "Alex Jansen",
-    preview: "Your repair is in progress.",
-    updatedAt: "10:12",
-    open: false,
-    messages: [{ id: "m_1", role: "customer", text: "Your repair is in progress.", at: "10:12" }]
+    customerName: "Sophie de Jong",
+    customerPhone: "+31 612345604",
+    preview: "Hoe lang duurt de reparatie nog?",
+    updatedAt: "10:54",
+    open: true,
+    linkedRepairId: "repair_1",
+    messages: [{ id: "m_1", role: "customer", text: "Hoe lang duurt de reparatie nog?", at: "10:54" }]
   },
   {
     id: "th_2",
-    customerName: "Noor Visser",
-    preview: "Can you approve extra work?",
-    updatedAt: "09:44",
+    customerName: "+31 612000111",
+    customerPhone: "+31 612000111",
+    preview: "Hallo, kunnen jullie mijn scherm fixen?",
+    updatedAt: "09:12",
     open: true,
-    messages: [{ id: "m_2", role: "customer", text: "Can you approve extra work?", at: "09:44" }]
-  },
-  {
-    id: "th_3",
-    customerName: "Milan de Wit",
-    preview: "Ready for pickup after 16:00.",
-    updatedAt: "08:21",
-    open: true,
-    messages: [{ id: "m_3", role: "customer", text: "Ready for pickup after 16:00.", at: "08:21" }]
+    messages: [{ id: "m_2", role: "customer", text: "Hallo, kunnen jullie mijn scherm fixen?", at: "09:12" }]
   }
 ];
 
