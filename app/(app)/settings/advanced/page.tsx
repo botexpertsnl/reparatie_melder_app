@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X } from "lucide-react";
 import clsx from "clsx";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
+<<<<<<< codex/redesign-app-to-match-uploaded-image-us5x45
+import { readStoredWorkflowStages, writeStoredWorkflowStages } from "@/lib/workflow-stage-store";
+=======
+>>>>>>> main
 
 type Stage = {
   id: string;
@@ -136,6 +140,101 @@ function StageModal({
               value={values.name}
               onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
             />
+<<<<<<< codex/redesign-app-to-match-uploaded-image-us5x45
+          </div>
+
+          <div>
+            <label htmlFor="stage-description" className="mb-2 block text-sm font-medium text-slate-700">Description *</label>
+            <textarea
+              id="stage-description"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="What does this stage represent?"
+              value={values.description}
+              onChange={(event) => setValues((prev) => ({ ...prev, description: event.target.value }))}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Color</label>
+            <div className="flex flex-wrap gap-3">
+              {colorOptions.map((color) => {
+                const selected = values.color === color;
+
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    className={clsx("h-8 w-8 rounded-full border-2 transition", selected ? "border-slate-900 ring-2 ring-slate-300" : "border-transparent hover:border-slate-400")}
+                    style={{ backgroundColor: color }}
+                    aria-label={`Select color ${color}`}
+                    onClick={() => setValues((prev) => ({ ...prev, color }))}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm font-semibold text-slate-800">Automatic template message</div>
+                <div className="mt-1 text-sm text-slate-500">Send a predefined WhatsApp template when this stage is set.</div>
+              </div>
+              <button
+                type="button"
+                className={clsx("relative inline-flex h-7 w-12 items-center rounded-full transition", values.templateAutomationEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
+                onClick={() =>
+                  setValues((prev) => ({
+                    ...prev,
+                    templateAutomationEnabled: !prev.templateAutomationEnabled,
+                    templateId: !prev.templateAutomationEnabled ? prev.templateId : ""
+                  }))
+                }
+                aria-label="Toggle automatic template message"
+              >
+                <span className={clsx("inline-block h-5 w-5 transform rounded-full bg-white transition", values.templateAutomationEnabled ? "translate-x-6" : "translate-x-1")} />
+              </button>
+            </div>
+
+            {values.templateAutomationEnabled ? (
+              <div className="mt-4 space-y-3 border-t border-[#e5e9ef] pt-4">
+                <div>
+                  <label htmlFor="template-message" className="mb-2 block text-sm font-medium text-slate-700">Template message</label>
+                  <select
+                    id="template-message"
+                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                    value={values.templateId}
+                    onChange={(event) => setValues((prev) => ({ ...prev, templateId: event.target.value }))}
+                  >
+                    <option value="">Select a template</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Template preview</div>
+                  <p className="mt-2 line-clamp-3 min-h-[60px] text-sm text-slate-600">{selectedTemplate ? selectedTemplate.body : "Select a template to preview its message."}</p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-1">
+            <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+            <button
+              type="submit"
+              className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")}
+              disabled={!canSubmit}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </form>
+=======
           </div>
 
           <div>
@@ -245,13 +344,35 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
           <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">No</button>
           <button type="button" onClick={onConfirm} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Yes, delete</button>
         </div>
+>>>>>>> main
+      </div>
+    </div>
+  );
+}
+
+<<<<<<< codex/redesign-app-to-match-uploaded-image-us5x45
+function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: string; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <h2 className="text-xl font-semibold">Delete stage</h2>
+        <p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{stageName}</span>? This action cannot be undone.</p>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">No</button>
+          <button type="button" onClick={onConfirm} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Yes, delete</button>
+        </div>
       </div>
     </div>
   );
 }
 
 export default function AdvancedSettingsPage() {
+  const [stages, setStages] = useState<Stage[]>(() => readStoredWorkflowStages(initialStages));
+=======
+export default function AdvancedSettingsPage() {
   const [stages, setStages] = useState<Stage[]>(initialStages);
+>>>>>>> main
   const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultTemplates).filter((template) => template.active));
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
@@ -272,6 +393,13 @@ export default function AdvancedSettingsPage() {
     };
   }, []);
 
+<<<<<<< codex/redesign-app-to-match-uploaded-image-us5x45
+  useEffect(() => {
+    writeStoredWorkflowStages(stages);
+  }, [stages]);
+
+=======
+>>>>>>> main
   const editingStage = stages.find((stage) => stage.id === editingStageId) ?? null;
   const deletingStage = stages.find((stage) => stage.id === deletingStageId) ?? null;
 
