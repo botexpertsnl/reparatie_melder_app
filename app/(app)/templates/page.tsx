@@ -271,7 +271,17 @@ export default function TemplatesPage() {
     writeStoredTemplates(templates);
   }, [templates]);
 
-  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-action-menu='true']")) return;
+      setOpenMenuId(null);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const deletingTemplate = templates.find((template) => template.id === deletingTemplateId) ?? null;
 
   const toStoredLanguage = (language: string) => {
@@ -347,6 +357,7 @@ export default function TemplatesPage() {
               <div className="flex items-start justify-between">
                 <h2 className="text-lg font-semibold text-white">{template.name}</h2>
                 <button
+                  data-action-menu="true"
                   className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
                   aria-label={`Open actions for ${template.name}`}
                   onClick={() => setOpenMenuId((prev) => (prev === template.id ? null : template.id))}
@@ -356,7 +367,7 @@ export default function TemplatesPage() {
               </div>
 
               {openMenuId === template.id ? (
-                <div className="absolute right-6 top-14 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+                <div data-action-menu="true" className="absolute right-6 top-14 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"

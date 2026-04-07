@@ -278,6 +278,17 @@ export default function AdvancedSettingsPage() {
     writeStoredWorkflowStages(stages);
   }, [stages]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-action-menu='true']")) return;
+      setOpenStageMenuId(null);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const editingStage = stages.find((stage) => stage.id === editingStageId) ?? null;
   const deletingStage = stages.find((stage) => stage.id === deletingStageId) ?? null;
 
@@ -388,6 +399,7 @@ export default function AdvancedSettingsPage() {
               <div className="relative flex items-center pr-2">
                 <button
                   type="button"
+                  data-action-menu="true"
                   className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
                   aria-label={`Open actions for ${stage.name}`}
                   onClick={() => setOpenStageMenuId((prev) => (prev === stage.id ? null : stage.id))}
@@ -396,7 +408,7 @@ export default function AdvancedSettingsPage() {
                 </button>
 
                 {openStageMenuId === stage.id ? (
-                  <div className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+                  <div data-action-menu="true" className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
                     <button
                       type="button"
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
