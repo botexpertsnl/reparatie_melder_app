@@ -14,7 +14,7 @@ function LinkRepairModal({
   repairLabel,
   onClose,
   onSelect,
-  onCreate
+  onCreate,
 }: {
   repairs: StoredRepair[];
   repairLabel: string;
@@ -23,7 +23,12 @@ function LinkRepairModal({
   onCreate: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const filtered = repairs.filter((repair) => `${repair.title} ${repair.customerName} ${repair.assetName}`.toLowerCase().includes(query.toLowerCase()));
+
+  const filtered = repairs.filter((repair) =>
+    `${repair.title} ${repair.customerName} ${repair.assetName}`
+      .toLowerCase()
+      .includes(query.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
@@ -33,7 +38,13 @@ function LinkRepairModal({
             <h2 className="text-2xl font-semibold">Link to {repairLabel}</h2>
             <button type="button" onClick={onCreate} className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20">+ New {repairLabel}</button>
           </div>
-          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button"><X className="h-5 w-5" /></button>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
+            type="button"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <label className="mb-4 flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
@@ -43,12 +54,21 @@ function LinkRepairModal({
 
         <div className="space-y-2">
           {filtered.map((repair) => (
-            <button key={repair.id} type="button" onClick={() => onSelect(repair.id)} className="w-full rounded-xl border border-[#cdd5e2] bg-white p-3 text-left hover:bg-slate-50">
+            <button
+              key={repair.id}
+              type="button"
+              onClick={() => onSelect(repair.id)}
+              className="w-full rounded-xl border border-[#cdd5e2] bg-white p-3 text-left hover:bg-slate-50"
+            >
               <div className="flex items-center justify-between">
                 <div className="font-semibold">{repair.title}</div>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">{repair.stage}</span>
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
+                  {repair.stage}
+                </span>
               </div>
-              <div className="text-sm text-slate-600">{repair.customerName} · {repair.assetName}</div>
+              <div className="text-sm text-slate-600">
+                {repair.customerName} · {repair.assetName}
+              </div>
             </button>
           ))}
         </div>
@@ -59,40 +79,67 @@ function LinkRepairModal({
 
 function TemplatePickerModal({
   onClose,
-  onSelect
+  onSelect,
 }: {
   onClose: () => void;
   onSelect: (value: string) => void;
 }) {
-  const templateOptions = ["Device Received", "Repair Update", "Ready for Pickup"];
-  const quickReplyOptions = ["Thanks, we'll check this now.", "Can you share your serial number?", "Your device is ready to collect."];
+  const templateOptions = [
+    "Device Received",
+    "Repair Update",
+    "Ready for Pickup",
+  ];
+  const quickReplyOptions = [
+    "Thanks, we'll check this now.",
+    "Can you share your serial number?",
+    "Your device is ready to collect.",
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-semibold">Templates & Quick Replies</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close template picker">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
+            aria-label="Close template picker"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-5">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Templates</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Templates
+            </h3>
             <div className="mt-2 space-y-2">
               {templateOptions.map((item) => (
-                <button key={item} type="button" onClick={() => onSelect(item)} className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => onSelect(item)}
+                  className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
                   {item}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Quick replies</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Quick replies
+            </h3>
             <div className="mt-2 space-y-2">
               {quickReplyOptions.map((item) => (
-                <button key={item} type="button" onClick={() => onSelect(item)} className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => onSelect(item)}
+                  className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
                   {item}
                 </button>
               ))}
@@ -119,16 +166,21 @@ export default function ConversationsPage() {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    setRepairs(readStoredRepairs(defaultRepairs));
+    const storedRepairs = readStoredRepairs(defaultRepairs);
+    setRepairs(storedRepairs);
 
     setThreads((prev) =>
       prev.map((thread) => {
-        const autoRepair = readStoredRepairs(defaultRepairs).find((repair) => repair.customerPhone === thread.customerPhone);
+        const autoRepair = storedRepairs.find(
+          (repair) => repair.customerPhone === thread.customerPhone
+        );
 
         return {
           ...thread,
-          customerName: autoRepair ? autoRepair.customerName : thread.customerName || thread.customerPhone,
-          linkedRepairId: thread.linkedRepairId ?? autoRepair?.id
+          customerName: autoRepair
+            ? autoRepair.customerName
+            : thread.customerName || thread.customerPhone,
+          linkedRepairId: thread.linkedRepairId ?? autoRepair?.id,
         };
       })
     );
@@ -144,7 +196,11 @@ export default function ConversationsPage() {
     };
 
     window.addEventListener("conversations:nav-click", handleConversationNavClick);
-    return () => window.removeEventListener("conversations:nav-click", handleConversationNavClick);
+    return () =>
+      window.removeEventListener(
+        "conversations:nav-click",
+        handleConversationNavClick
+      );
   }, []);
 
   useEffect(() => {
@@ -194,7 +250,15 @@ export default function ConversationsPage() {
               preview: message.trim(),
               updatedAt: "Now",
               open: true,
-              messages: [...thread.messages, { id: `m_${Date.now()}`, role: "agent", text: message.trim(), at: "Now" }]
+              messages: [
+                ...thread.messages,
+                {
+                  id: `m_${Date.now()}`,
+                  role: "agent",
+                  text: message.trim(),
+                  at: "Now",
+                },
+              ],
             }
           : thread
       )
@@ -214,7 +278,7 @@ export default function ConversationsPage() {
               ...thread,
               linkedRepairId: repair.id,
               customerName: repair.customerName,
-              customerPhone: repair.customerPhone
+              customerPhone: repair.customerPhone,
             }
           : thread
       )
@@ -252,7 +316,7 @@ export default function ConversationsPage() {
       assetName: "Unknown device",
       stage: "New",
       priority: "Medium",
-      status: "Open"
+      status: "Open",
     };
 
     setRepairs((prev) => {
@@ -268,7 +332,7 @@ export default function ConversationsPage() {
               ...item,
               linkedRepairId: newRepair.id,
               customerName: newRepair.customerName,
-              customerPhone: newRepair.customerPhone
+              customerPhone: newRepair.customerPhone,
             }
           : item
       )
@@ -289,7 +353,15 @@ export default function ConversationsPage() {
               preview: `📷 ${file.name}`,
               updatedAt: "Now",
               open: true,
-              messages: [...thread.messages, { id: `m_${Date.now()}`, role: "agent", text: `📷 Image uploaded: ${file.name}`, at: "Now" }]
+              messages: [
+                ...thread.messages,
+                {
+                  id: `m_${Date.now()}`,
+                  role: "agent",
+                  text: `📷 Image uploaded: ${file.name}`,
+                  at: "Now",
+                },
+              ],
             }
           : thread
       )
@@ -314,7 +386,10 @@ export default function ConversationsPage() {
             <h1 className="text-2xl font-semibold text-white">Conversations</h1>
             <label className="mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
               <Search className="h-4 w-4" />
-              <input className="w-full bg-transparent text-sm outline-none" placeholder="Search..." />
+              <input
+                className="w-full bg-transparent text-sm outline-none"
+                placeholder="Search..."
+              />
             </label>
           </div>
 
@@ -322,11 +397,20 @@ export default function ConversationsPage() {
             {sortedThreads.map((thread) => (
               <button key={thread.id} type="button" onClick={() => setSelectedThreadId(thread.id)} className={`w-full rounded-xl border p-3 text-left ${selectedThreadId === thread.id ? "" : "border-transparent hover:bg-white/5"}`} style={selectedThreadId === thread.id ? { borderColor: "var(--border-strong)", background: "var(--surface-3)" } : undefined}>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-200">{thread.customerName || thread.customerPhone}</span>
+                  <span className="font-medium text-slate-200">
+                    {thread.customerName || thread.customerPhone}
+                  </span>
                   <span className="text-xs text-slate-500">{thread.updatedAt}</span>
                 </div>
                 <p className="mt-1 text-sm text-slate-300">{thread.preview}</p>
-                <p className="mt-1 text-xs italic text-slate-500">{thread.linkedRepairId ? `🔗 ${repairs.find((r) => r.id === thread.linkedRepairId)?.title ?? "Repair linked"}` : "No repair linked"}</p>
+                <p className="mt-1 text-xs italic text-slate-500">
+                  {thread.linkedRepairId
+                    ? `🔗 ${
+                        repairs.find((r) => r.id === thread.linkedRepairId)?.title ??
+                        "Repair linked"
+                      }`
+                    : "No repair linked"}
+                </p>
               </button>
             ))}
           </div>
@@ -337,9 +421,17 @@ export default function ConversationsPage() {
             type="button"
             onClick={toggleConversationList}
             className="mx-auto flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-900/70"
-            aria-label={listCollapsed ? "Expand conversations list" : "Collapse conversations list"}
+            aria-label={
+              listCollapsed
+                ? "Expand conversations list"
+                : "Collapse conversations list"
+            }
           >
-            <ChevronLeft className={`h-5 w-5 transition-transform ${listCollapsed ? "rotate-180" : ""}`} />
+            <ChevronLeft
+              className={`h-5 w-5 transition-transform ${
+                listCollapsed ? "rotate-180" : ""
+              }`}
+            />
           </button>
         </div>
       </aside>
@@ -350,8 +442,12 @@ export default function ConversationsPage() {
             <>
               <header className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: "var(--border)" }}>
                 <div>
-                  <div className="font-semibold text-slate-200">{selectedThread.customerName || selectedThread.customerPhone}</div>
-                  <div className="text-sm text-slate-500">{selectedThread.customerPhone}</div>
+                  <div className="font-semibold text-slate-200">
+                    {selectedThread.customerName || selectedThread.customerPhone}
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    {selectedThread.customerPhone}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedThread.linkedRepairId ? (
@@ -362,7 +458,13 @@ export default function ConversationsPage() {
                       </button>
                     )
                   ) : (
-                    <button type="button" onClick={() => setLinkModal({ open: true, threadId: selectedThread.id })} className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLinkModal({ open: true, threadId: selectedThread.id })
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
+                    >
                       <LinkIcon className="h-4 w-4" />
                       Link {repairLabel}
                     </button>
@@ -462,7 +564,16 @@ export default function ConversationsPage() {
           onCreate={() => createRepairFromThread(linkModal.threadId!)}
         />
       ) : null}
-      {showTemplatePicker ? <TemplatePickerModal onClose={() => setShowTemplatePicker(false)} onSelect={(value) => { setMessage(value); setShowTemplatePicker(false); }} /> : null}
+
+      {showTemplatePicker ? (
+        <TemplatePickerModal
+          onClose={() => setShowTemplatePicker(false)}
+          onSelect={(value) => {
+            setMessage(value);
+            setShowTemplatePicker(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
