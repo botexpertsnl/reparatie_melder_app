@@ -452,7 +452,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[#28d9c6]/10 px-5 text-sm font-semibold text-[#69f0df]"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[var(--surface-3)]/10 px-5 text-sm font-semibold text-[#69f0df]"
             >
               <Plus className="h-4 w-4" />
               Add Template
@@ -460,7 +460,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               onClick={() => setIsCreateQuickReplyModalOpen(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[#28d9c6]/10 px-5 text-sm font-semibold text-[#69f0df]"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[var(--surface-3)]/10 px-5 text-sm font-semibold text-[#69f0df]"
             >
               <Plus className="h-4 w-4" />
               Add Quick Reply
