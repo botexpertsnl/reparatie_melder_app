@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
 import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft } from "lucide-react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { defaultRepairs, readStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -158,11 +159,11 @@ export default function ConversationsPage() {
           </div>
         </div>
 
-        <div className="border-t border-[#253149] p-4">
+        <div className={clsx("border-t border-[#253149]", listCollapsed ? "p-2" : "p-4")}>
           <button
             type="button"
             onClick={toggleConversationList}
-            className="mx-auto flex h-11 w-11 items-center justify-center rounded-md p-3 text-slate-500 hover:bg-slate-900/70"
+            className="mx-auto flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-900/70"
             aria-label={listCollapsed ? "Expand conversations list" : "Collapse conversations list"}
           >
             <ChevronLeft className={`h-5 w-5 transition-transform ${listCollapsed ? "rotate-180" : ""}`} />
