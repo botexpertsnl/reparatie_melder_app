@@ -136,27 +136,18 @@ export default function ConversationsPage() {
     });
   };
 
-  const showRepairColumn = !listCollapsed && showRepairPanel && Boolean(linkedRepair);
-  const showRepairOverlay = listCollapsed && showRepairPanel && Boolean(linkedRepair);
+  const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
 
   return (
     <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden bg-[#0b1221] transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[56px_1fr]" : "grid-cols-[380px_1fr]"}`}>
-      <aside className="relative border-r border-[#253149] bg-[#121b2b]/65">
-        <button
-          type="button"
-          onClick={toggleConversationList}
-          className="absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#253149] bg-[#0a111f] text-slate-300 hover:bg-[#182236]"
-          aria-label={listCollapsed ? "Expand conversations list" : "Collapse conversations list"}
-        >
-          {listCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-        <div className={`transition-opacity duration-200 ${listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+      <aside className="flex min-h-0 flex-col border-r border-[#253149] bg-[#121b2b]/65">
+        <div className={`min-h-0 flex-1 transition-opacity duration-200 ${listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"}`}>
           <div className="p-4">
-          <h1 className="text-2xl font-semibold text-white">Conversations</h1>
-          <label className="mt-3 flex items-center gap-2 rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-slate-400">
-            <Search className="h-4 w-4" />
-            <input className="w-full bg-transparent text-sm outline-none" placeholder="Search..." />
-          </label>
+            <h1 className="text-2xl font-semibold text-white">Conversations</h1>
+            <label className="mt-3 flex items-center gap-2 rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-slate-400">
+              <Search className="h-4 w-4" />
+              <input className="w-full bg-transparent text-sm outline-none" placeholder="Search..." />
+            </label>
           </div>
 
           <div className="space-y-1 px-3 pb-3">
@@ -172,9 +163,20 @@ export default function ConversationsPage() {
             ))}
           </div>
         </div>
+
+        <div className="border-t border-[#253149] p-4">
+          <button
+            type="button"
+            onClick={toggleConversationList}
+            className="mx-auto flex h-11 w-11 items-center justify-center rounded-md p-3 text-slate-500 hover:bg-slate-900/70"
+            aria-label={listCollapsed ? "Expand conversations list" : "Collapse conversations list"}
+          >
+            <ChevronLeft className={`h-5 w-5 transition-transform ${listCollapsed ? "rotate-180" : ""}`} />
+          </button>
+        </div>
       </aside>
 
-      <section className={`relative grid min-w-0 overflow-hidden transition-transform duration-300 ${listCollapsed ? "translate-x-5 grid-cols-[1fr]" : showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+      <section className={`relative grid min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
         <div className="flex min-w-0 flex-col">
           {selectedThread ? (
             <>
@@ -185,8 +187,8 @@ export default function ConversationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedThread.linkedRepairId ? (
-                    <button type="button" onClick={() => setShowRepairPanel(true)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
-                      <Wrench className="h-4 w-4" />
+                    <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
+                      {showRepairPanel ? <X className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
                       Repair Details
                     </button>
                   ) : (
@@ -241,46 +243,6 @@ export default function ConversationsPage() {
             </button>
           </aside>
         ) : null}
-
-        <div
-          className={`absolute inset-0 z-20 bg-black/40 transition-opacity ${showRepairOverlay ? "opacity-100" : "pointer-events-none opacity-0"}`}
-          onClick={() => setShowRepairPanel(false)}
-        />
-        <aside
-          className={`absolute inset-y-0 right-0 z-30 w-[380px] border-l border-[#253149] bg-[#0b1221] p-5 transition-transform duration-300 ${
-            showRepairOverlay ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          {linkedRepair ? (
-            <>
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xl font-semibold text-white">
-                  <Wrench className="h-5 w-5 text-[#25d3c4]" />
-                  Repair Details
-                </div>
-                <button type="button" className="rounded-md p-1 text-slate-400 hover:bg-[#182236] hover:text-white" onClick={() => setShowRepairPanel(false)}>
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <h3 className="text-2xl font-semibold text-white">{linkedRepair.title}</h3>
-              <div className="mt-2 text-sm text-slate-400">{linkedRepair.customerName} · {linkedRepair.assetName}</div>
-              <div className="mt-4 border-t border-[#253149] pt-4 text-sm text-slate-300">{linkedRepair.description}</div>
-              <div className="mt-5 space-y-2">
-                {["Diagnosing", "Repairing", "Ready for Pickup"].map((step) => (
-                  <button key={step} type="button" className="flex w-full items-center justify-between rounded-xl border border-[#253149] px-3 py-2 text-left text-sm text-slate-200 hover:bg-[#182236]">
-                    {step}
-                    <ChevronRight className="h-4 w-4 text-slate-500" />
-                  </button>
-                ))}
-              </div>
-              <button type="button" onClick={() => selectedThread && setLinkModal({ open: true, threadId: selectedThread.id })} className="absolute bottom-5 right-5 text-[#69f0df] hover:text-[#25d3c4]" aria-label="Change linked repair">
-                <LinkIcon className="h-5 w-5" />
-              </button>
-            </>
-          ) : (
-            <div className="text-sm text-slate-400">No repair linked to this conversation.</div>
-          )}
-        </aside>
       </section>
 
       {linkModal.open && linkModal.threadId ? (
