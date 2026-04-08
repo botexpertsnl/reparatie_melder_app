@@ -14,6 +14,17 @@ export type StoredWorkflowStage = {
 
 const STORAGE_KEY = "statusflow.workflow-stages";
 
+export const defaultWorkflowStages: StoredWorkflowStage[] = [
+  { id: "stage_new", name: "New", key: "new", description: "Repair just received", color: "#6b7280", visibleToCustomer: true, isStart: true },
+  { id: "stage_scheduled", name: "Scheduled", key: "scheduled", description: "Repair is scheduled", color: "#4e8de8", visibleToCustomer: true },
+  { id: "stage_progress", name: "In Progress", key: "in_progress", description: "Being worked on", color: "#ecbd69", visibleToCustomer: true },
+  { id: "stage_approval", name: "Awaiting Approval", key: "awaiting_approval", description: "Customer approval needed for additional work", color: "#fb923c", visibleToCustomer: true, requiresApproval: true },
+  { id: "stage_not_approved", name: "Not Approved", key: "not_approved", description: "Customer did not approve the requested work", color: "#ef4444", visibleToCustomer: true },
+  { id: "stage_approved", name: "Approved", key: "approved", description: "Customer approved and work can continue", color: "#22c55e", visibleToCustomer: true },
+  { id: "stage_pickup", name: "Ready for Pickup", key: "ready_pickup", description: "Car is ready to be collected", color: "#22c1dc", visibleToCustomer: true },
+  { id: "stage_completed", name: "Completed", key: "completed", description: "Repair completed", color: "#10b981", visibleToCustomer: true, isTerminal: true }
+];
+
 export function readStoredWorkflowStages(fallback: StoredWorkflowStage[]): StoredWorkflowStage[] {
   if (typeof window === "undefined") {
     return fallback;
@@ -38,4 +49,5 @@ export function writeStoredWorkflowStages(stages: StoredWorkflowStage[]) {
   }
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stages));
+  window.dispatchEvent(new Event("workflow-stages:changed"));
 }

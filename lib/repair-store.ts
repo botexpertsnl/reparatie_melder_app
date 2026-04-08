@@ -5,7 +5,7 @@ export type StoredRepair = {
   customerName: string;
   customerPhone: string;
   assetName: string;
-  stage: "Awaiting Approval" | "New" | "In Progress" | "Ready for Pickup";
+  stage: string;
   priority: "High" | "Medium" | "Low";
   status: "Open";
 };
