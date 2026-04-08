@@ -308,8 +308,8 @@ export default function ConversationsPage() {
         </div>
       </aside>
 
-      <section className={`relative grid min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
-        <div className="flex min-w-0 flex-col">
+      <section className={`relative grid min-h-0 min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+        <div className="flex min-h-0 min-w-0 flex-col">
           {selectedThread ? (
             <>
               <header className="flex items-center justify-between border-b border-[#253149] px-5 py-3">
@@ -332,7 +332,7 @@ export default function ConversationsPage() {
                 </div>
               </header>
 
-              <div ref={messageWindowRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+              <div ref={messageWindowRef} className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
                 {selectedThread.messages.map((msg) => (
                   <div key={msg.id} className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${msg.role === "agent" ? "ml-auto bg-[#29cfc0] text-[#05292f]" : "bg-[#1f2736] text-slate-200"}`}>
                     {msg.text}
