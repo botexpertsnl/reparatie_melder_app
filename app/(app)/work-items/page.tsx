@@ -187,8 +187,8 @@ export default function WorkItemsPage() {
 
   return (
     <>
-      <div className="space-y-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="-mx-10 -my-8 flex h-[calc(100vh-69px)] flex-col bg-[#0b1221] px-10 py-8">
+        <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
           <div><h1 className="text-2xl font-semibold text-white">Repairs</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing repairs</p></div>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
@@ -197,8 +197,8 @@ export default function WorkItemsPage() {
           </div>
         </div>
 
-        <section className={`grid overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65 transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr_0px]"}`}>
-          <div className="min-w-0">
+        <section className={`grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65 transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr_0px]"}`}>
+          <div className="min-h-0 min-w-0 overflow-auto">
             <table className="w-full table-fixed">
               <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[37%] px-5 py-4">Title</th><th className="w-[24%] px-5 py-4">Customer</th><th className="w-[22%] px-5 py-4">Stage</th><th className="w-[12%] px-5 py-4">Status</th><th className="w-[5%] px-5 py-4" /></tr></thead>
               <tbody>
@@ -223,7 +223,7 @@ export default function WorkItemsPage() {
             </table>
           </div>
 
-          <div className={`overflow-hidden border-l border-[#253149] bg-[#0b1221] transition-transform duration-300 ${selectedRepair ? "translate-x-0" : "translate-x-full"}`}>
+          <div className={`h-full overflow-hidden border-l border-[#253149] bg-[#0b1221] transition-transform duration-300 ${selectedRepair ? "translate-x-0" : "translate-x-full"}`}>
             {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} onClose={() => setSelectedRepairId(null)} className="h-full border-l-0 bg-transparent" /> : null}
           </div>
         </section>
