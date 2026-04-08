@@ -5,8 +5,10 @@ import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2 } from "lu
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
+import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
 type RepairItem = StoredRepair;
+const UNKNOWN_STAGE = "Unknown";
 
 type NewRepairFormValues = {
   customerName: string;
@@ -26,7 +28,14 @@ const initialFormValues: NewRepairFormValues = {
   repairStage: "New"
 };
 
+function normalizeRepairStage(stage: string, validStageNames: Set<string>) {
+  return validStageNames.has(stage) ? stage : UNKNOWN_STAGE;
+}
+
 function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
+  if (stage === UNKNOWN_STAGE) {
+    return <span className="inline-flex rounded-xl border border-slate-600 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">{stage}</span>;
+  }
   if (stage === "Awaiting Approval") {
     return <span className="inline-flex rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-400">{stage}</span>;
   }
@@ -36,8 +45,24 @@ function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
   return <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{stage}</span>;
 }
 
-function AddRepairModal({ mode, initialValues, onClose, onSubmit }: { mode: "create" | "edit"; initialValues: NewRepairFormValues; onClose: () => void; onSubmit: (payload: NewRepairFormValues) => void }) {
+function AddRepairModal({
+  mode,
+  initialValues,
+  stageOptions,
+  onClose,
+  onSubmit
+}: {
+  mode: "create" | "edit";
+  initialValues: NewRepairFormValues;
+  stageOptions: string[];
+  onClose: () => void;
+  onSubmit: (payload: NewRepairFormValues) => void;
+}) {
   const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
+  const selectOptions = useMemo(
+    () => (stageOptions.includes(formValues.repairStage) ? stageOptions : [...stageOptions, formValues.repairStage]),
+    [formValues.repairStage, stageOptions]
+  );
   const canSubmit = formValues.customerName.trim() && formValues.customerPhone.trim() && formValues.assetName.trim() && formValues.repairTitle.trim() && formValues.description.trim();
 
   return (
@@ -73,7 +98,9 @@ function AddRepairModal({ mode, initialValues, onClose, onSubmit }: { mode: "cre
           <div>
             <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">Stage</label>
             <select id="repair-stage" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={formValues.repairStage} onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}>
-              <option>New</option><option>Awaiting Approval</option><option>In Progress</option><option>Ready for Pickup</option>
+              {selectOptions.map((stageName) => (
+                <option key={stageName}>{stageName}</option>
+              ))}
             </select>
           </div>
 
@@ -88,7 +115,19 @@ function AddRepairModal({ mode, initialValues, onClose, onSubmit }: { mode: "cre
 }
 
 export default function WorkItemsPage() {
-  const [repairs, setRepairs] = useState<RepairItem[]>(() => readStoredRepairs(defaultRepairs));
+  const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() => readStoredWorkflowStages(defaultWorkflowStages));
+  const stageNames = useMemo(() => new Set(workflowStages.map((stage) => stage.name)), [workflowStages]);
+  const stageOptions = useMemo(() => workflowStages.map((stage) => stage.name), [workflowStages]);
+  const initialStage = useMemo(
+    () => workflowStages.find((stage) => stage.isStart)?.name ?? workflowStages[0]?.name ?? UNKNOWN_STAGE,
+    [workflowStages]
+  );
+
+  const [repairs, setRepairs] = useState<RepairItem[]>(() => {
+    const stagesAtLoad = readStoredWorkflowStages(defaultWorkflowStages);
+    const stageNamesAtLoad = new Set(stagesAtLoad.map((stage) => stage.name));
+    return readStoredRepairs(defaultRepairs).map((repair) => ({ ...repair, stage: normalizeRepairStage(repair.stage, stageNamesAtLoad) }));
+  });
   const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
@@ -98,6 +137,25 @@ export default function WorkItemsPage() {
   useEffect(() => {
     writeStoredRepairs(repairs);
   }, [repairs]);
+
+  useEffect(() => {
+    const refreshWorkflowStages = () => {
+      setWorkflowStages(readStoredWorkflowStages(defaultWorkflowStages));
+    };
+
+    refreshWorkflowStages();
+    window.addEventListener("workflow-stages:changed", refreshWorkflowStages);
+    window.addEventListener("storage", refreshWorkflowStages);
+
+    return () => {
+      window.removeEventListener("workflow-stages:changed", refreshWorkflowStages);
+      window.removeEventListener("storage", refreshWorkflowStages);
+    };
+  }, []);
+
+  useEffect(() => {
+    setRepairs((prev) => prev.map((repair) => ({ ...repair, stage: normalizeRepairStage(repair.stage, stageNames) })));
+  }, [stageNames]);
 
   useEffect(() => {
     const handle = (event: MouseEvent) => {
@@ -171,8 +229,8 @@ export default function WorkItemsPage() {
         </section>
       </div>
 
-      {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={initialFormValues} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
-      {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
+      {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={{ ...initialFormValues, repairStage: initialStage }} stageOptions={stageOptions} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
+      {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} stageOptions={stageOptions} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
       {deletingRepair ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"><h2 className="text-xl font-semibold">Delete repair</h2><p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p><div className="mt-6 flex items-center justify-end gap-3"><button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button><button type="button" onClick={() => { setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id)); if (selectedRepairId === deletingRepair.id) setSelectedRepairId(null); setDeletingRepairId(null); }} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Delete</button></div></div></div>
       ) : null}
