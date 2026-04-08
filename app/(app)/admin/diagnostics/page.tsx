@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, X } from "lucide-react";
+import clsx from "clsx";
 import { setSuperAdmin, startImpersonation, stopImpersonation } from "@/lib/impersonation-store";
 
 type TenantUser = { id: string; name: string; email: string; role: "Owner" | "Manager" | "Operator" };
@@ -33,9 +34,40 @@ const initialTenants: Tenant[] = [
   }
 ];
 
+function AdminModalShell({
+  title,
+  children,
+  onClose
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center justify-between px-6 py-5">
+          <h2 className="text-2xl font-semibold">{title}</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close dialog">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="space-y-5 px-6 pb-6">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function DiagnosticsPage() {
   const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
   const [selectedTenantId, setSelectedTenantId] = useState<string>(initialTenants[0].id);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [userModal, setUserModal] = useState<{ mode: "create" | "edit"; userId?: string } | null>(null);
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [creditsModalType, setCreditsModalType] = useState<"monthly" | "one-time" | null>(null);
+  const [creditsAmount, setCreditsAmount] = useState("");
 
   const selectedTenant = tenants.find((tenant) => tenant.id === selectedTenantId) ?? tenants[0];
 
@@ -44,12 +76,7 @@ export default function DiagnosticsPage() {
     stopImpersonation();
   }, []);
 
-  const addUser = () => {
-    const name = window.prompt("User name");
-    if (!name) return;
-    const email = window.prompt("User email");
-    if (!email) return;
-
+  const addUser = (name: string, email: string) => {
     setTenants((prev) =>
       prev.map((tenant) =>
         tenant.id === selectedTenant.id
@@ -62,27 +89,20 @@ export default function DiagnosticsPage() {
     );
   };
 
-  const editUser = (userId: string) => {
-    const user = selectedTenant.users.find((item) => item.id === userId);
-    if (!user) return;
-
-    const name = window.prompt("Edit user name", user.name);
-    if (!name) return;
-
+  const editUser = (userId: string, name: string, email: string) => {
     setTenants((prev) =>
       prev.map((tenant) =>
         tenant.id === selectedTenant.id
           ? {
               ...tenant,
-              users: tenant.users.map((item) => (item.id === userId ? { ...item, name } : item))
+              users: tenant.users.map((item) => (item.id === userId ? { ...item, name, email } : item))
             }
           : tenant
       )
     );
   };
 
-  const addCredits = (type: "monthly" | "one-time") => {
-    const amount = Number(window.prompt(type === "monthly" ? "Add monthly renewing credits" : "Add one-time refill credits"));
+  const addCredits = (type: "monthly" | "one-time", amount: number) => {
     if (!amount || Number.isNaN(amount)) return;
 
     setTenants((prev) =>
@@ -103,6 +123,20 @@ export default function DiagnosticsPage() {
     window.location.href = "/dashboard";
   };
 
+  const openCreateUserModal = () => {
+    setUserName("");
+    setUserEmail("");
+    setUserModal({ mode: "create" });
+  };
+
+  const openEditUserModal = (userId: string) => {
+    const user = selectedTenant.users.find((item) => item.id === userId);
+    if (!user) return;
+    setUserName(user.name);
+    setUserEmail(user.email);
+    setUserModal({ mode: "edit", userId });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -112,7 +146,12 @@ export default function DiagnosticsPage() {
 
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
         <aside className="card space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">Customers</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">Customers</h2>
+            <button type="button" onClick={() => { setNewCustomerName(""); setShowAddCustomerModal(true); }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#28d9c6]/50 bg-[#28d9c6]/10 text-[#69f0df] hover:bg-[#28d9c6]/20" aria-label="Add customer">
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
           {tenants.map((tenant) => (
             <button
               key={tenant.id}
@@ -133,7 +172,7 @@ export default function DiagnosticsPage() {
                 <h2 className="text-lg font-semibold text-white">{selectedTenant.name}</h2>
                 <p className="text-sm text-slate-400">Attached users and credit controls</p>
               </div>
-              <button type="button" onClick={addUser} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#28d9c6] px-4 text-sm font-semibold text-[#022a36]">
+              <button type="button" onClick={openCreateUserModal} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#28d9c6] px-4 text-sm font-semibold text-[#022a36]">
                 <Plus className="h-4 w-4" />
                 Add User
               </button>
@@ -150,7 +189,7 @@ export default function DiagnosticsPage() {
                     <div className="font-medium text-white">{user.name}</div>
                     <div className="text-sm text-slate-400">{user.email} · {user.role}</div>
                   </div>
-                  <button type="button" onClick={() => editUser(user.id)} className="rounded-md p-1 text-slate-300 hover:bg-slate-800/70" aria-label={`Edit ${user.name}`}>
+                  <button type="button" onClick={() => openEditUserModal(user.id)} className="rounded-md p-1 text-slate-300 hover:bg-slate-800/70" aria-label={`Edit ${user.name}`}>
                     <Pencil className="h-4 w-4" />
                   </button>
                 </div>
@@ -162,7 +201,7 @@ export default function DiagnosticsPage() {
             <div className="card">
               <div className="text-sm text-slate-400">Monthly renewing credits</div>
               <div className="mt-2 text-2xl font-semibold text-white">{selectedTenant.monthlyCredits}</div>
-              <button type="button" onClick={() => addCredits("monthly")} className="mt-4 rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">
+              <button type="button" onClick={() => { setCreditsAmount(""); setCreditsModalType("monthly"); }} className="mt-4 rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">
                 Add monthly credits
               </button>
             </div>
@@ -170,13 +209,99 @@ export default function DiagnosticsPage() {
             <div className="card">
               <div className="text-sm text-slate-400">One-time refill credits</div>
               <div className="mt-2 text-2xl font-semibold text-white">{selectedTenant.oneTimeCredits}</div>
-              <button type="button" onClick={() => addCredits("one-time")} className="mt-4 rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">
+              <button type="button" onClick={() => { setCreditsAmount(""); setCreditsModalType("one-time"); }} className="mt-4 rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">
                 Add one-time credits
               </button>
             </div>
           </div>
         </section>
       </div>
+
+      {showAddCustomerModal ? (
+        <AdminModalShell title="Add Customer" onClose={() => setShowAddCustomerModal(false)}>
+          <div>
+            <label htmlFor="customer-name" className="mb-2 block text-sm font-medium text-slate-700">Customer name *</label>
+            <input id="customer-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" placeholder="e.g. QuickFix Amsterdam" value={newCustomerName} onChange={(event) => setNewCustomerName(event.target.value)} />
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button type="button" onClick={() => setShowAddCustomerModal(false)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+            <button
+              type="button"
+              onClick={() => {
+                const name = newCustomerName.trim();
+                if (!name) return;
+                const newTenant = { id: `ten_${Date.now()}`, name, users: [], monthlyCredits: 0, oneTimeCredits: 0 };
+                setTenants((prev) => [...prev, newTenant]);
+                setSelectedTenantId(newTenant.id);
+                setShowAddCustomerModal(false);
+              }}
+              className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", newCustomerName.trim() ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")}
+              disabled={!newCustomerName.trim()}
+            >
+              Add Customer
+            </button>
+          </div>
+        </AdminModalShell>
+      ) : null}
+
+      {userModal ? (
+        <AdminModalShell title={userModal.mode === "create" ? "Add User" : "Edit User"} onClose={() => setUserModal(null)}>
+          <div>
+            <label htmlFor="user-name" className="mb-2 block text-sm font-medium text-slate-700">User name *</label>
+            <input id="user-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" value={userName} onChange={(event) => setUserName(event.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="user-email" className="mb-2 block text-sm font-medium text-slate-700">User email *</label>
+            <input id="user-email" type="email" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" value={userEmail} onChange={(event) => setUserEmail(event.target.value)} />
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button type="button" onClick={() => setUserModal(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+            <button
+              type="button"
+              onClick={() => {
+                const name = userName.trim();
+                const email = userEmail.trim();
+                if (!name || !email) return;
+                if (userModal.mode === "create") {
+                  addUser(name, email);
+                } else if (userModal.userId) {
+                  editUser(userModal.userId, name, email);
+                }
+                setUserModal(null);
+              }}
+              className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", userName.trim() && userEmail.trim() ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")}
+              disabled={!userName.trim() || !userEmail.trim()}
+            >
+              {userModal.mode === "create" ? "Add User" : "Save User"}
+            </button>
+          </div>
+        </AdminModalShell>
+      ) : null}
+
+      {creditsModalType ? (
+        <AdminModalShell title={creditsModalType === "monthly" ? "Add Monthly Credits" : "Add One-time Credits"} onClose={() => setCreditsModalType(null)}>
+          <div>
+            <label htmlFor="credit-amount" className="mb-2 block text-sm font-medium text-slate-700">Credits amount *</label>
+            <input id="credit-amount" type="number" min={1} className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" value={creditsAmount} onChange={(event) => setCreditsAmount(event.target.value)} />
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button type="button" onClick={() => setCreditsModalType(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+            <button
+              type="button"
+              onClick={() => {
+                const parsed = Number(creditsAmount);
+                if (!parsed || Number.isNaN(parsed)) return;
+                addCredits(creditsModalType, parsed);
+                setCreditsModalType(null);
+              }}
+              className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", Number(creditsAmount) > 0 ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")}
+              disabled={!(Number(creditsAmount) > 0)}
+            >
+              Add Credits
+            </button>
+          </div>
+        </AdminModalShell>
+      ) : null}
     </div>
   );
 }
