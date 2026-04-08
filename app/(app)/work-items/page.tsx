@@ -199,7 +199,7 @@ export default function WorkItemsPage() {
           </div>
 
           <section className="min-h-0 flex-1 overflow-hidden">
-            <div className="h-full min-h-0 min-w-0 overflow-auto rounded-2xl border border-[#253149] bg-[#121b2b]/65">
+            <div className={`h-full min-h-0 min-w-0 overflow-auto border border-[#253149] bg-[#121b2b]/65 ${selectedRepair ? "border-r-0" : ""}`}>
             <table className="w-full table-fixed">
               <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[25%] px-5 py-4">Stage</th><th className="w-[5%] px-5 py-4" /></tr></thead>
               <tbody>
