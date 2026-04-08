@@ -138,10 +138,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           className={clsx(
                             "flex items-center rounded-xl px-3 py-2 text-base font-medium text-slate-300 transition",
                             collapsed ? "justify-center gap-0" : "gap-3",
-                            active ? "bg-white/10 text-[#25d3c4]" : "hover:bg-slate-900/70"
+                            active ? "bg-white/10" : "hover:bg-slate-900/70"
                           )}
+                          style={active ? { color: "var(--accent)" } : undefined}
                         >
-                          <Icon className={clsx("h-5 w-5", active ? "text-[#25d3c4]" : "text-slate-400")} />
+                          <Icon className={clsx("h-5 w-5", active ? "" : "text-slate-400")} style={active ? { color: "var(--accent)" } : undefined} />
                           {collapsed ? null : item.name}
                         </Link>
                       </li>

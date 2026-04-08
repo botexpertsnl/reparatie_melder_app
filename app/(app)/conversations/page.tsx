@@ -307,12 +307,12 @@ export default function ConversationsPage() {
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
 
   return (
-    <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden bg-[#0b1221] transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"}`}>
-      <aside className="flex min-h-0 flex-col border-r border-[#253149] bg-[#121b2b]/65">
+    <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"}`} style={{ background: "var(--bg)" }}>
+      <aside className="flex min-h-0 flex-col border-r" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
         <div className={`min-h-0 flex-1 transition-opacity duration-200 ${listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"}`}>
           <div className="p-4">
             <h1 className="text-2xl font-semibold text-white">Conversations</h1>
-            <label className="mt-3 flex items-center gap-2 rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-slate-400">
+            <label className="mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
               <Search className="h-4 w-4" />
               <input className="w-full bg-transparent text-sm outline-none" placeholder="Search..." />
             </label>
@@ -320,7 +320,7 @@ export default function ConversationsPage() {
 
           <div className="space-y-1 px-3 pb-3">
             {sortedThreads.map((thread) => (
-              <button key={thread.id} type="button" onClick={() => setSelectedThreadId(thread.id)} className={`w-full rounded-xl border p-3 text-left ${selectedThreadId === thread.id ? "border-[#28d9c6]/40 bg-[#182236]" : "border-transparent hover:bg-[#182236]/60"}`}>
+              <button key={thread.id} type="button" onClick={() => setSelectedThreadId(thread.id)} className={`w-full rounded-xl border p-3 text-left ${selectedThreadId === thread.id ? "" : "border-transparent hover:bg-white/5"}`} style={selectedThreadId === thread.id ? { borderColor: "var(--border-strong)", background: "var(--surface-3)" } : undefined}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-200">{thread.customerName || thread.customerPhone}</span>
                   <span className="text-xs text-slate-500">{thread.updatedAt}</span>
@@ -344,11 +344,11 @@ export default function ConversationsPage() {
         </div>
       </aside>
 
-      <section className={`relative grid min-h-0 min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+      <section className={`relative grid min-h-0 min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`} style={{ background: "var(--surface-1)" }}>
         <div className="flex min-h-0 min-w-0 flex-col">
           {selectedThread ? (
             <>
-              <header className="flex items-center justify-between border-b border-[#253149] px-5 py-3">
+              <header className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: "var(--border)" }}>
                 <div>
                   <div className="font-semibold text-slate-200">{selectedThread.customerName || selectedThread.customerPhone}</div>
                   <div className="text-sm text-slate-500">{selectedThread.customerPhone}</div>
@@ -372,14 +372,14 @@ export default function ConversationsPage() {
 
               <div ref={messageWindowRef} className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
                 {selectedThread.messages.map((msg) => (
-                  <div key={msg.id} className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${msg.role === "agent" ? "ml-auto bg-[#29cfc0] text-[#05292f]" : "bg-[#1f2736] text-slate-200"}`}>
+                  <div key={msg.id} className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${msg.role === "agent" ? "ml-auto" : ""}`} style={msg.role === "agent" ? { background: "var(--surface-3)", color: "var(--text-primary)" } : { background: "var(--surface-muted)", color: "var(--text-primary)" }}>
                     {msg.text}
                     <div className="mt-1 text-right text-xs opacity-70">{msg.at}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-[#253149] p-3">
+              <div className="border-t p-3" style={{ borderColor: "var(--border)" }}>
                 <div className="flex items-center gap-2">
                   <input className="input" placeholder="Type a message..." value={message} onChange={(event) => setMessage(event.target.value)} />
                   <button
@@ -423,7 +423,8 @@ export default function ConversationsPage() {
               itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
-              className="relative border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5"
+              className="relative border-l pl-6 pr-5 py-5"
+              style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
             />
             {openRepairLinkMenu && selectedThread ? (
               <div data-repair-link-menu="true" className="absolute bottom-16 right-5 z-20 w-48 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">

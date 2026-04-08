@@ -197,8 +197,8 @@ export default function WorkItemsPage() {
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4 px-10">
             <div><h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing {repairLabelPlural.toLowerCase()}</p></div>
             <div className="mt-1 flex flex-wrap items-center gap-3">
-              <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
-              <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400"><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
+              <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border px-4 text-sm text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>All<ChevronDown className="ml-4 h-5 w-5" /></button>
+              <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border px-4 text-sm text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
               <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"><Plus className="h-5 w-5" />New {repairLabel}</button>
             </div>
           </div>
