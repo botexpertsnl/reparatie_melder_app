@@ -128,13 +128,7 @@ export default function ConversationsPage() {
   };
 
   const toggleConversationList = () => {
-    setListCollapsed((prev) => {
-      const next = !prev;
-      if (next) {
-        setShowRepairPanel(true);
-      }
-      return next;
-    });
+    setListCollapsed((prev) => !prev);
   };
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
