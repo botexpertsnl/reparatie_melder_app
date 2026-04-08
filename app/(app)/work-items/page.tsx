@@ -187,23 +187,24 @@ export default function WorkItemsPage() {
 
   return (
     <>
-      <div className="-mx-10 -my-8 flex h-[calc(100vh-69px)] flex-col bg-[#0b1221] px-10 py-8">
-        <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-          <div><h1 className="text-2xl font-semibold text-white">Repairs</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing repairs</p></div>
-          <div className="mt-1 flex flex-wrap items-center gap-3">
-            <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
-            <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400"><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
-            <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"><Plus className="h-5 w-5" />New Repair</button>
+      <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] bg-[#0b1221] transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+        <div className="flex min-h-0 flex-col px-10 py-8">
+          <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
+            <div><h1 className="text-2xl font-semibold text-white">Repairs</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing repairs</p></div>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
+              <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400"><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
+              <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"><Plus className="h-5 w-5" />New Repair</button>
+            </div>
           </div>
-        </div>
 
-        <section className={`relative grid min-h-0 flex-1 overflow-hidden transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
-          <div className="min-h-0 min-w-0 overflow-auto rounded-2xl border border-[#253149] bg-[#121b2b]/65">
+          <section className="min-h-0 flex-1 overflow-hidden">
+            <div className="h-full min-h-0 min-w-0 overflow-auto rounded-2xl border border-[#253149] bg-[#121b2b]/65">
             <table className="w-full table-fixed">
               <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[25%] px-5 py-4">Stage</th><th className="w-[5%] px-5 py-4" /></tr></thead>
               <tbody>
                 {repairs.map((repair) => (
-                  <tr key={repair.id} onClick={() => setSelectedRepairId(repair.id)} className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-[#182236]/60" : ""}`}>
+                  <tr key={repair.id} onClick={() => setSelectedRepairId(repair.id)} className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-[#182236]/60 shadow-[inset_3px_0_0_#25d3c4]" : ""}`}>
                     <td className="px-5 py-4 align-middle"><button type="button" className="text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
                     <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customerName}</td>
                     <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
@@ -220,10 +221,11 @@ export default function WorkItemsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </section>
+        </div>
 
-          {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} onClose={() => setSelectedRepairId(null)} className="h-full border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5" /> : null}
-        </section>
+        {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} onClose={() => setSelectedRepairId(null)} className="h-full border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5" /> : null}
       </div>
 
       {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={{ ...initialFormValues, repairStage: initialStage }} stageOptions={stageOptions} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
