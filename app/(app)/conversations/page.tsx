@@ -110,6 +110,7 @@ export default function ConversationsPage() {
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [listCollapsed, setListCollapsed] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState>({ open: false, threadId: null });
+  const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -141,6 +142,21 @@ export default function ConversationsPage() {
     window.addEventListener("conversations:nav-click", handleConversationNavClick);
     return () => window.removeEventListener("conversations:nav-click", handleConversationNavClick);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-repair-link-menu='true']")) return;
+      setOpenRepairLinkMenu(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setOpenRepairLinkMenu(false);
+  }, [selectedThreadId]);
 
   const selectedThread = useMemo(() => threads.find((thread) => thread.id === selectedThreadId) ?? null, [threads, selectedThreadId]);
   const linkedRepair = selectedThread ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null : null;
@@ -201,6 +217,22 @@ export default function ConversationsPage() {
     );
 
     setLinkModal({ open: false, threadId: null });
+    setOpenRepairLinkMenu(false);
+  };
+
+  const unlinkRepairFromThread = (threadId: string) => {
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === threadId
+          ? {
+              ...thread,
+              linkedRepairId: undefined
+            }
+          : thread
+      )
+    );
+    setShowRepairPanel(false);
+    setOpenRepairLinkMenu(false);
   };
 
   const createRepairFromThread = (threadId: string) => {
@@ -379,11 +411,34 @@ export default function ConversationsPage() {
         </div>
 
         {showRepairColumn && linkedRepair ? (
-          <RepairDetailsPanel
-            repair={linkedRepair}
-            onLinkChange={() => selectedThread && setLinkModal({ open: true, threadId: selectedThread.id })}
-            className="relative border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5"
-          />
+          <div className="relative">
+            <RepairDetailsPanel
+              repair={linkedRepair}
+              onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
+              className="relative border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5"
+            />
+            {openRepairLinkMenu && selectedThread ? (
+              <div data-repair-link-menu="true" className="absolute bottom-14 right-4 z-20 w-44 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                  onClick={() => unlinkRepairFromThread(selectedThread.id)}
+                >
+                  Unlink repair
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                  onClick={() => {
+                    setLinkModal({ open: true, threadId: selectedThread.id });
+                    setOpenRepairLinkMenu(false);
+                  }}
+                >
+                  Link to other
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </section>
 
