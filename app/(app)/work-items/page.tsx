@@ -188,8 +188,8 @@ export default function WorkItemsPage() {
   return (
     <>
       <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] bg-[#0b1221] transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
-        <div className="flex min-h-0 flex-col px-10 py-8">
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-h-0 flex-col py-8">
+          <div className="mb-7 flex flex-wrap items-start justify-between gap-4 px-10">
             <div><h1 className="text-2xl font-semibold text-white">Repairs</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing repairs</p></div>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
