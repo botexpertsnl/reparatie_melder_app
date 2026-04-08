@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   MessageSquareText,
@@ -12,41 +12,24 @@ import {
   Workflow,
   Settings,
   Shield,
-  ChevronLeft
+  ChevronLeft,
+  Moon,
+  Sun
 } from "lucide-react";
 import clsx from "clsx";
 import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
 import { getImpersonatingTenant, isSuperAdmin, stopImpersonation } from "@/lib/impersonation-store";
-
-const navSections = [
-  {
-    label: "Main",
-    items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-      { name: "Repairs", href: "/work-items", icon: Wrench },
-      { name: "Conversations", href: "/conversations", icon: MessagesSquare }
-    ]
-  },
-  {
-    label: "Settings",
-    items: [
-      { name: "Workflow", href: "/settings/advanced", icon: Workflow },
-      { name: "Templates", href: "/templates", icon: FileText },
-      { name: "Tenant Settings", href: "/customers", icon: Settings }
-    ]
-  },
-  {
-    label: "System",
-    items: [{ name: "System Admin", href: "/admin/diagnostics", icon: Shield }]
-  }
-];
+import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const repairLabel = useTenantRepairLabel();
   const [collapsed, setCollapsed] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
   const [superAdmin, setSuperAdminState] = useState(false);
   const [impersonatingTenant, setImpersonatingTenant] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     const refreshOpenCount = () => {
@@ -69,6 +52,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setImpersonatingTenant(getImpersonatingTenant());
   }, [pathname]);
 
+  useEffect(() => {
+    const stored = window.localStorage.getItem("statusflow.theme");
+    const initial = stored === "light" ? "light" : "dark";
+    setTheme(initial);
+    document.documentElement.classList.toggle("theme-light", initial === "light");
+  }, []);
+
+  const navSections = [
+    {
+      label: "Main",
+      items: [
+        { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+        { name: pluralizeLabel(repairLabel), href: "/work-items", icon: Wrench },
+        { name: "Conversations", href: "/conversations", icon: MessagesSquare }
+      ]
+    },
+    {
+      label: "Settings",
+      items: [
+        { name: "Workflow", href: "/settings/advanced", icon: Workflow },
+        { name: "Templates", href: "/templates", icon: FileText },
+        { name: "Settings", href: "/customers", icon: Settings }
+      ]
+    },
+    {
+      label: "System",
+      items: [{ name: "System Admin", href: "/admin/diagnostics", icon: Shield }]
+    }
+  ];
+
   const visibleSections = navSections.filter((section) => section.label !== "System");
 
   const handleTenantBadgeClick = () => {
@@ -79,17 +92,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.location.href = "/admin/diagnostics";
   };
 
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      document.documentElement.classList.toggle("theme-light", next === "light");
+      window.localStorage.setItem("statusflow.theme", next);
+      return next;
+    });
+  };
+
   return (
-    <div className={clsx("min-h-screen bg-[#040914] text-slate-100 md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")}>
-      <aside className="flex min-h-screen flex-col border-r border-[#1a2436] bg-[#060d19]">
-        <div className="border-b border-[#1a2436] px-6 py-5">
+    <div className={clsx("min-h-screen md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")} style={{ background: "var(--bg)", color: "var(--text-primary)" }}>
+      <aside className="flex min-h-screen flex-col border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+        <div className="border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-4">
             <div className="rounded-xl bg-[#25d3c4] p-3 text-[#04243a]">
               <MessageSquareText className="h-5 w-5" />
             </div>
             <div className={collapsed ? "hidden" : "block"}>
-              <div className="text-2xl font-semibold leading-none tracking-tight text-white">StatusFlow</div>
-              <div className="mt-1 text-sm text-slate-400">Communication Platform</div>
+              <div className="text-2xl font-semibold leading-none tracking-tight" style={{ color: "var(--text-primary)" }}>StatusFlow</div>
+              <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>Communication Platform</div>
             </div>
           </div>
         </div>
@@ -116,10 +138,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           className={clsx(
                             "flex items-center rounded-xl px-3 py-2 text-base font-medium text-slate-300 transition",
                             collapsed ? "justify-center gap-0" : "gap-3",
-                            active ? "bg-white/10 text-[#25d3c4]" : "hover:bg-slate-900/70"
+                            active ? "bg-white/10" : "hover:bg-slate-900/70"
                           )}
+                          style={active ? { color: "#25d3c4" } : undefined}
                         >
-                          <Icon className={clsx("h-5 w-5", active ? "text-[#25d3c4]" : "text-slate-400")} />
+                          <Icon className={clsx("h-5 w-5", active ? "" : "text-slate-400")} style={active ? { color: "#25d3c4" } : undefined} />
                           {collapsed ? null : item.name}
                         </Link>
                       </li>
@@ -131,17 +154,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
 
-        <div className="border-t border-[#1a2436] p-4">
-          <button className="flex w-full items-center justify-center rounded-md p-3 text-slate-500 hover:bg-slate-900/70" onClick={() => setCollapsed((prev) => !prev)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+        <div className="border-t p-4" style={{ borderColor: "var(--border)" }}>
+          <button className="flex w-full items-center justify-center rounded-xl p-3 hover:bg-white/5" style={{ color: "var(--text-muted)" }} onClick={() => setCollapsed((prev) => !prev)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
             <ChevronLeft className={clsx("h-5 w-5 transition-transform", collapsed ? "rotate-180" : "")} />
           </button>
         </div>
       </aside>
 
       <div className="flex min-h-screen flex-col">
-        <header className="flex h-[69px] items-center justify-end border-b border-[#1a2436] bg-[#101722] px-8">
-          <div className="flex items-center gap-2 rounded-lg bg-[#182334] px-4 py-2 text-sm text-slate-400">
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300">{openConversationCount}</span>
+        <header className="flex h-[69px] items-center justify-end gap-3 border-b px-8" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+          <button type="button" onClick={toggleTheme} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }} aria-label="Toggle theme">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+          <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new Event("conversations:nav-click"));
+                router.push("/conversations");
+              }}
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30"
+              aria-label="Open conversations page"
+            >
+              {openConversationCount}
+            </button>
             {superAdmin ? (
               <button
                 type="button"

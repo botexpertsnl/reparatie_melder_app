@@ -4,24 +4,144 @@
 
 :root {
   color-scheme: dark;
+  --bg: #0a0a0b;
+  --surface-1: #0f1012;
+  --surface-2: #131417;
+  --surface-3: #17191d;
+  --surface-muted: #1b1e23;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.1);
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.64);
+  --text-muted: rgba(255, 255, 255, 0.42);
+  --accent: #d5d8de;
+  --accent-soft: #2a2e36;
+}
+
+:root.theme-light {
+  color-scheme: light;
+  --bg: #f6f7f8;
+  --surface-1: #ffffff;
+  --surface-2: #f3f4f6;
+  --surface-3: #ffffff;
+  --surface-muted: #eceff3;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.12);
+  --text-primary: rgba(15, 23, 42, 0.92);
+  --text-secondary: rgba(15, 23, 42, 0.62);
+  --text-muted: rgba(15, 23, 42, 0.42);
+  --accent: #1f2937;
+  --accent-soft: #e5e7eb;
+}
+
+* {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
 }
 
 body {
-  @apply bg-[#040914] text-slate-100 antialiased;
+  background: var(--bg);
+  color: var(--text-primary);
+  @apply antialiased;
 }
 
 .card {
-  @apply rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-4;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  @apply rounded-2xl p-5;
 }
 
 .input {
-  @apply w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  @apply w-full rounded-2xl px-3 py-2 text-sm outline-none;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 65%, transparent);
 }
 
 .btn {
-  @apply rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36] hover:opacity-90;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  @apply rounded-2xl px-4 py-2 text-sm font-medium;
+}
+
+.btn:hover {
+  background: var(--surface-muted);
 }
 
 .badge {
-  @apply rounded-full border border-[#33435f] bg-slate-700/30 px-2 py-0.5 text-xs text-slate-300;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  @apply rounded-full px-2.5 py-1 text-xs;
+}
+
+.card input,
+.card select,
+.card textarea {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.card input::placeholder,
+.card textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Cross-page normalization so legacy utility colors match the premium token system. */
+[class*="bg-[#121b2b]/65"] {
+  background: var(--surface-2) !important;
+}
+
+[class*="bg-[#0a111f"],
+[class*="bg-[#111a2b"],
+[class*="bg-[#0b1323"] {
+  background: var(--surface-1) !important;
+}
+
+[class*="border-[#253149"],
+[class*="border-[#1a2436"] {
+  border-color: var(--border) !important;
+}
+
+[class*="text-slate-400"] {
+  color: var(--text-secondary) !important;
+}
+
+[class*="text-slate-500"] {
+  color: var(--text-muted) !important;
+}
+
+[class*="text-white"] {
+  color: var(--text-primary) !important;
+}
+
+.subtle-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+
+.subtle-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.22);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
