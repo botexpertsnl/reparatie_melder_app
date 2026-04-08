@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Send, Link as LinkIcon, Wrench, X, ChevronLeft, FileText, Camera } from "lucide-react";
+import { Search, Send, Link as LinkIcon, Wrench, X, ChevronLeft, FileText, Camera, Unlink2, Link2 } from "lucide-react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
@@ -351,10 +351,12 @@ export default function ConversationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedThread.linkedRepairId ? (
-                    <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
-                      {showRepairPanel ? <X className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
-                      Repair Details
-                    </button>
+                    showRepairPanel ? null : (
+                      <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
+                        <Wrench className="h-4 w-4" />
+                        Repair Details
+                      </button>
+                    )
                   ) : (
                     <button type="button" onClick={() => setLinkModal({ open: true, threadId: selectedThread.id })} className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300">
                       <LinkIcon className="h-4 w-4" />
@@ -414,16 +416,18 @@ export default function ConversationsPage() {
           <div className="relative">
             <RepairDetailsPanel
               repair={linkedRepair}
+              onClose={() => setShowRepairPanel(false)}
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
               className="relative border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5"
             />
             {openRepairLinkMenu && selectedThread ? (
-              <div data-repair-link-menu="true" className="absolute bottom-14 right-4 z-20 w-44 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
+              <div data-repair-link-menu="true" className="absolute bottom-16 right-5 z-20 w-48 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
                   onClick={() => unlinkRepairFromThread(selectedThread.id)}
                 >
+                  <Unlink2 className="h-4 w-4" />
                   Unlink repair
                 </button>
                 <button
@@ -434,6 +438,7 @@ export default function ConversationsPage() {
                     setOpenRepairLinkMenu(false);
                   }}
                 >
+                  <Link2 className="h-4 w-4" />
                   Link to other
                 </button>
               </div>
