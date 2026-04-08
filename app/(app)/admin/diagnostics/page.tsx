@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, X } from "lucide-react";
 import clsx from "clsx";
 import { setSuperAdmin, startImpersonation, stopImpersonation } from "@/lib/impersonation-store";
+import { defaultTenantSettings, readTenantSettings, writeTenantSettings } from "@/lib/tenant-settings-store";
 
 type TenantUser = { id: string; name: string; email: string; role: "Owner" | "Manager" | "Operator" };
 type Tenant = {
@@ -68,8 +69,24 @@ export default function DiagnosticsPage() {
   const [userEmail, setUserEmail] = useState("");
   const [creditsModalType, setCreditsModalType] = useState<"monthly" | "one-time" | null>(null);
   const [creditsAmount, setCreditsAmount] = useState("");
+  const [terminology, setTerminology] = useState({
+    repairLabel: defaultTenantSettings.repairLabel,
+    assetLabel: defaultTenantSettings.assetLabel,
+    customerLabel: defaultTenantSettings.customerLabel,
+    identifierLabel: defaultTenantSettings.identifierLabel
+  });
 
   const selectedTenant = tenants.find((tenant) => tenant.id === selectedTenantId) ?? tenants[0];
+
+  useEffect(() => {
+    const settings = readTenantSettings(selectedTenant.name, { ...defaultTenantSettings, businessName: selectedTenant.name });
+    setTerminology({
+      repairLabel: settings.repairLabel,
+      assetLabel: settings.assetLabel,
+      customerLabel: settings.customerLabel,
+      identifierLabel: settings.identifierLabel
+    });
+  }, [selectedTenant.name]);
 
   useEffect(() => {
     setSuperAdmin(true);
@@ -121,6 +138,17 @@ export default function DiagnosticsPage() {
   const impersonateTenant = () => {
     startImpersonation(selectedTenant.name);
     window.location.href = "/dashboard";
+  };
+
+  const saveTerminology = () => {
+    const current = readTenantSettings(selectedTenant.name, { ...defaultTenantSettings, businessName: selectedTenant.name });
+    writeTenantSettings(selectedTenant.name, {
+      ...current,
+      repairLabel: terminology.repairLabel.trim() || defaultTenantSettings.repairLabel,
+      assetLabel: terminology.assetLabel.trim() || defaultTenantSettings.assetLabel,
+      customerLabel: terminology.customerLabel.trim() || defaultTenantSettings.customerLabel,
+      identifierLabel: terminology.identifierLabel.trim() || defaultTenantSettings.identifierLabel
+    });
   };
 
   const openCreateUserModal = () => {
@@ -213,6 +241,32 @@ export default function DiagnosticsPage() {
                 Add one-time credits
               </button>
             </div>
+          </div>
+
+          <div className="card">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">Terminology</h3>
+            <p className="mt-1 text-sm text-slate-400">Set customer-specific labels managed by system admin.</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Work Item Label</label>
+                <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#30b5a5]" value={terminology.repairLabel} onChange={(event) => setTerminology((prev) => ({ ...prev, repairLabel: event.target.value }))} />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Asset Label</label>
+                <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#30b5a5]" value={terminology.assetLabel} onChange={(event) => setTerminology((prev) => ({ ...prev, assetLabel: event.target.value }))} />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer Label</label>
+                <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#30b5a5]" value={terminology.customerLabel} onChange={(event) => setTerminology((prev) => ({ ...prev, customerLabel: event.target.value }))} />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Identifier Label</label>
+                <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#30b5a5]" value={terminology.identifierLabel} onChange={(event) => setTerminology((prev) => ({ ...prev, identifierLabel: event.target.value }))} />
+              </div>
+            </div>
+            <button type="button" onClick={saveTerminology} className="mt-4 rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">
+              Save Terminology
+            </button>
           </div>
         </section>
       </div>

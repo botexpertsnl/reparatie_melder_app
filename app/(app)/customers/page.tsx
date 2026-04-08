@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cog, Languages, Clock3 } from "lucide-react";
+import { Cog, Clock3 } from "lucide-react";
 import { getImpersonatingTenant, isSuperAdmin } from "@/lib/impersonation-store";
 import { defaultTenantSettings, readTenantSettings, writeTenantSettings, type TenantSettings } from "@/lib/tenant-settings-store";
 
@@ -32,16 +32,6 @@ export default function CustomersPage() {
 
   const saveGeneral = () => {
     writeTenantSettings(tenantName, { ...values, businessName: values.businessName.trim() || tenantName });
-  };
-
-  const saveTerminology = () => {
-    writeTenantSettings(tenantName, {
-      ...values,
-      repairLabel: values.repairLabel.trim() || defaultTenantSettings.repairLabel,
-      assetLabel: values.assetLabel.trim() || defaultTenantSettings.assetLabel,
-      customerLabel: values.customerLabel.trim() || defaultTenantSettings.customerLabel,
-      identifierLabel: values.identifierLabel.trim() || defaultTenantSettings.identifierLabel
-    });
   };
 
   const saveRetention = () => {
@@ -88,31 +78,6 @@ export default function CustomersPage() {
           </div>
         </div>
         <button type="button" onClick={saveGeneral} className="mt-4 rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">Save General Settings</button>
-      </section>
-
-      <section className="card">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Languages className="h-4 w-4" />Terminology</h2>
-        <p className="mt-1 text-xs text-slate-500">Customize labels to match your industry language.</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Work Item Label</label>
-            <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200" value={values.repairLabel} onChange={(event) => setValues((prev) => ({ ...prev, repairLabel: event.target.value }))} />
-            <p className="mt-1 text-[11px] text-slate-500">e.g. {values.repairLabel} / Job / Project</p>
-          </div>
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Asset Label</label>
-            <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200" value={values.assetLabel} onChange={(event) => setValues((prev) => ({ ...prev, assetLabel: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Customer Label</label>
-            <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200" value={values.customerLabel} onChange={(event) => setValues((prev) => ({ ...prev, customerLabel: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Identifier Label</label>
-            <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200" value={values.identifierLabel} onChange={(event) => setValues((prev) => ({ ...prev, identifierLabel: event.target.value }))} />
-          </div>
-        </div>
-        <button type="button" onClick={saveTerminology} className="mt-4 rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">Save Terminology</button>
       </section>
 
       <section className="card">
