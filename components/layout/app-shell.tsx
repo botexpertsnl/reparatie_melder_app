@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   MessageSquareText,
@@ -17,32 +17,12 @@ import {
 import clsx from "clsx";
 import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
 import { getImpersonatingTenant, isSuperAdmin, stopImpersonation } from "@/lib/impersonation-store";
-
-const navSections = [
-  {
-    label: "Main",
-    items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-      { name: "Repairs", href: "/work-items", icon: Wrench },
-      { name: "Conversations", href: "/conversations", icon: MessagesSquare }
-    ]
-  },
-  {
-    label: "Settings",
-    items: [
-      { name: "Workflow", href: "/settings/advanced", icon: Workflow },
-      { name: "Templates", href: "/templates", icon: FileText },
-      { name: "Tenant Settings", href: "/customers", icon: Settings }
-    ]
-  },
-  {
-    label: "System",
-    items: [{ name: "System Admin", href: "/admin/diagnostics", icon: Shield }]
-  }
-];
+import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const repairLabel = useTenantRepairLabel();
   const [collapsed, setCollapsed] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
   const [superAdmin, setSuperAdminState] = useState(false);
@@ -68,6 +48,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSuperAdminState(isSuperAdmin());
     setImpersonatingTenant(getImpersonatingTenant());
   }, [pathname]);
+
+  const navSections = [
+    {
+      label: "Main",
+      items: [
+        { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+        { name: pluralizeLabel(repairLabel), href: "/work-items", icon: Wrench },
+        { name: "Conversations", href: "/conversations", icon: MessagesSquare }
+      ]
+    },
+    {
+      label: "Settings",
+      items: [
+        { name: "Workflow", href: "/settings/advanced", icon: Workflow },
+        { name: "Templates", href: "/templates", icon: FileText },
+        { name: "Settings", href: "/customers", icon: Settings }
+      ]
+    },
+    {
+      label: "System",
+      items: [{ name: "System Admin", href: "/admin/diagnostics", icon: Shield }]
+    }
+  ];
 
   const visibleSections = navSections.filter((section) => section.label !== "System");
 
@@ -141,7 +144,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen flex-col">
         <header className="flex h-[69px] items-center justify-end border-b border-[#1a2436] bg-[#101722] px-8">
           <div className="flex items-center gap-2 rounded-lg bg-[#182334] px-4 py-2 text-sm text-slate-400">
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300">{openConversationCount}</span>
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new Event("conversations:nav-click"));
+                router.push("/conversations");
+              }}
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30"
+              aria-label="Open conversations page"
+            >
+              {openConversationCount}
+            </button>
             {superAdmin ? (
               <button
                 type="button"

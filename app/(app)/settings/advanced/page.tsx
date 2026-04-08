@@ -4,21 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
-import { readStoredWorkflowStages, writeStoredWorkflowStages } from "@/lib/workflow-stage-store";
+import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
-type Stage = {
-  id: string;
-  name: string;
-  key: string;
-  description: string;
-  color: string;
-  visibleToCustomer: boolean;
-  isStart?: boolean;
-  isTerminal?: boolean;
-  requiresApproval?: boolean;
-  templateAutomationEnabled?: boolean;
-  templateId?: string;
-};
+type Stage = StoredWorkflowStage;
 
 type StageFormValues = {
   name: string;
@@ -49,17 +37,6 @@ const defaultTemplates: StoredTemplate[] = [
     spotlerId: "",
     active: true
   }
-];
-
-const initialStages: Stage[] = [
-  { id: "stage_new", name: "New", key: "new", description: "Repair just received", color: "#6b7280", visibleToCustomer: true, isStart: true },
-  { id: "stage_scheduled", name: "Scheduled", key: "scheduled", description: "Repair is scheduled", color: "#4e8de8", visibleToCustomer: true },
-  { id: "stage_progress", name: "In Progress", key: "in_progress", description: "Being worked on", color: "#ecbd69", visibleToCustomer: true },
-  { id: "stage_approval", name: "Awaiting Approval", key: "awaiting_approval", description: "Customer approval needed for additional work", color: "#fb923c", visibleToCustomer: true, requiresApproval: true },
-  { id: "stage_not_approved", name: "Not Approved", key: "not_approved", description: "Customer did not approve the requested work", color: "#ef4444", visibleToCustomer: true },
-  { id: "stage_approved", name: "Approved", key: "approved", description: "Customer approved and work can continue", color: "#22c55e", visibleToCustomer: true },
-  { id: "stage_pickup", name: "Ready for Pickup", key: "ready_pickup", description: "Car is ready to be collected", color: "#22c1dc", visibleToCustomer: true },
-  { id: "stage_completed", name: "Completed", key: "completed", description: "Repair completed", color: "#10b981", visibleToCustomer: true, isTerminal: true }
 ];
 
 function normalizeStages(stages: Stage[]): Stage[] {
@@ -287,7 +264,7 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
 }
 
 export default function AdvancedSettingsPage() {
-  const [stages, setStages] = useState<Stage[]>(() => normalizeStages(readStoredWorkflowStages(initialStages)));
+  const [stages, setStages] = useState<Stage[]>(() => normalizeStages(readStoredWorkflowStages(defaultWorkflowStages)));
   const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultTemplates).filter((template) => template.active));
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
