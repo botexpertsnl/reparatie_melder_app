@@ -98,6 +98,34 @@ body {
   color: var(--text-muted) !important;
 }
 
+/* Cross-page normalization so legacy utility colors match the premium token system. */
+[class*="bg-[#121b2b]/65"] {
+  background: var(--surface-2) !important;
+}
+
+[class*="bg-[#0a111f"],
+[class*="bg-[#111a2b"],
+[class*="bg-[#0b1323"] {
+  background: var(--surface-1) !important;
+}
+
+[class*="border-[#253149"],
+[class*="border-[#1a2436"] {
+  border-color: var(--border) !important;
+}
+
+[class*="text-slate-400"] {
+  color: var(--text-secondary) !important;
+}
+
+[class*="text-slate-500"] {
+  color: var(--text-muted) !important;
+}
+
+[class*="text-white"] {
+  color: var(--text-primary) !important;
+}
+
 .subtle-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
