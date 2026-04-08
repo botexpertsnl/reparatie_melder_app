@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react";
+import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 
 type RepairItem = StoredRepair;
@@ -38,34 +39,56 @@ function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
 
 function AddRepairModal({ mode, initialValues, onClose, onSubmit }: { mode: "create" | "edit"; initialValues: NewRepairFormValues; onClose: () => void; onSubmit: (payload: NewRepairFormValues) => void }) {
   const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
+  const canSubmit = formValues.customerName.trim() && formValues.customerPhone.trim() && formValues.assetName.trim() && formValues.repairTitle.trim() && formValues.description.trim();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/75 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-[#253149] bg-[#0f1626] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
-        <div className="flex items-center justify-between border-b border-[#253149] px-6 py-4">
-          <h2 className="text-xl font-semibold text-white">{mode === "create" ? "New Repair" : "Edit Repair"}</h2>
-          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800/70" type="button"><X className="h-5 w-5" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center justify-between px-6 py-5">
+          <h2 className="text-2xl font-semibold">{mode === "create" ? "New Repair" : "Edit Repair"}</h2>
+          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button" aria-label="Close repair dialog"><X className="h-5 w-5" /></button>
         </div>
 
-        <form className="space-y-4 px-6 py-5" onSubmit={(event) => { event.preventDefault(); onSubmit(formValues); }}>
-          <input className="input" placeholder="Customer name" value={formValues.customerName} onChange={(event) => setFormValues((prev) => ({ ...prev, customerName: event.target.value }))} />
-          <input className="input" placeholder="Customer phone" value={formValues.customerPhone} onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))} />
-          <input className="input" placeholder="Device / asset" value={formValues.assetName} onChange={(event) => setFormValues((prev) => ({ ...prev, assetName: event.target.value }))} />
-          <input className="input" placeholder="Repair title" value={formValues.repairTitle} onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))} />
-          <textarea className="input min-h-24" placeholder="Description" value={formValues.description} onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))} />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <select className="input" value={formValues.repairStage} onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}>
-              <option>New</option><option>Awaiting Approval</option><option>In Progress</option><option>Ready for Pickup</option>
-            </select>
-            <select className="input" value={formValues.priority} onChange={(event) => setFormValues((prev) => ({ ...prev, priority: event.target.value as RepairItem["priority"] }))}>
-              <option>Low</option><option>Medium</option><option>High</option>
-            </select>
+        <form className="space-y-5 px-6 pb-6" onSubmit={(event) => { event.preventDefault(); if (!canSubmit) return; onSubmit(formValues); }}>
+          <div>
+            <label htmlFor="repair-customer-name" className="mb-2 block text-sm font-medium text-slate-700">Customer name *</label>
+            <input id="repair-customer-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. John Doe" value={formValues.customerName} onChange={(event) => setFormValues((prev) => ({ ...prev, customerName: event.target.value }))} />
+          </div>
+          <div>
+            <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">Customer phone *</label>
+            <input id="repair-customer-phone" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="+31 6 12345678" value={formValues.customerPhone} onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))} />
+          </div>
+          <div>
+            <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">Device / asset *</label>
+            <input id="repair-asset" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. iPhone 14 Pro" value={formValues.assetName} onChange={(event) => setFormValues((prev) => ({ ...prev, assetName: event.target.value }))} />
+          </div>
+          <div>
+            <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">Repair title *</label>
+            <input id="repair-title" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. Screen replacement" value={formValues.repairTitle} onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))} />
+          </div>
+          <div>
+            <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">Description *</label>
+            <textarea id="repair-description" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="Describe the issue and any diagnostics." value={formValues.description} onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))} />
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-[#253149] pt-4">
-            <button type="button" onClick={onClose} className="rounded-xl border border-[#253149] px-4 py-2 text-sm text-slate-300">Cancel</button>
-            <button type="submit" className="btn px-5 py-2">{mode === "create" ? "Create Repair" : "Save Repair"}</button>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">Stage</label>
+              <select id="repair-stage" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={formValues.repairStage} onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}>
+                <option>New</option><option>Awaiting Approval</option><option>In Progress</option><option>Ready for Pickup</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="repair-priority" className="mb-2 block text-sm font-medium text-slate-700">Priority</label>
+              <select id="repair-priority" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={formValues.priority} onChange={(event) => setFormValues((prev) => ({ ...prev, priority: event.target.value as RepairItem["priority"] }))}>
+                <option>Low</option><option>Medium</option><option>High</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-1">
+            <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+            <button type="submit" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!canSubmit}>{mode === "create" ? "Create Repair" : "Save Repair"}</button>
           </div>
         </form>
       </div>

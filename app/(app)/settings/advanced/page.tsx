@@ -56,10 +56,45 @@ const initialStages: Stage[] = [
   { id: "stage_scheduled", name: "Scheduled", key: "scheduled", description: "Repair is scheduled", color: "#4e8de8", visibleToCustomer: true },
   { id: "stage_progress", name: "In Progress", key: "in_progress", description: "Being worked on", color: "#ecbd69", visibleToCustomer: true },
   { id: "stage_approval", name: "Awaiting Approval", key: "awaiting_approval", description: "Customer approval needed for additional work", color: "#fb923c", visibleToCustomer: true, requiresApproval: true },
-  { id: "stage_parts", name: "Waiting for Parts", key: "waiting_parts", description: "Waiting on parts delivery", color: "#a855f7", visibleToCustomer: true },
+  { id: "stage_not_approved", name: "Not Approved", key: "not_approved", description: "Customer did not approve the requested work", color: "#ef4444", visibleToCustomer: true },
+  { id: "stage_approved", name: "Approved", key: "approved", description: "Customer approved and work can continue", color: "#22c55e", visibleToCustomer: true },
   { id: "stage_pickup", name: "Ready for Pickup", key: "ready_pickup", description: "Car is ready to be collected", color: "#22c1dc", visibleToCustomer: true },
   { id: "stage_completed", name: "Completed", key: "completed", description: "Repair completed", color: "#10b981", visibleToCustomer: true, isTerminal: true }
 ];
+
+function normalizeStages(stages: Stage[]): Stage[] {
+  const withoutWaitingParts = stages.filter((stage) => stage.key !== "waiting_parts");
+  const hasNotApproved = withoutWaitingParts.some((stage) => stage.key === "not_approved");
+  const hasApproved = withoutWaitingParts.some((stage) => stage.key === "approved");
+  const approvalIndex = withoutWaitingParts.findIndex((stage) => stage.key === "awaiting_approval");
+
+  const withSubStages = [...withoutWaitingParts];
+  if (approvalIndex >= 0) {
+    if (!hasNotApproved) {
+      withSubStages.splice(approvalIndex + 1, 0, {
+        id: `stage_not_approved_${Date.now()}`,
+        name: "Not Approved",
+        key: "not_approved",
+        description: "Customer did not approve the requested work",
+        color: "#ef4444",
+        visibleToCustomer: true
+      });
+    }
+    const approvedInsertIndex = withSubStages.findIndex((stage) => stage.key === "not_approved") + 1;
+    if (!hasApproved) {
+      withSubStages.splice(approvedInsertIndex, 0, {
+        id: `stage_approved_${Date.now()}`,
+        name: "Approved",
+        key: "approved",
+        description: "Customer approved and work can continue",
+        color: "#22c55e",
+        visibleToCustomer: true
+      });
+    }
+  }
+
+  return withSubStages;
+}
 
 const emptyFormValues: StageFormValues = {
   name: "",
@@ -252,7 +287,7 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
 }
 
 export default function AdvancedSettingsPage() {
-  const [stages, setStages] = useState<Stage[]>(() => readStoredWorkflowStages(initialStages));
+  const [stages, setStages] = useState<Stage[]>(() => normalizeStages(readStoredWorkflowStages(initialStages)));
   const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultTemplates).filter((template) => template.active));
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
@@ -379,7 +414,6 @@ export default function AdvancedSettingsPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-lg font-semibold text-white">{stage.name}</div>
-                    <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-xs text-slate-400">{stage.key}</span>
                     {stage.isStart ? <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Start</span> : null}
                     {stage.isTerminal ? <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-300">Terminal</span> : null}
                     {stage.requiresApproval ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300"><Sparkles className="h-3 w-3" />Approval</span> : null}
