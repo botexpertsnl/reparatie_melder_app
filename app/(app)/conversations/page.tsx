@@ -2,20 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft } from "lucide-react";
+import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft, FileText, Camera } from "lucide-react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
-import { defaultRepairs, readStoredRepairs, type StoredRepair } from "@/lib/repair-store";
+import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 
 function LinkRepairModal({
   repairs,
   onClose,
-  onSelect
+  onSelect,
+  onCreate
 }: {
   repairs: StoredRepair[];
   onClose: () => void;
   onSelect: (repairId: string) => void;
+  onCreate: () => void;
 }) {
   const [query, setQuery] = useState("");
   const filtered = repairs.filter((repair) => `${repair.title} ${repair.customerName} ${repair.assetName}`.toLowerCase().includes(query.toLowerCase()));
@@ -24,7 +26,10 @@ function LinkRepairModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">Link to Repair</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-semibold">Link to Repair</h2>
+            <button type="button" onClick={onCreate} className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20">+ New Repair</button>
+          </div>
           <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button"><X className="h-5 w-5" /></button>
         </div>
 
@@ -49,15 +54,64 @@ function LinkRepairModal({
   );
 }
 
+function TemplatePickerModal({
+  onClose,
+  onSelect
+}: {
+  onClose: () => void;
+  onSelect: (value: string) => void;
+}) {
+  const templateOptions = ["Device Received", "Repair Update", "Ready for Pickup"];
+  const quickReplyOptions = ["Thanks, we'll check this now.", "Can you share your serial number?", "Your device is ready to collect."];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">Templates & Quick Replies</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close template picker">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Templates</h3>
+            <div className="mt-2 space-y-2">
+              {templateOptions.map((item) => (
+                <button key={item} type="button" onClick={() => onSelect(item)} className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Quick replies</h3>
+            <div className="mt-2 space-y-2">
+              {quickReplyOptions.map((item) => (
+                <button key={item} type="button" onClick={() => onSelect(item)} className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConversationsPage() {
   const [threads, setThreads] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
   const [repairs, setRepairs] = useState<StoredRepair[]>(() => readStoredRepairs(defaultRepairs));
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => readStoredConversations(defaultConversations)[0]?.id ?? "");
   const [message, setMessage] = useState("");
-  const [showRepairPanel, setShowRepairPanel] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [listCollapsed, setListCollapsed] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState>({ open: false, threadId: null });
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setRepairs(readStoredRepairs(defaultRepairs));
@@ -127,8 +181,69 @@ export default function ConversationsPage() {
     setLinkModal({ open: false, threadId: null });
   };
 
+  const createRepairFromThread = (threadId: string) => {
+    const thread = threads.find((item) => item.id === threadId);
+    if (!thread) return;
+
+    const newRepair: StoredRepair = {
+      id: `repair_${Date.now()}`,
+      title: "New Repair",
+      description: "Created from conversation",
+      customerName: thread.customerName || thread.customerPhone,
+      customerPhone: thread.customerPhone,
+      assetName: "Unknown device",
+      stage: "New",
+      priority: "Medium",
+      status: "Open"
+    };
+
+    setRepairs((prev) => {
+      const updated = [newRepair, ...prev];
+      writeStoredRepairs(updated);
+      return updated;
+    });
+
+    setThreads((prev) =>
+      prev.map((item) =>
+        item.id === threadId
+          ? {
+              ...item,
+              linkedRepairId: newRepair.id,
+              customerName: newRepair.customerName,
+              customerPhone: newRepair.customerPhone
+            }
+          : item
+      )
+    );
+
+    setShowRepairPanel(true);
+    setLinkModal({ open: false, threadId: null });
+  };
+
+  const handleImageSelected = (file: File | null) => {
+    if (!selectedThread || !file) return;
+
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === selectedThread.id
+          ? {
+              ...thread,
+              preview: `📷 ${file.name}`,
+              updatedAt: "Now",
+              open: true,
+              messages: [...thread.messages, { id: `m_${Date.now()}`, role: "agent", text: `📷 Image uploaded: ${file.name}`, at: "Now" }]
+            }
+          : thread
+      )
+    );
+  };
+
   const toggleConversationList = () => {
-    setListCollapsed((prev) => !prev);
+    setListCollapsed((prev) => {
+      const next = !prev;
+      setShowRepairPanel(true);
+      return next;
+    });
   };
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
@@ -207,8 +322,35 @@ export default function ConversationsPage() {
               <div className="border-t border-[#253149] p-3">
                 <div className="flex items-center gap-2">
                   <input className="input" placeholder="Type a message..." value={message} onChange={(event) => setMessage(event.target.value)} />
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplatePicker(true)}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                    aria-label="Select template or quick reply"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                    aria-label="Upload or capture image"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
                   <button type="button" onClick={sendMessage} className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#28d9c6] text-[#022a36]"><Send className="h-4 w-4" /></button>
                 </div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(event) => {
+                    handleImageSelected(event.target.files?.[0] ?? null);
+                    event.currentTarget.value = "";
+                  }}
+                />
               </div>
             </>
           ) : null}
@@ -241,8 +383,14 @@ export default function ConversationsPage() {
       </section>
 
       {linkModal.open && linkModal.threadId ? (
-        <LinkRepairModal repairs={repairs.filter((repair) => repair.status === "Open")} onClose={() => setLinkModal({ open: false, threadId: null })} onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)} />
+        <LinkRepairModal
+          repairs={repairs.filter((repair) => repair.status === "Open")}
+          onClose={() => setLinkModal({ open: false, threadId: null })}
+          onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)}
+          onCreate={() => createRepairFromThread(linkModal.threadId!)}
+        />
       ) : null}
+      {showTemplatePicker ? <TemplatePickerModal onClose={() => setShowTemplatePicker(false)} onSelect={(value) => { setMessage(value); setShowTemplatePicker(false); }} /> : null}
     </div>
   );
 }
