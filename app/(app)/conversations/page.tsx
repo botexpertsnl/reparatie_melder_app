@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft } from "lucide-react";
+import clsx from "clsx";
+import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft, FileText, Camera } from "lucide-react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
-import { defaultRepairs, readStoredRepairs, type StoredRepair } from "@/lib/repair-store";
+import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 
 function LinkRepairModal({
   repairs,
   onClose,
-  onSelect
+  onSelect,
+  onCreate
 }: {
   repairs: StoredRepair[];
   onClose: () => void;
   onSelect: (repairId: string) => void;
+  onCreate: () => void;
 }) {
   const [query, setQuery] = useState("");
   const filtered = repairs.filter((repair) => `${repair.title} ${repair.customerName} ${repair.assetName}`.toLowerCase().includes(query.toLowerCase()));
@@ -23,7 +26,10 @@ function LinkRepairModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">Link to Repair</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-semibold">Link to Repair</h2>
+            <button type="button" onClick={onCreate} className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20">+ New Repair</button>
+          </div>
           <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button"><X className="h-5 w-5" /></button>
         </div>
 
@@ -48,15 +54,64 @@ function LinkRepairModal({
   );
 }
 
+function TemplatePickerModal({
+  onClose,
+  onSelect
+}: {
+  onClose: () => void;
+  onSelect: (value: string) => void;
+}) {
+  const templateOptions = ["Device Received", "Repair Update", "Ready for Pickup"];
+  const quickReplyOptions = ["Thanks, we'll check this now.", "Can you share your serial number?", "Your device is ready to collect."];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">Templates & Quick Replies</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close template picker">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Templates</h3>
+            <div className="mt-2 space-y-2">
+              {templateOptions.map((item) => (
+                <button key={item} type="button" onClick={() => onSelect(item)} className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Quick replies</h3>
+            <div className="mt-2 space-y-2">
+              {quickReplyOptions.map((item) => (
+                <button key={item} type="button" onClick={() => onSelect(item)} className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConversationsPage() {
   const [threads, setThreads] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
   const [repairs, setRepairs] = useState<StoredRepair[]>(() => readStoredRepairs(defaultRepairs));
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => readStoredConversations(defaultConversations)[0]?.id ?? "");
   const [message, setMessage] = useState("");
-  const [showRepairPanel, setShowRepairPanel] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [listCollapsed, setListCollapsed] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState>({ open: false, threadId: null });
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setRepairs(readStoredRepairs(defaultRepairs));
@@ -126,37 +181,83 @@ export default function ConversationsPage() {
     setLinkModal({ open: false, threadId: null });
   };
 
+  const createRepairFromThread = (threadId: string) => {
+    const thread = threads.find((item) => item.id === threadId);
+    if (!thread) return;
+
+    const newRepair: StoredRepair = {
+      id: `repair_${Date.now()}`,
+      title: "New Repair",
+      description: "Created from conversation",
+      customerName: thread.customerName || thread.customerPhone,
+      customerPhone: thread.customerPhone,
+      assetName: "Unknown device",
+      stage: "New",
+      priority: "Medium",
+      status: "Open"
+    };
+
+    setRepairs((prev) => {
+      const updated = [newRepair, ...prev];
+      writeStoredRepairs(updated);
+      return updated;
+    });
+
+    setThreads((prev) =>
+      prev.map((item) =>
+        item.id === threadId
+          ? {
+              ...item,
+              linkedRepairId: newRepair.id,
+              customerName: newRepair.customerName,
+              customerPhone: newRepair.customerPhone
+            }
+          : item
+      )
+    );
+
+    setShowRepairPanel(true);
+    setLinkModal({ open: false, threadId: null });
+  };
+
+  const handleImageSelected = (file: File | null) => {
+    if (!selectedThread || !file) return;
+
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === selectedThread.id
+          ? {
+              ...thread,
+              preview: `📷 ${file.name}`,
+              updatedAt: "Now",
+              open: true,
+              messages: [...thread.messages, { id: `m_${Date.now()}`, role: "agent", text: `📷 Image uploaded: ${file.name}`, at: "Now" }]
+            }
+          : thread
+      )
+    );
+  };
+
   const toggleConversationList = () => {
     setListCollapsed((prev) => {
       const next = !prev;
-      if (next) {
-        setShowRepairPanel(true);
-      }
+      setShowRepairPanel(true);
       return next;
     });
   };
 
-  const showRepairColumn = !listCollapsed && showRepairPanel && Boolean(linkedRepair);
-  const showRepairOverlay = listCollapsed && showRepairPanel && Boolean(linkedRepair);
+  const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
 
   return (
     <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden bg-[#0b1221] transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[56px_1fr]" : "grid-cols-[380px_1fr]"}`}>
-      <aside className="relative border-r border-[#253149] bg-[#121b2b]/65">
-        <button
-          type="button"
-          onClick={toggleConversationList}
-          className="absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#253149] bg-[#0a111f] text-slate-300 hover:bg-[#182236]"
-          aria-label={listCollapsed ? "Expand conversations list" : "Collapse conversations list"}
-        >
-          {listCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-        <div className={`transition-opacity duration-200 ${listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+      <aside className="flex min-h-0 flex-col border-r border-[#253149] bg-[#121b2b]/65">
+        <div className={`min-h-0 flex-1 transition-opacity duration-200 ${listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"}`}>
           <div className="p-4">
-          <h1 className="text-2xl font-semibold text-white">Conversations</h1>
-          <label className="mt-3 flex items-center gap-2 rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-slate-400">
-            <Search className="h-4 w-4" />
-            <input className="w-full bg-transparent text-sm outline-none" placeholder="Search..." />
-          </label>
+            <h1 className="text-2xl font-semibold text-white">Conversations</h1>
+            <label className="mt-3 flex items-center gap-2 rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-slate-400">
+              <Search className="h-4 w-4" />
+              <input className="w-full bg-transparent text-sm outline-none" placeholder="Search..." />
+            </label>
           </div>
 
           <div className="space-y-1 px-3 pb-3">
@@ -172,9 +273,20 @@ export default function ConversationsPage() {
             ))}
           </div>
         </div>
+
+        <div className={clsx("border-t border-[#253149]", listCollapsed ? "p-2" : "p-4")}>
+          <button
+            type="button"
+            onClick={toggleConversationList}
+            className="mx-auto flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-900/70"
+            aria-label={listCollapsed ? "Expand conversations list" : "Collapse conversations list"}
+          >
+            <ChevronLeft className={`h-5 w-5 transition-transform ${listCollapsed ? "rotate-180" : ""}`} />
+          </button>
+        </div>
       </aside>
 
-      <section className={`relative grid min-w-0 overflow-hidden transition-transform duration-300 ${listCollapsed ? "translate-x-5 grid-cols-[1fr]" : showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+      <section className={`relative grid min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
         <div className="flex min-w-0 flex-col">
           {selectedThread ? (
             <>
@@ -185,8 +297,8 @@ export default function ConversationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedThread.linkedRepairId ? (
-                    <button type="button" onClick={() => setShowRepairPanel(true)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
-                      <Wrench className="h-4 w-4" />
+                    <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
+                      {showRepairPanel ? <X className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
                       Repair Details
                     </button>
                   ) : (
@@ -210,8 +322,35 @@ export default function ConversationsPage() {
               <div className="border-t border-[#253149] p-3">
                 <div className="flex items-center gap-2">
                   <input className="input" placeholder="Type a message..." value={message} onChange={(event) => setMessage(event.target.value)} />
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplatePicker(true)}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                    aria-label="Select template or quick reply"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                    aria-label="Upload or capture image"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
                   <button type="button" onClick={sendMessage} className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#28d9c6] text-[#022a36]"><Send className="h-4 w-4" /></button>
                 </div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(event) => {
+                    handleImageSelected(event.target.files?.[0] ?? null);
+                    event.currentTarget.value = "";
+                  }}
+                />
               </div>
             </>
           ) : null}
@@ -241,51 +380,17 @@ export default function ConversationsPage() {
             </button>
           </aside>
         ) : null}
-
-        <div
-          className={`absolute inset-0 z-20 bg-black/40 transition-opacity ${showRepairOverlay ? "opacity-100" : "pointer-events-none opacity-0"}`}
-          onClick={() => setShowRepairPanel(false)}
-        />
-        <aside
-          className={`absolute inset-y-0 right-0 z-30 w-[380px] border-l border-[#253149] bg-[#0b1221] p-5 transition-transform duration-300 ${
-            showRepairOverlay ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          {linkedRepair ? (
-            <>
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xl font-semibold text-white">
-                  <Wrench className="h-5 w-5 text-[#25d3c4]" />
-                  Repair Details
-                </div>
-                <button type="button" className="rounded-md p-1 text-slate-400 hover:bg-[#182236] hover:text-white" onClick={() => setShowRepairPanel(false)}>
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <h3 className="text-2xl font-semibold text-white">{linkedRepair.title}</h3>
-              <div className="mt-2 text-sm text-slate-400">{linkedRepair.customerName} · {linkedRepair.assetName}</div>
-              <div className="mt-4 border-t border-[#253149] pt-4 text-sm text-slate-300">{linkedRepair.description}</div>
-              <div className="mt-5 space-y-2">
-                {["Diagnosing", "Repairing", "Ready for Pickup"].map((step) => (
-                  <button key={step} type="button" className="flex w-full items-center justify-between rounded-xl border border-[#253149] px-3 py-2 text-left text-sm text-slate-200 hover:bg-[#182236]">
-                    {step}
-                    <ChevronRight className="h-4 w-4 text-slate-500" />
-                  </button>
-                ))}
-              </div>
-              <button type="button" onClick={() => selectedThread && setLinkModal({ open: true, threadId: selectedThread.id })} className="absolute bottom-5 right-5 text-[#69f0df] hover:text-[#25d3c4]" aria-label="Change linked repair">
-                <LinkIcon className="h-5 w-5" />
-              </button>
-            </>
-          ) : (
-            <div className="text-sm text-slate-400">No repair linked to this conversation.</div>
-          )}
-        </aside>
       </section>
 
       {linkModal.open && linkModal.threadId ? (
-        <LinkRepairModal repairs={repairs.filter((repair) => repair.status === "Open")} onClose={() => setLinkModal({ open: false, threadId: null })} onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)} />
+        <LinkRepairModal
+          repairs={repairs.filter((repair) => repair.status === "Open")}
+          onClose={() => setLinkModal({ open: false, threadId: null })}
+          onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)}
+          onCreate={() => createRepairFromThread(linkModal.threadId!)}
+        />
       ) : null}
+      {showTemplatePicker ? <TemplatePickerModal onClose={() => setShowTemplatePicker(false)} onSelect={(value) => { setMessage(value); setShowTemplatePicker(false); }} /> : null}
     </div>
   );
 }

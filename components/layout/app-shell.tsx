@@ -69,10 +69,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setImpersonatingTenant(getImpersonatingTenant());
   }, [pathname]);
 
-  const visibleSections = navSections.filter((section) => (section.label === "System" ? superAdmin && !impersonatingTenant : true));
+  const visibleSections = navSections.filter((section) => section.label !== "System");
+
+  const handleTenantBadgeClick = () => {
+    if (!superAdmin) return;
+    if (impersonatingTenant) {
+      stopImpersonation();
+    }
+    window.location.href = "/admin/diagnostics";
+  };
 
   return (
-    <div className={clsx("min-h-screen bg-[#040914] text-slate-100 md:grid", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")}>
+    <div className={clsx("min-h-screen bg-[#040914] text-slate-100 md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")}>
       <aside className="flex min-h-screen flex-col border-r border-[#1a2436] bg-[#060d19]">
         <div className={clsx("border-b border-[#1a2436] py-5", collapsed ? "px-4" : "px-6")}>
           <div className="flex items-center gap-4">
@@ -129,16 +137,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="flex h-[69px] items-center justify-end border-b border-[#1a2436] bg-[#101722] px-8">
           <div className="flex items-center gap-2 rounded-lg bg-[#182334] px-4 py-2 text-sm text-slate-400">
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300">{openConversationCount}</span>
-            {superAdmin && impersonatingTenant ? (
+            {superAdmin ? (
               <button
                 type="button"
                 className="font-medium text-slate-200 hover:text-white"
-                onClick={() => {
-                  stopImpersonation();
-                  window.location.href = "/admin/diagnostics";
-                }}
+                onClick={handleTenantBadgeClick}
               >
-                {impersonatingTenant}
+                {impersonatingTenant ?? "AutoGarage De Vries"}
               </button>
             ) : (
               "AutoGarage De Vries"
