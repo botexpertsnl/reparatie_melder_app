@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import clsx from "clsx";
 import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft, FileText, Camera } from "lucide-react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -133,6 +132,15 @@ export default function ConversationsPage() {
     writeStoredConversations(threads);
   }, [threads]);
 
+  useEffect(() => {
+    const handleConversationNavClick = () => {
+      setListCollapsed(false);
+    };
+
+    window.addEventListener("conversations:nav-click", handleConversationNavClick);
+    return () => window.removeEventListener("conversations:nav-click", handleConversationNavClick);
+  }, []);
+
   const selectedThread = useMemo(() => threads.find((thread) => thread.id === selectedThreadId) ?? null, [threads, selectedThreadId]);
   const linkedRepair = selectedThread ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null : null;
 
@@ -249,7 +257,7 @@ export default function ConversationsPage() {
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
 
   return (
-    <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden bg-[#0b1221] transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[56px_1fr]" : "grid-cols-[380px_1fr]"}`}>
+    <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden bg-[#0b1221] transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"}`}>
       <aside className="flex min-h-0 flex-col border-r border-[#253149] bg-[#121b2b]/65">
         <div className={`min-h-0 flex-1 transition-opacity duration-200 ${listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"}`}>
           <div className="p-4">
@@ -274,7 +282,7 @@ export default function ConversationsPage() {
           </div>
         </div>
 
-        <div className={clsx("border-t border-[#253149]", listCollapsed ? "p-2" : "p-4")}>
+        <div className="border-t border-[#1a2436] p-4">
           <button
             type="button"
             onClick={toggleConversationList}

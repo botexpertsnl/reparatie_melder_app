@@ -82,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={clsx("min-h-screen bg-[#040914] text-slate-100 md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")}>
       <aside className="flex min-h-screen flex-col border-r border-[#1a2436] bg-[#060d19]">
-        <div className={clsx("border-b border-[#1a2436] py-5", collapsed ? "px-4" : "px-6")}>
+        <div className="border-b border-[#1a2436] px-6 py-5">
           <div className="flex items-center gap-4">
             <div className="rounded-xl bg-[#25d3c4] p-3 text-[#04243a]">
               <MessageSquareText className="h-5 w-5" />
@@ -108,6 +108,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <li key={item.href}>
                         <Link
                           href={item.href}
+                          onClick={() => {
+                            if (item.href === "/conversations") {
+                              window.dispatchEvent(new Event("conversations:nav-click"));
+                            }
+                          }}
                           className={clsx(
                             "flex items-center rounded-xl px-3 py-2 text-base font-medium text-slate-300 transition",
                             collapsed ? "justify-center gap-0" : "gap-3",
