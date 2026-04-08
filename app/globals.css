@@ -67,6 +67,15 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 65%, transparent);
 }
 
+.chat-input {
+  border-width: 2px !important;
+}
+
+.chat-input:focus {
+  border-color: #25d3c4 !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #25d3c4 18%, transparent) !important;
+}
+
 .btn {
   background: var(--surface-3);
   border: 1px solid var(--border-strong);

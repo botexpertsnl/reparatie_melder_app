@@ -103,7 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={clsx("min-h-screen md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")} style={{ background: "var(--bg)", color: "var(--text-primary)" }}>
-      <aside className="flex min-h-screen flex-col border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+      <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
         <div className="border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-4">
             <div className="rounded-xl bg-[#25d3c4] p-3 text-[#04243a]">
@@ -140,9 +140,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             collapsed ? "justify-center gap-0" : "gap-3",
                             active ? "bg-white/10" : "hover:bg-slate-900/70"
                           )}
-                          style={active ? { color: "var(--accent)" } : undefined}
+                          style={active ? { color: "#25d3c4" } : undefined}
                         >
-                          <Icon className={clsx("h-5 w-5", active ? "" : "text-slate-400")} style={active ? { color: "var(--accent)" } : undefined} />
+                          <Icon className={clsx("h-5 w-5", active ? "" : "text-slate-400")} style={active ? { color: "#25d3c4" } : undefined} />
                           {collapsed ? null : item.name}
                         </Link>
                       </li>
