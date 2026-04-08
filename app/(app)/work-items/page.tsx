@@ -197,17 +197,16 @@ export default function WorkItemsPage() {
           </div>
         </div>
 
-        <section className={`grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65 transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr_0px]"}`}>
-          <div className="min-h-0 min-w-0 overflow-auto">
+        <section className={`relative grid min-h-0 flex-1 overflow-hidden transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+          <div className="min-h-0 min-w-0 overflow-auto rounded-2xl border border-[#253149] bg-[#121b2b]/65">
             <table className="w-full table-fixed">
-              <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[37%] px-5 py-4">Title</th><th className="w-[24%] px-5 py-4">Customer</th><th className="w-[22%] px-5 py-4">Stage</th><th className="w-[12%] px-5 py-4">Status</th><th className="w-[5%] px-5 py-4" /></tr></thead>
+              <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[25%] px-5 py-4">Stage</th><th className="w-[5%] px-5 py-4" /></tr></thead>
               <tbody>
                 {repairs.map((repair) => (
                   <tr key={repair.id} onClick={() => setSelectedRepairId(repair.id)} className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-[#182236]/60" : ""}`}>
                     <td className="px-5 py-4 align-middle"><button type="button" className="text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
                     <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customerName}</td>
                     <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
-                    <td className="px-5 py-4 align-middle"><span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{repair.status}</span></td>
                     <td className="relative px-5 py-4 align-middle text-center text-slate-400">
                       <button data-action-menu="true" className="rounded-md p-1 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
                       {openMenuId === repair.id ? (
@@ -223,9 +222,7 @@ export default function WorkItemsPage() {
             </table>
           </div>
 
-          <div className={`h-full overflow-hidden border-l border-[#253149] bg-[#0b1221] transition-transform duration-300 ${selectedRepair ? "translate-x-0" : "translate-x-full"}`}>
-            {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} onClose={() => setSelectedRepairId(null)} className="h-full border-l-0 bg-transparent" /> : null}
-          </div>
+          {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} onClose={() => setSelectedRepairId(null)} className="h-full border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5" /> : null}
         </section>
       </div>
 

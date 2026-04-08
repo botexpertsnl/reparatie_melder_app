@@ -144,6 +144,19 @@ export default function ConversationsPage() {
 
   const selectedThread = useMemo(() => threads.find((thread) => thread.id === selectedThreadId) ?? null, [threads, selectedThreadId]);
   const linkedRepair = selectedThread ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null : null;
+  const sortedThreads = useMemo(
+    () =>
+      [...threads].sort((a, b) => {
+        const aTimestamp = Number(a.messages[a.messages.length - 1]?.id.replace("m_", "") ?? 0);
+        const bTimestamp = Number(b.messages[b.messages.length - 1]?.id.replace("m_", "") ?? 0);
+        if (aTimestamp !== bTimestamp) return bTimestamp - aTimestamp;
+
+        if (a.updatedAt === "Now" && b.updatedAt !== "Now") return -1;
+        if (b.updatedAt === "Now" && a.updatedAt !== "Now") return 1;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      }),
+    [threads]
+  );
 
   useEffect(() => {
     if (!messageWindowRef.current) return;
@@ -270,7 +283,7 @@ export default function ConversationsPage() {
           </div>
 
           <div className="space-y-1 px-3 pb-3">
-            {threads.map((thread) => (
+            {sortedThreads.map((thread) => (
               <button key={thread.id} type="button" onClick={() => setSelectedThreadId(thread.id)} className={`w-full rounded-xl border p-3 text-left ${selectedThreadId === thread.id ? "border-[#28d9c6]/40 bg-[#182236]" : "border-transparent hover:bg-[#182236]/60"}`}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-200">{thread.customerName || thread.customerPhone}</span>
@@ -295,8 +308,8 @@ export default function ConversationsPage() {
         </div>
       </aside>
 
-      <section className={`relative grid min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
-        <div className="flex min-w-0 flex-col">
+      <section className={`relative grid min-h-0 min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+        <div className="flex min-h-0 min-w-0 flex-col">
           {selectedThread ? (
             <>
               <header className="flex items-center justify-between border-b border-[#253149] px-5 py-3">
@@ -319,7 +332,7 @@ export default function ConversationsPage() {
                 </div>
               </header>
 
-              <div ref={messageWindowRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+              <div ref={messageWindowRef} className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
                 {selectedThread.messages.map((msg) => (
                   <div key={msg.id} className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${msg.role === "agent" ? "ml-auto bg-[#29cfc0] text-[#05292f]" : "bg-[#1f2736] text-slate-200"}`}>
                     {msg.text}
