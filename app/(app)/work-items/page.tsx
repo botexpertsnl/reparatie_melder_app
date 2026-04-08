@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 type RepairItem = StoredRepair;
 const UNKNOWN_STAGE = "Unknown";
@@ -49,12 +50,14 @@ function AddRepairModal({
   mode,
   initialValues,
   stageOptions,
+  repairLabel,
   onClose,
   onSubmit
 }: {
   mode: "create" | "edit";
   initialValues: NewRepairFormValues;
   stageOptions: string[];
+  repairLabel: string;
   onClose: () => void;
   onSubmit: (payload: NewRepairFormValues) => void;
 }) {
@@ -69,7 +72,7 @@ function AddRepairModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-2xl font-semibold">{mode === "create" ? "New Repair" : "Edit Repair"}</h2>
+          <h2 className="text-2xl font-semibold">{mode === "create" ? `New ${repairLabel}` : `Edit ${repairLabel}`}</h2>
           <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button" aria-label="Close repair dialog"><X className="h-5 w-5" /></button>
         </div>
 
@@ -87,7 +90,7 @@ function AddRepairModal({
             <input id="repair-asset" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. iPhone 14 Pro" value={formValues.assetName} onChange={(event) => setFormValues((prev) => ({ ...prev, assetName: event.target.value }))} />
           </div>
           <div>
-            <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">Repair title *</label>
+            <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">{repairLabel} title *</label>
             <input id="repair-title" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. Screen replacement" value={formValues.repairTitle} onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))} />
           </div>
           <div>
@@ -106,7 +109,7 @@ function AddRepairModal({
 
           <div className="flex items-center justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
-            <button type="submit" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!canSubmit}>{mode === "create" ? "Create Repair" : "Save Repair"}</button>
+            <button type="submit" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!canSubmit}>{mode === "create" ? `Create ${repairLabel}` : `Save ${repairLabel}`}</button>
           </div>
         </form>
       </div>
@@ -115,6 +118,8 @@ function AddRepairModal({
 }
 
 export default function WorkItemsPage() {
+  const repairLabel = useTenantRepairLabel();
+  const repairLabelPlural = pluralizeLabel(repairLabel);
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() => readStoredWorkflowStages(defaultWorkflowStages));
   const stageNames = useMemo(() => new Set(workflowStages.map((stage) => stage.name)), [workflowStages]);
   const stageOptions = useMemo(() => workflowStages.map((stage) => stage.name), [workflowStages]);
@@ -190,11 +195,11 @@ export default function WorkItemsPage() {
       <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] bg-[#0b1221] transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
         <div className="flex min-h-0 flex-col py-8">
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4 px-10">
-            <div><h1 className="text-2xl font-semibold text-white">Repairs</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing repairs</p></div>
+            <div><h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing {repairLabelPlural.toLowerCase()}</p></div>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
               <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400"><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
-              <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"><Plus className="h-5 w-5" />New Repair</button>
+              <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"><Plus className="h-5 w-5" />New {repairLabel}</button>
             </div>
           </div>
 
@@ -225,11 +230,11 @@ export default function WorkItemsPage() {
           </section>
         </div>
 
-        {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} onClose={() => setSelectedRepairId(null)} className="h-full border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5" /> : null}
+        {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} itemLabel={repairLabel} onClose={() => setSelectedRepairId(null)} className="h-full border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5" /> : null}
       </div>
 
-      {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={{ ...initialFormValues, repairStage: initialStage }} stageOptions={stageOptions} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
-      {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} stageOptions={stageOptions} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
+      {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={{ ...initialFormValues, repairStage: initialStage }} stageOptions={stageOptions} repairLabel={repairLabel} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
+      {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} stageOptions={stageOptions} repairLabel={repairLabel} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
       {deletingRepair ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"><h2 className="text-xl font-semibold">Delete repair</h2><p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p><div className="mt-6 flex items-center justify-end gap-3"><button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button><button type="button" onClick={() => { setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id)); if (selectedRepairId === deletingRepair.id) setSelectedRepairId(null); setDeletingRepairId(null); }} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Delete</button></div></div></div>
       ) : null}

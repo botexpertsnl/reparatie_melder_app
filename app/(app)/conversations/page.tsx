@@ -5,16 +5,19 @@ import { Search, Send, Link as LinkIcon, Wrench, X, ChevronLeft, FileText, Camer
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
+import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 
 function LinkRepairModal({
   repairs,
+  repairLabel,
   onClose,
   onSelect,
   onCreate
 }: {
   repairs: StoredRepair[];
+  repairLabel: string;
   onClose: () => void;
   onSelect: (repairId: string) => void;
   onCreate: () => void;
@@ -27,15 +30,15 @@ function LinkRepairModal({
       <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold">Link to Repair</h2>
-            <button type="button" onClick={onCreate} className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20">+ New Repair</button>
+            <h2 className="text-2xl font-semibold">Link to {repairLabel}</h2>
+            <button type="button" onClick={onCreate} className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20">+ New {repairLabel}</button>
           </div>
           <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button"><X className="h-5 w-5" /></button>
         </div>
 
         <label className="mb-4 flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
           <Search className="h-4 w-4 text-slate-500" />
-          <input className="w-full bg-transparent text-sm outline-none" placeholder="Search repairs..." value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="w-full bg-transparent text-sm outline-none" placeholder={`Search ${repairLabel.toLowerCase()}s...`} value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
 
         <div className="space-y-2">
@@ -102,6 +105,7 @@ function TemplatePickerModal({
 }
 
 export default function ConversationsPage() {
+  const repairLabel = useTenantRepairLabel();
   const [threads, setThreads] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
   const [repairs, setRepairs] = useState<StoredRepair[]>(() => readStoredRepairs(defaultRepairs));
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => readStoredConversations(defaultConversations)[0]?.id ?? "");
@@ -241,7 +245,7 @@ export default function ConversationsPage() {
 
     const newRepair: StoredRepair = {
       id: `repair_${Date.now()}`,
-      title: "New Repair",
+      title: `New ${repairLabel}`,
       description: "Created from conversation",
       customerName: thread.customerName || thread.customerPhone,
       customerPhone: thread.customerPhone,
@@ -354,13 +358,13 @@ export default function ConversationsPage() {
                     showRepairPanel ? null : (
                       <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
                         <Wrench className="h-4 w-4" />
-                        Repair Details
+                        {repairLabel} Details
                       </button>
                     )
                   ) : (
                     <button type="button" onClick={() => setLinkModal({ open: true, threadId: selectedThread.id })} className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300">
                       <LinkIcon className="h-4 w-4" />
-                      Link Repair
+                      Link {repairLabel}
                     </button>
                   )}
                 </div>
@@ -416,6 +420,7 @@ export default function ConversationsPage() {
           <div className="relative">
             <RepairDetailsPanel
               repair={linkedRepair}
+              itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
               className="relative border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5"
@@ -428,7 +433,7 @@ export default function ConversationsPage() {
                   onClick={() => unlinkRepairFromThread(selectedThread.id)}
                 >
                   <Unlink2 className="h-4 w-4" />
-                  Unlink repair
+                  Unlink {repairLabel.toLowerCase()}
                 </button>
                 <button
                   type="button"
@@ -439,7 +444,7 @@ export default function ConversationsPage() {
                   }}
                 >
                   <Link2 className="h-4 w-4" />
-                  Link to other
+                  Link to other {repairLabel.toLowerCase()}
                 </button>
               </div>
             ) : null}
@@ -450,6 +455,7 @@ export default function ConversationsPage() {
       {linkModal.open && linkModal.threadId ? (
         <LinkRepairModal
           repairs={repairs.filter((repair) => repair.status === "Open")}
+          repairLabel={repairLabel}
           onClose={() => setLinkModal({ open: false, threadId: null })}
           onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)}
           onCreate={() => createRepairFromThread(linkModal.threadId!)}

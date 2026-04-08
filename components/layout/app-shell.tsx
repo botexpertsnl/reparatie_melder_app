@@ -17,33 +17,12 @@ import {
 import clsx from "clsx";
 import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
 import { getImpersonatingTenant, isSuperAdmin, stopImpersonation } from "@/lib/impersonation-store";
-
-const navSections = [
-  {
-    label: "Main",
-    items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-      { name: "Repairs", href: "/work-items", icon: Wrench },
-      { name: "Conversations", href: "/conversations", icon: MessagesSquare }
-    ]
-  },
-  {
-    label: "Settings",
-    items: [
-      { name: "Workflow", href: "/settings/advanced", icon: Workflow },
-      { name: "Templates", href: "/templates", icon: FileText },
-      { name: "Tenant Settings", href: "/customers", icon: Settings }
-    ]
-  },
-  {
-    label: "System",
-    items: [{ name: "System Admin", href: "/admin/diagnostics", icon: Shield }]
-  }
-];
+import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const repairLabel = useTenantRepairLabel();
   const [collapsed, setCollapsed] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
   const [superAdmin, setSuperAdminState] = useState(false);
@@ -69,6 +48,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSuperAdminState(isSuperAdmin());
     setImpersonatingTenant(getImpersonatingTenant());
   }, [pathname]);
+
+  const navSections = [
+    {
+      label: "Main",
+      items: [
+        { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+        { name: pluralizeLabel(repairLabel), href: "/work-items", icon: Wrench },
+        { name: "Conversations", href: "/conversations", icon: MessagesSquare }
+      ]
+    },
+    {
+      label: "Settings",
+      items: [
+        { name: "Workflow", href: "/settings/advanced", icon: Workflow },
+        { name: "Templates", href: "/templates", icon: FileText },
+        { name: "Settings", href: "/customers", icon: Settings }
+      ]
+    },
+    {
+      label: "System",
+      items: [{ name: "System Admin", href: "/admin/diagnostics", icon: Shield }]
+    }
+  ];
 
   const visibleSections = navSections.filter((section) => section.label !== "System");
 

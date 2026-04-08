@@ -3,18 +3,19 @@ import type { StoredRepair } from "@/lib/repair-store";
 
 type RepairDetailsPanelProps = {
   repair: StoredRepair;
+  itemLabel?: string;
   onClose?: () => void;
   onLinkChange?: () => void;
   className?: string;
 };
 
-export function RepairDetailsPanel({ repair, onClose, onLinkChange, className }: RepairDetailsPanelProps) {
+export function RepairDetailsPanel({ repair, itemLabel = "Repair", onClose, onLinkChange, className }: RepairDetailsPanelProps) {
   return (
     <aside className={className ?? "relative border-l border-[#253149] bg-[#0b1221] px-5 py-5"}>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xl font-semibold text-white">
           <Wrench className="h-5 w-5 text-[#25d3c4]" />
-          Repair Details
+          {itemLabel} Details
         </div>
         {onClose ? (
           <button
