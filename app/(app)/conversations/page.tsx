@@ -158,11 +158,11 @@ export default function ConversationsPage() {
           </div>
         </div>
 
-        <div className="border-t border-[#253149] p-3">
+        <div className="border-t border-[#253149] p-4">
           <button
             type="button"
             onClick={toggleConversationList}
-            className="flex w-full items-center justify-center rounded-md p-3 text-slate-500 hover:bg-slate-900/70"
+            className="mx-auto flex h-11 w-11 items-center justify-center rounded-md p-3 text-slate-500 hover:bg-slate-900/70"
             aria-label={listCollapsed ? "Expand conversations list" : "Collapse conversations list"}
           >
             <ChevronLeft className={`h-5 w-5 transition-transform ${listCollapsed ? "rotate-180" : ""}`} />
