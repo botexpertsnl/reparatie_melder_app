@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
+import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 
 type RepairItem = StoredRepair;
 
@@ -14,7 +15,6 @@ type NewRepairFormValues = {
   repairTitle: string;
   description: string;
   repairStage: RepairItem["stage"];
-  priority: RepairItem["priority"];
 };
 
 const initialFormValues: NewRepairFormValues = {
@@ -23,8 +23,7 @@ const initialFormValues: NewRepairFormValues = {
   assetName: "",
   repairTitle: "",
   description: "",
-  repairStage: "New",
-  priority: "Medium"
+  repairStage: "New"
 };
 
 function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
@@ -71,19 +70,11 @@ function AddRepairModal({ mode, initialValues, onClose, onSubmit }: { mode: "cre
             <textarea id="repair-description" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="Describe the issue and any diagnostics." value={formValues.description} onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">Stage</label>
-              <select id="repair-stage" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={formValues.repairStage} onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}>
-                <option>New</option><option>Awaiting Approval</option><option>In Progress</option><option>Ready for Pickup</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="repair-priority" className="mb-2 block text-sm font-medium text-slate-700">Priority</label>
-              <select id="repair-priority" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={formValues.priority} onChange={(event) => setFormValues((prev) => ({ ...prev, priority: event.target.value as RepairItem["priority"] }))}>
-                <option>Low</option><option>Medium</option><option>High</option>
-              </select>
-            </div>
+          <div>
+            <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">Stage</label>
+            <select id="repair-stage" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={formValues.repairStage} onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}>
+              <option>New</option><option>Awaiting Approval</option><option>In Progress</option><option>Ready for Pickup</option>
+            </select>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-1">
@@ -102,6 +93,7 @@ export default function WorkItemsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [deletingRepairId, setDeletingRepairId] = useState<string | null>(null);
+  const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
 
   useEffect(() => {
     writeStoredRepairs(repairs);
@@ -119,18 +111,21 @@ export default function WorkItemsPage() {
 
   const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
   const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
+  const selectedRepair = useMemo(() => repairs.find((repair) => repair.id === selectedRepairId) ?? null, [repairs, selectedRepairId]);
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
-    setRepairs((prev) => [{ id: `repair_${Date.now()}`, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: payload.priority, status: "Open" }, ...prev]);
+    const newRepair = { id: `repair_${Date.now()}`, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: "Medium" as const, status: "Open" as const };
+    setRepairs((prev) => [newRepair, ...prev]);
+    setSelectedRepairId(newRepair.id);
     setIsAddRepairOpen(false);
   };
 
   const handleEditRepair = (repairId: string, payload: NewRepairFormValues) => {
-    setRepairs((prev) => prev.map((repair) => (repair.id === repairId ? { ...repair, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: payload.priority } : repair)));
+    setRepairs((prev) => prev.map((repair) => (repair.id === repairId ? { ...repair, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage } : repair)));
     setEditingRepairId(null);
   };
 
-  const toFormValues = (repair: RepairItem): NewRepairFormValues => ({ customerName: repair.customerName, customerPhone: repair.customerPhone, assetName: repair.assetName, repairTitle: repair.title, description: repair.description, repairStage: repair.stage, priority: repair.priority });
+  const toFormValues = (repair: RepairItem): NewRepairFormValues => ({ customerName: repair.customerName, customerPhone: repair.customerPhone, assetName: repair.assetName, repairTitle: repair.title, description: repair.description, repairStage: repair.stage });
 
   return (
     <>
@@ -144,36 +139,42 @@ export default function WorkItemsPage() {
           </div>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-          <table className="w-full table-fixed">
-            <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[37%] px-5 py-4">Title</th><th className="w-[24%] px-5 py-4">Customer</th><th className="w-[22%] px-5 py-4">Stage</th><th className="w-[12%] px-5 py-4">Status</th><th className="w-[5%] px-5 py-4" /></tr></thead>
-            <tbody>
-              {repairs.map((repair) => (
-                <tr key={repair.id} className="border-b border-[#253149] last:border-b-0">
-                  <td className="px-5 py-4 align-middle"><div className="text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 text-sm text-slate-500">{repair.assetName} · {repair.description}</div></td>
-                  <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customerName}</td>
-                  <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
-                  <td className="px-5 py-4 align-middle"><span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{repair.status}</span></td>
-                  <td className="relative px-5 py-4 align-middle text-center text-slate-400">
-                    <button data-action-menu="true" className="rounded-md p-1 hover:bg-slate-800/70" onClick={() => setOpenMenuId((prev) => (prev === repair.id ? null : repair.id))}><MoreHorizontal className="h-5 w-5" /></button>
-                    {openMenuId === repair.id ? (
-                      <div data-action-menu="true" className="absolute right-7 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
-                        <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200" onClick={() => { setEditingRepairId(repair.id); setOpenMenuId(null); }}><Pencil className="h-4 w-4" />Edit</button>
-                        <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50" onClick={() => { setDeletingRepairId(repair.id); setOpenMenuId(null); }}><Trash2 className="h-4 w-4" />Delete</button>
-                      </div>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <section className={`grid overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65 transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr_0px]"}`}>
+          <div className="min-w-0">
+            <table className="w-full table-fixed">
+              <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[37%] px-5 py-4">Title</th><th className="w-[24%] px-5 py-4">Customer</th><th className="w-[22%] px-5 py-4">Stage</th><th className="w-[12%] px-5 py-4">Status</th><th className="w-[5%] px-5 py-4" /></tr></thead>
+              <tbody>
+                {repairs.map((repair) => (
+                  <tr key={repair.id} onClick={() => setSelectedRepairId(repair.id)} className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-[#182236]/60" : ""}`}>
+                    <td className="px-5 py-4 align-middle"><button type="button" className="text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
+                    <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customerName}</td>
+                    <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
+                    <td className="px-5 py-4 align-middle"><span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{repair.status}</span></td>
+                    <td className="relative px-5 py-4 align-middle text-center text-slate-400">
+                      <button data-action-menu="true" className="rounded-md p-1 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
+                      {openMenuId === repair.id ? (
+                        <div data-action-menu="true" className="absolute right-7 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
+                          <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200" onClick={() => { setEditingRepairId(repair.id); setOpenMenuId(null); }}><Pencil className="h-4 w-4" />Edit</button>
+                          <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50" onClick={() => { setDeletingRepairId(repair.id); setOpenMenuId(null); }}><Trash2 className="h-4 w-4" />Delete</button>
+                        </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className={`overflow-hidden border-l border-[#253149] bg-[#0b1221] transition-transform duration-300 ${selectedRepair ? "translate-x-0" : "translate-x-full"}`}>
+            {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} onClose={() => setSelectedRepairId(null)} className="h-full border-l-0 bg-transparent" /> : null}
+          </div>
         </section>
       </div>
 
       {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={initialFormValues} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
       {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
       {deletingRepair ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"><h2 className="text-xl font-semibold">Delete repair</h2><p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p><div className="mt-6 flex items-center justify-end gap-3"><button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button><button type="button" onClick={() => { setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id)); setDeletingRepairId(null); }} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Delete</button></div></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"><h2 className="text-xl font-semibold">Delete repair</h2><p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p><div className="mt-6 flex items-center justify-end gap-3"><button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button><button type="button" onClick={() => { setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id)); if (selectedRepairId === deletingRepair.id) setSelectedRepairId(null); setDeletingRepairId(null); }} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Delete</button></div></div></div>
       ) : null}
     </>
   );

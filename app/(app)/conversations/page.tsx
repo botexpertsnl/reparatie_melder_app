@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Send, Link as LinkIcon, Wrench, X, ChevronRight, ChevronLeft, FileText, Camera } from "lucide-react";
+import { Search, Send, Link as LinkIcon, Wrench, X, ChevronLeft, FileText, Camera } from "lucide-react";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
+import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 
@@ -365,28 +366,11 @@ export default function ConversationsPage() {
         </div>
 
         {showRepairColumn && linkedRepair ? (
-          <aside className="relative border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xl font-semibold text-white">
-                <Wrench className="h-5 w-5 text-[#25d3c4]" />
-                Repair Details
-              </div>
-            </div>
-            <h3 className="text-2xl font-semibold text-white">{linkedRepair.title}</h3>
-            <div className="mt-2 text-sm text-slate-400">{linkedRepair.customerName} · {linkedRepair.assetName}</div>
-            <div className="mt-4 border-t border-[#253149] pt-4 text-sm text-slate-300">{linkedRepair.description}</div>
-            <div className="mt-5 space-y-2">
-              {["Diagnosing", "Repairing", "Ready for Pickup"].map((step) => (
-                <button key={step} type="button" className="flex w-full items-center justify-between rounded-xl border border-[#253149] px-3 py-2 text-left text-sm text-slate-200 hover:bg-[#182236]">
-                  {step}
-                  <ChevronRight className="h-4 w-4 text-slate-500" />
-                </button>
-              ))}
-            </div>
-            <button type="button" onClick={() => selectedThread && setLinkModal({ open: true, threadId: selectedThread.id })} className="absolute bottom-5 right-5 text-[#69f0df] hover:text-[#25d3c4]" aria-label="Change linked repair">
-              <LinkIcon className="h-5 w-5" />
-            </button>
-          </aside>
+          <RepairDetailsPanel
+            repair={linkedRepair}
+            onLinkChange={() => selectedThread && setLinkModal({ open: true, threadId: selectedThread.id })}
+            className="relative border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5"
+          />
         ) : null}
       </section>
 
