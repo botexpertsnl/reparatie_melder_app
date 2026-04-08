@@ -12,7 +12,9 @@ import {
   Workflow,
   Settings,
   Shield,
-  ChevronLeft
+  ChevronLeft,
+  Moon,
+  Sun
 } from "lucide-react";
 import clsx from "clsx";
 import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
@@ -27,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [openConversationCount, setOpenConversationCount] = useState(0);
   const [superAdmin, setSuperAdminState] = useState(false);
   const [impersonatingTenant, setImpersonatingTenant] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     const refreshOpenCount = () => {
@@ -48,6 +51,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSuperAdminState(isSuperAdmin());
     setImpersonatingTenant(getImpersonatingTenant());
   }, [pathname]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("statusflow.theme");
+    const initial = stored === "light" ? "light" : "dark";
+    setTheme(initial);
+    document.documentElement.classList.toggle("theme-light", initial === "light");
+  }, []);
 
   const navSections = [
     {
@@ -82,17 +92,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.location.href = "/admin/diagnostics";
   };
 
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      document.documentElement.classList.toggle("theme-light", next === "light");
+      window.localStorage.setItem("statusflow.theme", next);
+      return next;
+    });
+  };
+
   return (
-    <div className={clsx("min-h-screen bg-[#040914] text-slate-100 md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")}>
-      <aside className="flex min-h-screen flex-col border-r border-[#1a2436] bg-[#060d19]">
-        <div className="border-b border-[#1a2436] px-6 py-5">
+    <div className={clsx("min-h-screen md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")} style={{ background: "var(--bg)", color: "var(--text-primary)" }}>
+      <aside className="flex min-h-screen flex-col border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+        <div className="border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-4">
             <div className="rounded-xl bg-[#25d3c4] p-3 text-[#04243a]">
               <MessageSquareText className="h-5 w-5" />
             </div>
             <div className={collapsed ? "hidden" : "block"}>
-              <div className="text-2xl font-semibold leading-none tracking-tight text-white">StatusFlow</div>
-              <div className="mt-1 text-sm text-slate-400">Communication Platform</div>
+              <div className="text-2xl font-semibold leading-none tracking-tight" style={{ color: "var(--text-primary)" }}>StatusFlow</div>
+              <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>Communication Platform</div>
             </div>
           </div>
         </div>
@@ -134,16 +153,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
 
-        <div className="border-t border-[#1a2436] p-4">
-          <button className="flex w-full items-center justify-center rounded-md p-3 text-slate-500 hover:bg-slate-900/70" onClick={() => setCollapsed((prev) => !prev)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+        <div className="border-t p-4" style={{ borderColor: "var(--border)" }}>
+          <button className="flex w-full items-center justify-center rounded-xl p-3 hover:bg-white/5" style={{ color: "var(--text-muted)" }} onClick={() => setCollapsed((prev) => !prev)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
             <ChevronLeft className={clsx("h-5 w-5 transition-transform", collapsed ? "rotate-180" : "")} />
           </button>
         </div>
       </aside>
 
       <div className="flex min-h-screen flex-col">
-        <header className="flex h-[69px] items-center justify-end border-b border-[#1a2436] bg-[#101722] px-8">
-          <div className="flex items-center gap-2 rounded-lg bg-[#182334] px-4 py-2 text-sm text-slate-400">
+        <header className="flex h-[69px] items-center justify-end gap-3 border-b px-8" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+          <button type="button" onClick={toggleTheme} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }} aria-label="Toggle theme">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+          <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
             <button
               type="button"
               onClick={() => {
