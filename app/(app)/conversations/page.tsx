@@ -356,7 +356,7 @@ export default function ConversationsPage() {
                 <div className="flex items-center gap-2">
                   {selectedThread.linkedRepairId ? (
                     showRepairPanel ? null : (
-                      <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[#25d3c4]/50 bg-[#25d3c4]/10 px-3 py-2 text-sm font-semibold text-[#69f0df]">
+                      <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)]">
                         <Wrench className="h-4 w-4" />
                         {repairLabel} Details
                       </button>
@@ -398,7 +398,7 @@ export default function ConversationsPage() {
                   >
                     <Camera className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={sendMessage} className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#28d9c6] text-[#022a36]"><Send className="h-4 w-4" /></button>
+                  <button type="button" onClick={sendMessage} className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--surface-3)] text-[var(--text-primary)]"><Send className="h-4 w-4" /></button>
                 </div>
                 <input
                   ref={imageInputRef}

@@ -199,7 +199,7 @@ export default function WorkItemsPage() {
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400">All<ChevronDown className="ml-4 h-5 w-5" /></button>
               <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border border-[#253149] bg-[#0a111f] px-4 text-sm text-slate-400"><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
-              <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]"><Plus className="h-5 w-5" />New {repairLabel}</button>
+              <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"><Plus className="h-5 w-5" />New {repairLabel}</button>
             </div>
           </div>
 

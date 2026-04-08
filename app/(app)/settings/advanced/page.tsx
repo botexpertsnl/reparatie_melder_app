@@ -367,7 +367,7 @@ export default function AdvancedSettingsPage() {
             <h1 className="text-2xl font-semibold text-white">Workflow Stages</h1>
             <p className="mt-1 text-sm text-slate-400">Configure stages for your repairs</p>
           </div>
-          <button onClick={() => setIsAddModalOpen(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#28d9c6] px-5 text-sm font-semibold text-[#022a36]">
+          <button onClick={() => setIsAddModalOpen(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]">
             <Plus className="h-4 w-4" />
             Add Stage
           </button>

@@ -85,24 +85,17 @@ body {
   @apply rounded-full px-2.5 py-1 text-xs;
 }
 
-.subtle-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+.card input,
+.card select,
+.card textarea {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
 }
 
-.subtle-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.subtle-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.subtle-scrollbar::-webkit-scrollbar-thumb {
-  border-radius: 9999px;
-  background: rgba(148, 163, 184, 0.22);
-  border: 2px solid transparent;
-  background-clip: padding-box;
+.card input::placeholder,
+.card textarea::placeholder {
+  color: var(--text-muted) !important;
 }
 
 .subtle-scrollbar {
