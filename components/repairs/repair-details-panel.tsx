@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link as LinkIcon, MessageSquare, Wrench, X } from "lucide-react";
 import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 
 type RepairDetailsPanelProps = {
   repair: StoredRepair;
@@ -14,6 +15,7 @@ type RepairDetailsPanelProps = {
   isLinkActive?: boolean;
   linkedConversationHref?: string;
   className?: string;
+  onStageChange?: (stageName: string) => void;
 };
 
 export function RepairDetailsPanel({
@@ -25,10 +27,17 @@ export function RepairDetailsPanel({
   isLinkActive = true,
   linkedConversationHref,
   className,
+  onStageChange,
 }: RepairDetailsPanelProps) {
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
   );
+  const [templates, setTemplates] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultStoredTemplates));
+  const [templateConfirmation, setTemplateConfirmation] = useState<{
+    stage: StoredWorkflowStage;
+    template: StoredTemplate;
+    variableValues: string[];
+  } | null>(null);
 
   useEffect(() => {
     const refreshWorkflowStages = () => {
@@ -43,16 +52,78 @@ export function RepairDetailsPanel({
     };
   }, []);
 
+  useEffect(() => {
+    const refreshTemplates = () => {
+      setTemplates(readStoredTemplates(defaultStoredTemplates));
+    };
+
+    refreshTemplates();
+    window.addEventListener("templates:changed", refreshTemplates);
+    window.addEventListener("storage", refreshTemplates);
+
+    return () => {
+      window.removeEventListener("templates:changed", refreshTemplates);
+      window.removeEventListener("storage", refreshTemplates);
+    };
+  }, []);
+
   const currentStageIndex = useMemo(
     () => workflowStages.findIndex((stage) => stage.name === repair.stage),
     [repair.stage, workflowStages]
   );
 
+  const resolveRepairField = (field?: string) => {
+    if (field === "customerName") return repair.customerName;
+    if (field === "customerPhone") return repair.customerPhone;
+    if (field === "assetName") return repair.assetName;
+    if (field === "title") return repair.title;
+    if (field === "description") return repair.description;
+    if (field === "stage") return repair.stage;
+    if (field === "priority") return repair.priority;
+    return "";
+  };
+
+  const buildVariableDefaults = (template: StoredTemplate) =>
+    (template.variables ?? []).map((variable) =>
+      variable.mode === "repair_field"
+        ? resolveRepairField(variable.repairField)
+        : variable.manualValue ?? ""
+    );
+
+  const fillTemplateBody = (template: StoredTemplate, variableValues: string[]) =>
+    template.body.replace(/\{\{\s*(\d+)\s*\}\}/g, (match, rawIndex) => {
+      const value = variableValues[Number(rawIndex) - 1];
+      return value && value.trim().length > 0 ? value : match;
+    });
+
+  const handleStageSelect = (stage: StoredWorkflowStage) => {
+    if (!onStageChange || stage.name === repair.stage) return;
+
+    if (stage.templateAutomationEnabled && stage.templateId) {
+      const template = templates.find((item) => item.id === stage.templateId);
+      if (template) {
+        setTemplateConfirmation({
+          stage,
+          template,
+          variableValues: buildVariableDefaults(template)
+        });
+        return;
+      }
+    }
+
+    onStageChange(stage.name);
+  };
+
+  const templatePreview = templateConfirmation
+    ? fillTemplateBody(templateConfirmation.template, templateConfirmation.variableValues)
+    : "";
+
   return (
-    <aside
-      className={`relative flex h-full max-h-full min-h-0 flex-col border-l px-5 py-5 ${className ?? ""}`}
-      style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-    >
+    <>
+      <aside
+        className={`relative flex h-full max-h-full min-h-0 flex-col border-l px-5 py-5 ${className ?? ""}`}
+        style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+      >
       <div className="mb-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-xl font-semibold text-white">
           <Wrench className="h-5 w-5 text-[#25d3c4]" />
@@ -104,9 +175,10 @@ export function RepairDetailsPanel({
           const isUpcoming = currentStageIndex < 0 || index > currentStageIndex;
 
           return (
-            <div
+            <button
+              type="button"
               key={stage.id}
-              className="flex w-full cursor-default items-center gap-2.5 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-3 py-2.5 text-left text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+              className="flex w-full items-center gap-2.5 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-3 py-2.5 text-left text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)] disabled:cursor-default"
               style={isPrevious
                 ? {
                   opacity: 0.55
@@ -122,14 +194,95 @@ export function RepairDetailsPanel({
                     }
                     : undefined}
               aria-current={isCurrent ? "step" : undefined}
+              onClick={() => handleStageSelect(stage)}
+              disabled={!onStageChange || isCurrent}
             >
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
               <span className="text-sm font-semibold text-white">{stage.name}</span>
-            </div>
+            </button>
           );
           })}
         </div>
       </div>
-    </aside>
+      </aside>
+
+      {templateConfirmation ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Confirm template send</h2>
+              <button
+                type="button"
+                onClick={() => setTemplateConfirmation(null)}
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
+                aria-label="Close template confirmation"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600">
+              Moving to <span className="font-semibold">{templateConfirmation.stage.name}</span> will send template{" "}
+              <span className="font-semibold">{templateConfirmation.template.name}</span>{" "}
+              {templateConfirmation.stage.templateSendDelayEnabled
+                ? `after ${templateConfirmation.stage.templateSendDelayHours ?? 0} hour(s) and ${templateConfirmation.stage.templateSendDelayMinutes ?? 0} minute(s).`
+                : "immediately."}
+            </p>
+
+            {(templateConfirmation.template.variables ?? []).length > 0 ? (
+              <div className="mt-4 space-y-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Variables</h3>
+                {(templateConfirmation.template.variables ?? []).map((variable, index) => (
+                  <div key={variable.id} className="space-y-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {variable.name || variable.label || variable.key || `Variable ${index + 1}`}
+                    </label>
+                    <input
+                      type="text"
+                      value={templateConfirmation.variableValues[index] ?? ""}
+                      onChange={(event) =>
+                        setTemplateConfirmation((prev) => {
+                          if (!prev) return prev;
+                          const nextValues = [...prev.variableValues];
+                          nextValues[index] = event.target.value;
+                          return { ...prev, variableValues: nextValues };
+                        })
+                      }
+                      className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Template preview</h3>
+              <div className="mt-2 rounded-xl border border-[#cdd5e2] bg-white p-3 text-sm text-slate-700">
+                {templatePreview}
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setTemplateConfirmation(null)}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onStageChange?.(templateConfirmation.stage.name);
+                  setTemplateConfirmation(null);
+                }}
+                className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91]"
+              >
+                Confirm and move stage
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
