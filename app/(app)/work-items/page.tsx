@@ -299,10 +299,10 @@ export default function WorkItemsPage() {
                     <td className="px-5 py-4 align-middle"><button type="button" className="w-full min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
                     <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">{repair.customerName}</td>
                     <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
-                    <td className="relative px-5 py-4 pr-4 align-middle text-right text-slate-400">
+                    <td className={`relative px-5 py-4 align-middle text-right text-slate-400 ${selectedRepair ? "pr-8" : "pr-4"}`}>
                       <button data-action-menu="true" className="rounded-md p-2 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
                       {openMenuId === repair.id ? (
-                        <div data-action-menu="true" className="absolute right-4 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
+                        <div data-action-menu="true" className={`absolute top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl ${selectedRepair ? "right-8" : "right-4"}`}>
                           <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200" onClick={() => { setEditingRepairId(repair.id); setOpenMenuId(null); }}><Pencil className="h-4 w-4" />Edit</button>
                           <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50" onClick={() => { setDeletingRepairId(repair.id); setOpenMenuId(null); }}><Trash2 className="h-4 w-4" />Delete</button>
                         </div>
@@ -325,6 +325,7 @@ export default function WorkItemsPage() {
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
+              linkedConversationHref={selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined}
               className="h-full pl-6 pr-5 py-5"
             />
             {openRepairLinkMenu ? (
