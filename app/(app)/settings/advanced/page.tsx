@@ -14,6 +14,9 @@ type StageFormValues = {
   color: string;
   templateAutomationEnabled: boolean;
   templateId: string;
+  templateSendDelayEnabled: boolean;
+  templateSendDelayHours: number;
+  templateSendDelayMinutes: number;
 };
 
 const colorOptions = ["#76d2b0", "#4e8de8", "#ecbd69", "#e88e8e", "#b18be6", "#7ec5d4", "#efb37e", "#e59fcd", "#e48998", "#9a9de7", "#74c8bf", "#9ca3af"];
@@ -137,7 +140,10 @@ const emptyFormValues: StageFormValues = {
   description: "",
   color: "#4e8de8",
   templateAutomationEnabled: false,
-  templateId: ""
+  templateId: "",
+  templateSendDelayEnabled: false,
+  templateSendDelayHours: 0,
+  templateSendDelayMinutes: 0
 };
 
 function stageToFormValues(stage: Stage): StageFormValues {
@@ -146,7 +152,10 @@ function stageToFormValues(stage: Stage): StageFormValues {
     description: stage.description,
     color: stage.color,
     templateAutomationEnabled: Boolean(stage.templateAutomationEnabled),
-    templateId: stage.templateId ?? ""
+    templateId: stage.templateId ?? "",
+    templateSendDelayEnabled: Boolean(stage.templateSendDelayEnabled),
+    templateSendDelayHours: Math.max(0, stage.templateSendDelayHours ?? 0),
+    templateSendDelayMinutes: Math.min(59, Math.max(0, stage.templateSendDelayMinutes ?? 0))
   };
 }
 
@@ -175,6 +184,10 @@ function StageModal({
     }
 
     if (values.templateAutomationEnabled && !values.templateId) {
+      return false;
+    }
+
+    if (values.templateSendDelayHours < 0 || values.templateSendDelayMinutes < 0 || values.templateSendDelayMinutes > 59) {
       return false;
     }
 
@@ -254,7 +267,10 @@ function StageModal({
                   setValues((prev) => ({
                     ...prev,
                     templateAutomationEnabled: !prev.templateAutomationEnabled,
-                    templateId: !prev.templateAutomationEnabled ? prev.templateId : ""
+                    templateId: !prev.templateAutomationEnabled ? prev.templateId : "",
+                    templateSendDelayEnabled: !prev.templateAutomationEnabled ? prev.templateSendDelayEnabled : false,
+                    templateSendDelayHours: !prev.templateAutomationEnabled ? prev.templateSendDelayHours : 0,
+                    templateSendDelayMinutes: !prev.templateAutomationEnabled ? prev.templateSendDelayMinutes : 0
                   }))
                 }
                 aria-label="Toggle automatic template message"
@@ -271,7 +287,15 @@ function StageModal({
                     id="template-message"
                     className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
                     value={values.templateId}
-                    onChange={(event) => setValues((prev) => ({ ...prev, templateId: event.target.value }))}
+                    onChange={(event) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        templateId: event.target.value,
+                        templateSendDelayEnabled: event.target.value ? prev.templateSendDelayEnabled : false,
+                        templateSendDelayHours: event.target.value ? prev.templateSendDelayHours : 0,
+                        templateSendDelayMinutes: event.target.value ? prev.templateSendDelayMinutes : 0
+                      }))
+                    }
                   >
                     <option value="">Select a template</option>
                     {templates.map((template) => (
@@ -286,6 +310,72 @@ function StageModal({
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Template preview</div>
                   <p className="mt-2 line-clamp-3 min-h-[60px] text-sm text-slate-600">{selectedTemplate ? selectedTemplate.body : "Select a template to preview its message."}</p>
                 </div>
+
+                {values.templateId ? (
+                  <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">Moment of sending</div>
+                        <div className="mt-1 text-sm text-slate-500">By default this is direct. Switch to custom to delay after stage assignment.</div>
+                      </div>
+                      <button
+                        type="button"
+                        className={clsx("relative inline-flex h-7 w-12 items-center rounded-full transition", values.templateSendDelayEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
+                        onClick={() =>
+                          setValues((prev) => ({
+                            ...prev,
+                            templateSendDelayEnabled: !prev.templateSendDelayEnabled
+                          }))
+                        }
+                        aria-label="Toggle custom send moment"
+                      >
+                        <span className={clsx("inline-block h-5 w-5 transform rounded-full bg-white transition", values.templateSendDelayEnabled ? "translate-x-6" : "translate-x-1")} />
+                      </button>
+                    </div>
+
+                    <div className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+                      {values.templateSendDelayEnabled ? "Custom delay" : "Directly"}
+                    </div>
+
+                    {values.templateSendDelayEnabled ? (
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="template-delay-hours" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Hours</label>
+                          <input
+                            id="template-delay-hours"
+                            type="number"
+                            min={0}
+                            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                            value={values.templateSendDelayHours}
+                            onChange={(event) =>
+                              setValues((prev) => ({
+                                ...prev,
+                                templateSendDelayHours: Math.max(0, Number(event.target.value) || 0)
+                              }))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="template-delay-minutes" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Minutes</label>
+                          <input
+                            id="template-delay-minutes"
+                            type="number"
+                            min={0}
+                            max={59}
+                            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                            value={values.templateSendDelayMinutes}
+                            onChange={(event) =>
+                              setValues((prev) => ({
+                                ...prev,
+                                templateSendDelayMinutes: Math.min(59, Math.max(0, Number(event.target.value) || 0))
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -395,7 +485,10 @@ export default function AdvancedSettingsPage() {
       color: values.color,
       visibleToCustomer: true,
       templateAutomationEnabled: values.templateAutomationEnabled,
-      templateId: values.templateAutomationEnabled ? values.templateId : undefined
+      templateId: values.templateAutomationEnabled ? values.templateId : undefined,
+      templateSendDelayEnabled: values.templateAutomationEnabled ? values.templateSendDelayEnabled : false,
+      templateSendDelayHours: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayHours : 0,
+      templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0
     };
 
     setStages((prev) => normalizeStages([...prev, newStage]));
@@ -418,7 +511,10 @@ export default function AdvancedSettingsPage() {
           description: values.description.trim(),
           color: values.color,
           templateAutomationEnabled: values.templateAutomationEnabled,
-          templateId: values.templateAutomationEnabled ? values.templateId : undefined
+          templateId: values.templateAutomationEnabled ? values.templateId : undefined,
+          templateSendDelayEnabled: values.templateAutomationEnabled ? values.templateSendDelayEnabled : false,
+          templateSendDelayHours: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayHours : 0,
+          templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0
         };
       }))
     );
@@ -448,6 +544,9 @@ export default function AdvancedSettingsPage() {
       nextStage.key !== START_STAGE_KEY &&
       !FINAL_STAGE_KEY_SET.has(nextStage.key)
     );
+    const delayLabel = stage.templateSendDelayEnabled
+      ? `${stage.templateSendDelayHours ?? 0}h ${stage.templateSendDelayMinutes ?? 0}m after assignment`
+      : "Directly";
 
     return (
       <div
@@ -511,7 +610,7 @@ export default function AdvancedSettingsPage() {
               <span>{stage.description}</span>
               {stage.templateAutomationEnabled && stage.templateId ? (
                 <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
-                  Template: {templateNameById(stage.templateId) ?? "Deleted template"}
+                  Template: {templateNameById(stage.templateId) ?? "Deleted template"} · {delayLabel}
                 </span>
               ) : null}
             </div>
