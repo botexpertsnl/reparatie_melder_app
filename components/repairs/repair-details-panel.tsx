@@ -7,10 +7,19 @@ type RepairDetailsPanelProps = {
   onClose?: () => void;
   onLinkChange?: () => void;
   onLinkAriaLabel?: string;
+  isLinkActive?: boolean;
   className?: string;
 };
 
-export function RepairDetailsPanel({ repair, itemLabel = "Repair", onClose, onLinkChange, onLinkAriaLabel = "Change linked repair", className }: RepairDetailsPanelProps) {
+export function RepairDetailsPanel({
+  repair,
+  itemLabel = "Repair",
+  onClose,
+  onLinkChange,
+  onLinkAriaLabel = "Change linked repair",
+  isLinkActive = true,
+  className,
+}: RepairDetailsPanelProps) {
   return (
     <aside className={className ?? "relative border-l border-[#253149] bg-[#0b1221] px-5 py-5"}>
       <div className="mb-4 flex items-center justify-between">
@@ -41,7 +50,12 @@ export function RepairDetailsPanel({ repair, itemLabel = "Repair", onClose, onLi
         ))}
       </div>
       {onLinkChange ? (
-        <button type="button" onClick={onLinkChange} className="absolute bottom-5 right-5 text-[#69f0df] hover:text-[#25d3c4]" aria-label={onLinkAriaLabel}>
+        <button
+          type="button"
+          onClick={onLinkChange}
+          className={`absolute bottom-5 right-5 ${isLinkActive ? "text-[#69f0df] hover:text-[#25d3c4]" : "text-slate-500 hover:text-slate-300"}`}
+          aria-label={onLinkAriaLabel}
+        >
           <LinkIcon className="h-5 w-5" />
         </button>
       ) : null}
