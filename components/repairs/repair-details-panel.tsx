@@ -48,22 +48,6 @@ export function RepairDetailsPanel({
     [repair.stage, workflowStages]
   );
 
-  const toRgba = (hex: string, alpha: number) => {
-    const normalizedHex = hex.replace("#", "");
-    const expandedHex = normalizedHex.length === 3
-      ? normalizedHex.split("").map((character) => `${character}${character}`).join("")
-      : normalizedHex;
-
-    if (expandedHex.length !== 6) {
-      return `rgba(148, 163, 184, ${alpha})`;
-    }
-
-    const red = Number.parseInt(expandedHex.slice(0, 2), 16);
-    const green = Number.parseInt(expandedHex.slice(2, 4), 16);
-    const blue = Number.parseInt(expandedHex.slice(4, 6), 16);
-    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-  };
-
   return (
     <aside className={className ?? "relative border-l border-[#253149] bg-[#0b1221] px-5 py-5"}>
       <div className="mb-4 flex items-center justify-between">
@@ -95,29 +79,25 @@ export function RepairDetailsPanel({
             <button
               key={stage.id}
               type="button"
-              className="flex w-full cursor-default items-center justify-between rounded-xl border px-3 py-2 text-left text-sm font-medium transition-colors"
+              className="flex w-full cursor-default items-center gap-3 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-3 text-left text-sm font-medium transition-all duration-200"
               style={isPrevious
                 ? {
-                  color: "#94a3b8",
-                  borderColor: "#475569",
-                  backgroundColor: "rgba(15, 23, 42, 0.5)"
+                  opacity: 0.55
                 }
                 : isCurrent
                   ? {
-                    color: "#ffffff",
                     borderColor: stage.color,
-                    backgroundColor: stage.color
+                    boxShadow: `0 0 0 1px ${stage.color} inset`
                   }
                   : isUpcoming
                     ? {
-                      color: stage.color,
-                      borderColor: toRgba(stage.color, 0.45),
-                      backgroundColor: toRgba(stage.color, 0.18)
+                      opacity: 0.9
                     }
                     : undefined}
               aria-current={isCurrent ? "step" : undefined}
             >
-              {stage.name}
+              <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
+              <span className="text-base font-semibold text-white">{stage.name}</span>
             </button>
           );
         })}
