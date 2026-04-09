@@ -505,19 +505,34 @@ function TemplateModal({
             </div>
 
             <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
-              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-800">Body</h3>
-                  <p className="text-xs text-slate-500">Raw body stores WhatsApp placeholders like {"{{1}}"}. Preview below shows human-friendly labels.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative">
-                    <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={() => setShowVariablePicker((prev) => !prev)}>
-                      <Plus className="h-3.5 w-3.5" />
-                      + Add Variable
-                    </button>
-                    {showVariablePicker ? (
-                      <div className="absolute right-0 top-9 z-20 w-72 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Body</h3>
+                <p className="text-xs text-slate-500">Raw body stores WhatsApp placeholders like {"{{1}}"}. Preview below shows human-friendly labels.</p>
+              </div>
+
+              <textarea
+                id="body-preview"
+                ref={bodyTextareaRef}
+                className="mt-3 min-h-28 w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
+                placeholder="Hello {{1}}, your repair is {{2}}."
+                value={values.body}
+                onClick={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
+                onKeyUp={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
+                onSelect={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
+                onChange={(event) => {
+                  setValues((prev) => ({ ...prev, body: event.target.value }));
+                  setBodySelection({ start: event.target.selectionStart, end: event.target.selectionEnd });
+                }}
+              />
+
+              <div className="mt-3 flex flex-wrap items-center justify-start gap-2">
+                <div className="relative">
+                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={() => setShowVariablePicker((prev) => !prev)}>
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Variable
+                  </button>
+                  {showVariablePicker ? (
+                    <div className="absolute left-0 top-9 z-20 w-72 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
                         {values.variables.length > 0 ? values.variables.map((variable) => (
                           <button key={variable.id} type="button" className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-slate-100" onClick={() => insertVariableToken(variable)}>
                             <span className="text-sm font-medium text-slate-700">{variable.label} <span className="text-xs text-slate-500">({variable.key})</span></span>
@@ -536,42 +551,26 @@ function TemplateModal({
                             setIsButtonsOpen(false);
                           }}
                         >
-                          + Create and insert new variable
+                          Create and insert new variable
                         </button>
                       </div>
-                    ) : null}
-                  </div>
+                  ) : null}
+                </div>
 
-                  <div className="relative">
-                    <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={() => setShowAddButtonMenu((prev) => !prev)}>
-                      <Plus className="h-3.5 w-3.5" />
-                      + Add Button
-                    </button>
-                    {showAddButtonMenu ? (
-                      <div className="absolute right-0 top-9 z-10 w-48 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
+                <div className="relative">
+                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={() => setShowAddButtonMenu((prev) => !prev)}>
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Button
+                  </button>
+                  {showAddButtonMenu ? (
+                    <div className="absolute left-0 top-9 z-10 w-48 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
                         <button type="button" disabled={quickReplyCount >= 3} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("QUICK_REPLY")}>Quick Reply</button>
                         <button type="button" disabled={urlCount >= 1 || ctaCount >= 2} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("URL")}>CTA: URL</button>
                         <button type="button" disabled={phoneCount >= 1 || ctaCount >= 2} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("PHONE_NUMBER")}>CTA: Phone</button>
-                      </div>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
-
-              <textarea
-                id="body-preview"
-                ref={bodyTextareaRef}
-                className="min-h-28 w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
-                placeholder="Hello {{1}}, your repair is {{2}}."
-                value={values.body}
-                onClick={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
-                onKeyUp={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
-                onSelect={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
-                onChange={(event) => {
-                  setValues((prev) => ({ ...prev, body: event.target.value }));
-                  setBodySelection({ start: event.target.selectionStart, end: event.target.selectionEnd });
-                }}
-              />
 
               <div className="mt-5">
                 <h3 className="mb-2 text-sm font-semibold text-slate-800">Template preview</h3>
@@ -588,13 +587,15 @@ function TemplateModal({
             </div>
 
             {values.variables.length > 0 ? (
-              <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
-                <button type="button" className="mb-3 flex w-full items-center justify-between text-left" onClick={() => setIsVariablesOpen((prev) => !prev)}>
+              <div className={clsx("rounded-xl border border-[#d7dce3] bg-white", isVariablesOpen ? "p-4" : "px-4 py-3")}>
+                <button type="button" className={clsx("flex w-full items-center justify-between rounded-lg px-2 text-left transition-colors hover:bg-slate-50", isVariablesOpen ? "mb-3 min-h-10" : "min-h-9")} onClick={() => setIsVariablesOpen((prev) => !prev)}>
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800">Variables</h3>
                     <p className="text-xs text-slate-500">Each variable stores index/key/label metadata for backend mapping.</p>
                   </div>
-                  {isVariablesOpen ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#d7dce3] bg-white text-slate-500">
+                    {isVariablesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </span>
                 </button>
 
                 {isVariablesOpen ? (
@@ -637,18 +638,20 @@ function TemplateModal({
                   </div>
                 ) : null}
 
-                {orphanVariableIndexes.length > 0 ? <p className="mt-3 text-xs text-amber-600">Unused variables detected ({orphanVariableIndexes.map((index) => toPlaceholder(index)).join(", ")}); they will be removed during save normalization.</p> : null}
+                {isVariablesOpen && orphanVariableIndexes.length > 0 ? <p className="mt-3 text-xs text-amber-600">Unused variables detected ({orphanVariableIndexes.map((index) => toPlaceholder(index)).join(", ")}); they will be removed during save normalization.</p> : null}
               </div>
             ) : null}
 
             {values.buttons.length > 0 ? (
-              <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
-                <button type="button" className="mb-3 flex w-full items-center justify-between text-left" onClick={() => setIsButtonsOpen((prev) => !prev)}>
+              <div className={clsx("rounded-xl border border-[#d7dce3] bg-white", isButtonsOpen ? "p-4" : "px-4 py-3")}>
+                <button type="button" className={clsx("flex w-full items-center justify-between rounded-lg px-2 text-left transition-colors hover:bg-slate-50", isButtonsOpen ? "mb-3 min-h-10" : "min-h-9")} onClick={() => setIsButtonsOpen((prev) => !prev)}>
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800">Buttons</h3>
                     <p className="text-xs text-slate-500">{quickReplyCount > 0 ? `${quickReplyCount}/3 quick replies used` : "Add quick replies or call-to-action buttons."}</p>
                   </div>
-                  {isButtonsOpen ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#d7dce3] bg-white text-slate-500">
+                    {isButtonsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </span>
                 </button>
 
                 {isButtonsOpen ? (
