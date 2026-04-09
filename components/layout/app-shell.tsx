@@ -116,8 +116,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className={clsx("flex-1 py-6", collapsed ? "px-2" : "px-4")}>
-          <nav className="space-y-8">
+        <div className={clsx("relative flex-1 py-6", collapsed ? "px-2" : "px-4")}>
+          <nav className="space-y-8 pb-16">
             {visibleSections.map((section) => (
               <div key={section.label}>
                 <h2 className={clsx("px-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500", collapsed ? "hidden" : "block")}>{section.label}</h2>
@@ -152,6 +152,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ))}
           </nav>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={clsx(
+              "absolute bottom-4 inline-flex h-9 w-9 items-center justify-center rounded-xl border",
+              collapsed ? "right-1/2 translate-x-1/2" : "right-4"
+            )}
+            style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </div>
 
         <div className="border-t p-4" style={{ borderColor: "var(--border)" }}>
@@ -163,10 +175,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-screen flex-col">
         <header className="flex h-[69px] items-center justify-end gap-3 border-b px-8" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-          <button type="button" onClick={toggleTheme} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }} aria-label="Toggle theme">
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
           <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+            <span className="text-xs uppercase tracking-[0.08em] text-slate-400">Open</span>
             <button
               type="button"
               onClick={() => {
