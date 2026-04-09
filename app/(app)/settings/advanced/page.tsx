@@ -18,6 +18,40 @@ type StageFormValues = {
 
 const colorOptions = ["#76d2b0", "#4e8de8", "#ecbd69", "#e88e8e", "#b18be6", "#7ec5d4", "#efb37e", "#e59fcd", "#e48998", "#9a9de7", "#74c8bf", "#9ca3af"];
 
+const START_STAGE_KEY = "new";
+const FINAL_STAGE_KEYS = ["completed", "cancelled"] as const;
+const FINAL_STAGE_KEY_SET = new Set<string>(FINAL_STAGE_KEYS);
+
+const fixedStagePresets: Record<string, Stage> = {
+  new: {
+    id: "stage_new",
+    name: "New",
+    key: "new",
+    description: "Repair just received",
+    color: "#6b7280",
+    visibleToCustomer: true,
+    isStart: true
+  },
+  completed: {
+    id: "stage_completed",
+    name: "Completed",
+    key: "completed",
+    description: "Repair completed",
+    color: "#10b981",
+    visibleToCustomer: true,
+    isTerminal: true
+  },
+  cancelled: {
+    id: "stage_cancelled",
+    name: "Cancelled",
+    key: "cancelled",
+    description: "Repair cancelled",
+    color: "#ef4444",
+    visibleToCustomer: true,
+    isTerminal: true
+  }
+};
+
 const defaultTemplates: StoredTemplate[] = [
   {
     id: "tpl_1",
@@ -57,6 +91,7 @@ function normalizeStages(stages: Stage[]): Stage[] {
         visibleToCustomer: true
       });
     }
+
     const approvedInsertIndex = withSubStages.findIndex((stage) => stage.key === "not_approved") + 1;
     if (!hasApproved) {
       withSubStages.splice(approvedInsertIndex, 0, {
@@ -70,8 +105,32 @@ function normalizeStages(stages: Stage[]): Stage[] {
     }
   }
 
-  return withSubStages;
+  const withRequiredStages = [...withSubStages];
+  const ensureStage = (key: keyof typeof fixedStagePresets) => {
+    const existingIndex = withRequiredStages.findIndex((stage) => stage.key === key);
+    if (existingIndex >= 0) {
+      withRequiredStages[existingIndex] = { ...withRequiredStages[existingIndex] };
+      return;
+    }
+
+    withRequiredStages.push({ ...fixedStagePresets[key] });
+  };
+
+  ensureStage("new");
+  ensureStage("completed");
+  ensureStage("cancelled");
+
+  const startStage = withRequiredStages.find((stage) => stage.key === START_STAGE_KEY) ?? { ...fixedStagePresets.new };
+  const finalStages = FINAL_STAGE_KEYS.map((key) => withRequiredStages.find((stage) => stage.key === key) ?? { ...fixedStagePresets[key] });
+  const middleStages = withRequiredStages.filter((stage) => stage.key !== START_STAGE_KEY && !FINAL_STAGE_KEY_SET.has(stage.key));
+
+  return [
+    { ...startStage, isStart: true, isTerminal: false },
+    ...middleStages.map((stage) => ({ ...stage, isStart: false })),
+    ...finalStages.map((stage) => ({ ...stage, isStart: false, isTerminal: true }))
+  ];
 }
+
 
 const emptyFormValues: StageFormValues = {
   name: "",
@@ -307,14 +366,20 @@ export default function AdvancedSettingsPage() {
   const templateNameById = (templateId?: string) => templateOptions.find((template) => template.id === templateId)?.name;
 
   const moveStage = (index: number, direction: "up" | "down") => {
+    const stage = stages[index];
+    if (!stage || stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key)) return;
+
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= stages.length) return;
+
+    const targetStage = stages[targetIndex];
+    if (!targetStage || targetStage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(targetStage.key)) return;
 
     setStages((prev) => {
       const next = [...prev];
       const [moved] = next.splice(index, 1);
       next.splice(targetIndex, 0, moved);
-      return next;
+      return normalizeStages(next);
     });
   };
 
@@ -330,32 +395,36 @@ export default function AdvancedSettingsPage() {
       templateId: values.templateAutomationEnabled ? values.templateId : undefined
     };
 
-    setStages((prev) => [...prev, newStage]);
+    setStages((prev) => normalizeStages([...prev, newStage]));
     setIsAddModalOpen(false);
   };
 
   const handleEditStage = (stageId: string, values: StageFormValues) => {
     setStages((prev) =>
-      prev.map((stage) => {
+      normalizeStages(prev.map((stage) => {
         if (stage.id !== stageId) return stage;
+
+        const nextKey = stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key)
+          ? stage.key
+          : values.name.trim().toLowerCase().replace(/\s+/g, "_");
 
         return {
           ...stage,
           name: values.name.trim(),
-          key: values.name.trim().toLowerCase().replace(/\s+/g, "_"),
+          key: nextKey,
           description: values.description.trim(),
           color: values.color,
           templateAutomationEnabled: values.templateAutomationEnabled,
           templateId: values.templateAutomationEnabled ? values.templateId : undefined
         };
-      })
+      }))
     );
 
     setEditingStageId(null);
   };
 
   const handleDeleteStage = (stageId: string) => {
-    setStages((prev) => prev.filter((stage) => stage.id !== stageId));
+    setStages((prev) => normalizeStages(prev.filter((stage) => stage.id !== stageId)));
     setDeletingStageId(null);
   };
 
@@ -374,16 +443,46 @@ export default function AdvancedSettingsPage() {
         </div>
 
         <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-          {stages.map((stage, index) => (
-            <div key={stage.id} className="flex items-center justify-between gap-4 border-b border-[#253149] px-4 py-4 last:border-b-0">
+          {stages.map((stage, index) => {
+            const isFixedStage = stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key);
+            const previousStage = index > 0 ? stages[index - 1] : null;
+            const nextStage = index < stages.length - 1 ? stages[index + 1] : null;
+            const canMoveUp = Boolean(
+              !isFixedStage &&
+              previousStage &&
+              previousStage.key !== START_STAGE_KEY &&
+              !FINAL_STAGE_KEY_SET.has(previousStage.key)
+            );
+            const canMoveDown = Boolean(
+              !isFixedStage &&
+              nextStage &&
+              nextStage.key !== START_STAGE_KEY &&
+              !FINAL_STAGE_KEY_SET.has(nextStage.key)
+            );
+            const rowClassName = clsx(
+              "flex items-center justify-between gap-4 border-b border-[#253149] px-4 py-4 last:border-b-0",
+              stage.key === START_STAGE_KEY && "mb-3",
+              stage.key === "completed" && "mt-3"
+            );
+
+            return (
+            <div key={stage.id} className={rowClassName}>
               <div className="flex items-start gap-4">
-                <div className="mt-0.5 flex flex-col items-center text-slate-500">
-                  <button type="button" onClick={() => moveStage(index, "up")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} up`}>
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => moveStage(index, "down")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} down`}>
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
+                <div className="mt-0.5 flex min-h-9 flex-col items-center text-slate-500">
+                  {canMoveUp ? (
+                    <button type="button" onClick={() => moveStage(index, "up")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} up`}>
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <span className="h-5" aria-hidden="true" />
+                  )}
+                  {canMoveDown ? (
+                    <button type="button" onClick={() => moveStage(index, "down")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} down`}>
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <span className="h-5" aria-hidden="true" />
+                  )}
                 </div>
 
                 <span className="mt-2 h-3.5 w-3.5 rounded-full" style={{ backgroundColor: stage.color }} />
@@ -446,7 +545,8 @@ export default function AdvancedSettingsPage() {
                 ) : null}
               </div>
             </div>
-          ))}
+            );
+          })}
         </section>
       </div>
 
