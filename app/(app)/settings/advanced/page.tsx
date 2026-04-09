@@ -785,6 +785,7 @@ function AdvancedSettingsPageContent() {
   const [handledRequestedStageId, setHandledRequestedStageId] = useState<string | null>(null);
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
   const [openStageMenuId, setOpenStageMenuId] = useState<string | null>(null);
+  const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
 
   useEffect(() => {
     const refreshTemplates = () => {
@@ -851,6 +852,30 @@ function AdvancedSettingsPageContent() {
     });
   };
 
+  const isFixedStage = (stage: Stage | undefined) => {
+    if (!stage) return true;
+    return stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key);
+  };
+
+  const moveStageById = (sourceStageId: string, targetStageId: string) => {
+    if (sourceStageId === targetStageId) return;
+
+    setStages((prev) => {
+      const sourceIndex = prev.findIndex((stage) => stage.id === sourceStageId);
+      const targetIndex = prev.findIndex((stage) => stage.id === targetStageId);
+      const sourceStage = sourceIndex >= 0 ? prev[sourceIndex] : undefined;
+      const targetStage = targetIndex >= 0 ? prev[targetIndex] : undefined;
+      if (sourceIndex < 0 || targetIndex < 0) return prev;
+      if (isFixedStage(sourceStage) || isFixedStage(targetStage)) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(sourceIndex, 1);
+      const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+      next.splice(adjustedTargetIndex, 0, moved);
+      return normalizeStages(next);
+    });
+  };
+
   const handleAddStage = (values: StageFormValues) => {
     const newStage: Stage = {
       id: `stage_${Date.now()}`,
@@ -867,7 +892,13 @@ function AdvancedSettingsPageContent() {
       templateButtonActions: values.templateAutomationEnabled ? sanitizeTemplateButtonActions(values.templateButtonActions) : []
     };
 
-    setStages((prev) => normalizeStages([...prev, newStage]));
+    setStages((prev) => {
+      const insertAfterStartIndex = prev.findIndex((stage) => stage.key === START_STAGE_KEY);
+      const insertIndex = insertAfterStartIndex >= 0 ? insertAfterStartIndex + 1 : 0;
+      const next = [...prev];
+      next.splice(insertIndex, 0, newStage);
+      return normalizeStages(next);
+    });
     setIsAddModalOpen(false);
   };
 
@@ -906,17 +937,17 @@ function AdvancedSettingsPageContent() {
 
   const renderStageRow = (stage: Stage) => {
     const index = stages.findIndex((candidate) => candidate.id === stage.id);
-    const isFixedStage = stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key);
+    const fixedStage = isFixedStage(stage);
     const previousStage = index > 0 ? stages[index - 1] : null;
     const nextStage = index < stages.length - 1 ? stages[index + 1] : null;
     const canMoveUp = Boolean(
-      !isFixedStage &&
+      !fixedStage &&
       previousStage &&
       previousStage.key !== START_STAGE_KEY &&
       !FINAL_STAGE_KEY_SET.has(previousStage.key)
     );
     const canMoveDown = Boolean(
-      !isFixedStage &&
+      !fixedStage &&
       nextStage &&
       !FINAL_STAGE_KEY_SET.has(nextStage.key)
     );
@@ -932,6 +963,27 @@ function AdvancedSettingsPageContent() {
         key={stage.id}
         role="button"
         tabIndex={0}
+        draggable={!fixedStage}
+        onDragStart={(event) => {
+          if (fixedStage) return;
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", stage.id);
+          setDraggedStageId(stage.id);
+        }}
+        onDragOver={(event) => {
+          if (fixedStage || !draggedStageId || draggedStageId === stage.id) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        }}
+        onDrop={(event) => {
+          if (fixedStage) return;
+          event.preventDefault();
+          const sourceStageId = event.dataTransfer.getData("text/plain") || draggedStageId;
+          if (!sourceStageId) return;
+          moveStageById(sourceStageId, stage.id);
+          setDraggedStageId(null);
+        }}
+        onDragEnd={() => setDraggedStageId(null)}
         onClick={() => setEditingStageId(stage.id)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -1004,7 +1056,7 @@ function AdvancedSettingsPageContent() {
           </div>
         </div>
 
-        {!isFixedStage ? (
+        {!fixedStage ? (
           <div className="relative flex items-center pr-2">
             <button
               type="button"
@@ -1053,6 +1105,9 @@ function AdvancedSettingsPageContent() {
     );
   };
 
+  const finalStages = FINAL_STAGE_KEYS.map((key) => stages.find((stage) => stage.key === key)).filter((stage): stage is Stage => Boolean(stage));
+  const middleAndStartStages = stages.filter((stage) => !FINAL_STAGE_KEY_SET.has(stage.key));
+
   return (
     <>
       <div className="space-y-6">
@@ -1068,18 +1123,43 @@ function AdvancedSettingsPageContent() {
         </div>
 
         <section className="space-y-0.5">
-          {stages.map((stage, index) => (
+          {middleAndStartStages.map((stage, index) => (
             <div key={stage.id}>
               {renderStageRow(stage)}
-              {index < stages.length - 1 ? (
+              {index < middleAndStartStages.length - 1 || finalStages.length > 0 ? (
                 <div aria-hidden="true" className="flex flex-col items-center py-2">
-                  <span className="h-4 border-l-2 border-dashed border-slate-600" />
-                  <ChevronDown className="h-4 w-4 text-slate-500" />
-                  <span className="h-4 border-l-2 border-dashed border-slate-600" />
+                  <span className="h-2 border-l border-dashed border-slate-300/70" />
+                  <ChevronDown className="h-3 w-3 text-slate-300/80" />
+                  <span className="h-2 border-l border-dashed border-slate-300/70" />
                 </div>
               ) : null}
             </div>
           ))}
+
+          {finalStages.length > 0 ? (
+            <div className="rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-4">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
+                <span className="inline-flex h-2 w-2 rounded-full bg-slate-300" />
+                Ending stages
+              </div>
+              <div className="grid gap-2 md:grid-cols-2">
+                {finalStages.map((stage) => (
+                  <button
+                    key={stage.id}
+                    type="button"
+                    onClick={() => setEditingStageId(stage.id)}
+                    className="flex items-start gap-3 rounded-xl border border-[#34445f] bg-[#0f1726]/80 px-3 py-3 text-left hover:border-[#486089]"
+                  >
+                    <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
+                    <div>
+                      <div className="text-sm font-semibold text-white">{stage.name}</div>
+                      <div className="text-xs text-slate-400">{stage.description}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       </div>
 
