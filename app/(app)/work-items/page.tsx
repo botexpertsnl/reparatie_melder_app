@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -179,8 +180,10 @@ function AddRepairModal({
 }
 
 export default function WorkItemsPage() {
+  const searchParams = useSearchParams();
   const repairLabel = useTenantRepairLabel();
   const repairLabelPlural = pluralizeLabel(repairLabel);
+  const repairIdParam = searchParams.get("repairId");
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() => readStoredWorkflowStages(defaultWorkflowStages));
   const stageNames = useMemo(() => new Set(workflowStages.map((stage) => stage.name)), [workflowStages]);
   const stageColorByName = useMemo(
@@ -232,6 +235,12 @@ export default function WorkItemsPage() {
   useEffect(() => {
     setRepairs((prev) => prev.map((repair) => ({ ...repair, stage: normalizeRepairStage(repair.stage, stageNames) })));
   }, [stageNames]);
+
+  useEffect(() => {
+    if (!repairIdParam) return;
+    if (!repairs.some((repair) => repair.id === repairIdParam)) return;
+    setSelectedRepairId(repairIdParam);
+  }, [repairIdParam, repairs]);
 
   useEffect(() => {
     if (!selectedRepairId) {
