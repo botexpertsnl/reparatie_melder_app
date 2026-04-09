@@ -44,6 +44,18 @@ body {
   @apply antialiased;
 }
 
+/* Hide page-level scrollbar while keeping scroll behavior. */
+html,
+body {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 .card {
   background: var(--surface-2);
   border: 1px solid var(--border);
