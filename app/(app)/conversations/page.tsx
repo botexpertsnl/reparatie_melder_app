@@ -1,9 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Send, Link as LinkIcon, Wrench, X, ChevronLeft, FileText, Camera, Unlink2, Link2 } from "lucide-react";
-import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
-import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
+import {
+  Search,
+  Send,
+  Link as LinkIcon,
+  Wrench,
+  X,
+  ChevronLeft,
+  FileText,
+  Camera,
+  Unlink2,
+  Link2,
+} from "lucide-react";
+import {
+  defaultConversations,
+  readStoredConversations,
+  writeStoredConversations,
+  type StoredConversation,
+} from "@/lib/conversation-store";
+import {
+  defaultRepairs,
+  readStoredRepairs,
+  writeStoredRepairs,
+  type StoredRepair,
+} from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
@@ -36,7 +57,13 @@ function LinkRepairModal({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-semibold">Link to {repairLabel}</h2>
-            <button type="button" onClick={onCreate} className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20">+ New {repairLabel}</button>
+            <button
+              type="button"
+              onClick={onCreate}
+              className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20"
+            >
+              + New {repairLabel}
+            </button>
           </div>
           <button
             onClick={onClose}
@@ -49,7 +76,12 @@ function LinkRepairModal({
 
         <label className="mb-4 flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
           <Search className="h-4 w-4 text-slate-500" />
-          <input className="w-full bg-transparent text-sm outline-none" placeholder={`Search ${repairLabel.toLowerCase()}s...`} value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input
+            className="w-full bg-transparent text-sm outline-none"
+            placeholder={`Search ${repairLabel.toLowerCase()}s...`}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </label>
 
         <div className="space-y-2">
@@ -153,14 +185,23 @@ function TemplatePickerModal({
 
 export default function ConversationsPage() {
   const repairLabel = useTenantRepairLabel();
-  const [threads, setThreads] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
-  const [repairs, setRepairs] = useState<StoredRepair[]>(() => readStoredRepairs(defaultRepairs));
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(() => readStoredConversations(defaultConversations)[0]?.id ?? "");
+  const [threads, setThreads] = useState<StoredConversation[]>(() =>
+    readStoredConversations(defaultConversations)
+  );
+  const [repairs, setRepairs] = useState<StoredRepair[]>(() =>
+    readStoredRepairs(defaultRepairs)
+  );
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(
+    () => readStoredConversations(defaultConversations)[0]?.id ?? ""
+  );
   const [message, setMessage] = useState("");
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [listCollapsed, setListCollapsed] = useState(false);
-  const [linkModal, setLinkModal] = useState<LinkModalState>({ open: false, threadId: null });
+  const [linkModal, setLinkModal] = useState<LinkModalState>({
+    open: false,
+    threadId: null,
+  });
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -196,11 +237,13 @@ export default function ConversationsPage() {
     };
 
     window.addEventListener("conversations:nav-click", handleConversationNavClick);
-    return () =>
+
+    return () => {
       window.removeEventListener(
         "conversations:nav-click",
         handleConversationNavClick
       );
+    };
   }, []);
 
   useEffect(() => {
@@ -218,15 +261,26 @@ export default function ConversationsPage() {
     setOpenRepairLinkMenu(false);
   }, [selectedThreadId]);
 
-  const selectedThread = useMemo(() => threads.find((thread) => thread.id === selectedThreadId) ?? null, [threads, selectedThreadId]);
-  const linkedRepair = selectedThread ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null : null;
+  const selectedThread = useMemo(
+    () => threads.find((thread) => thread.id === selectedThreadId) ?? null,
+    [threads, selectedThreadId]
+  );
+
+  const linkedRepair = selectedThread
+    ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null
+    : null;
+
   const sortedThreads = useMemo(
     () =>
       [...threads].sort((a, b) => {
-        const aTimestamp = Number(a.messages[a.messages.length - 1]?.id.replace("m_", "") ?? 0);
-        const bTimestamp = Number(b.messages[b.messages.length - 1]?.id.replace("m_", "") ?? 0);
-        if (aTimestamp !== bTimestamp) return bTimestamp - aTimestamp;
+        const aTimestamp = Number(
+          a.messages[a.messages.length - 1]?.id.replace("m_", "") ?? 0
+        );
+        const bTimestamp = Number(
+          b.messages[b.messages.length - 1]?.id.replace("m_", "") ?? 0
+        );
 
+        if (aTimestamp !== bTimestamp) return bTimestamp - aTimestamp;
         if (a.updatedAt === "Now" && b.updatedAt !== "Now") return -1;
         if (b.updatedAt === "Now" && a.updatedAt !== "Now") return 1;
         return b.updatedAt.localeCompare(a.updatedAt);
@@ -286,6 +340,7 @@ export default function ConversationsPage() {
 
     setLinkModal({ open: false, threadId: null });
     setOpenRepairLinkMenu(false);
+    setShowRepairPanel(true);
   };
 
   const unlinkRepairFromThread = (threadId: string) => {
@@ -294,11 +349,12 @@ export default function ConversationsPage() {
         thread.id === threadId
           ? {
               ...thread,
-              linkedRepairId: undefined
+              linkedRepairId: undefined,
             }
           : thread
       )
     );
+
     setShowRepairPanel(false);
     setOpenRepairLinkMenu(false);
   };
@@ -379,12 +435,33 @@ export default function ConversationsPage() {
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
 
   return (
-    <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden transition-[grid-template-columns] duration-300 ${listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"}`} style={{ background: "var(--bg)" }}>
-      <aside className="flex min-h-0 flex-col border-r" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-        <div className={`min-h-0 flex-1 transition-opacity duration-200 ${listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+    <div
+      className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden transition-[grid-template-columns] duration-300 ${
+        listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"
+      }`}
+      style={{ background: "var(--bg)" }}
+    >
+      <aside
+        className="flex min-h-0 flex-col border-r"
+        style={{
+          borderColor: "var(--border)",
+          background: "var(--surface-2)",
+        }}
+      >
+        <div
+          className={`min-h-0 flex-1 transition-opacity duration-200 ${
+            listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
+        >
           <div className="p-4">
             <h1 className="text-2xl font-semibold text-white">Conversations</h1>
-            <label className="mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+            <label
+              className="mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-slate-400"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface-1)",
+              }}
+            >
               <Search className="h-4 w-4" />
               <input
                 className="w-full bg-transparent text-sm outline-none"
@@ -395,7 +472,24 @@ export default function ConversationsPage() {
 
           <div className="space-y-1 px-3 pb-3">
             {sortedThreads.map((thread) => (
-              <button key={thread.id} type="button" onClick={() => setSelectedThreadId(thread.id)} className={`w-full rounded-xl border p-3 text-left ${selectedThreadId === thread.id ? "" : "border-transparent hover:bg-white/5"}`} style={selectedThreadId === thread.id ? { borderColor: "var(--border-strong)", background: "var(--surface-3)" } : undefined}>
+              <button
+                key={thread.id}
+                type="button"
+                onClick={() => setSelectedThreadId(thread.id)}
+                className={`w-full rounded-xl border p-3 text-left ${
+                  selectedThreadId === thread.id
+                    ? ""
+                    : "border-transparent hover:bg-white/5"
+                }`}
+                style={
+                  selectedThreadId === thread.id
+                    ? {
+                        borderColor: "var(--border-strong)",
+                        background: "var(--surface-3)",
+                      }
+                    : undefined
+                }
+              >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-200">
                     {thread.customerName || thread.customerPhone}
@@ -436,11 +530,19 @@ export default function ConversationsPage() {
         </div>
       </aside>
 
-      <section className={`relative grid min-h-0 min-w-0 overflow-hidden ${showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`} style={{ background: "var(--surface-1)" }}>
+      <section
+        className={`relative grid min-h-0 min-w-0 overflow-hidden ${
+          showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
+        }`}
+        style={{ background: "var(--surface-1)" }}
+      >
         <div className="flex min-h-0 min-w-0 flex-col">
           {selectedThread ? (
             <>
-              <header className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: "var(--border)" }}>
+              <header
+                className="flex items-center justify-between border-b px-5 py-3"
+                style={{ borderColor: "var(--border)" }}
+              >
                 <div>
                   <div className="font-semibold text-slate-200">
                     {selectedThread.customerName || selectedThread.customerPhone}
@@ -452,7 +554,11 @@ export default function ConversationsPage() {
                 <div className="flex items-center gap-2">
                   {selectedThread.linkedRepairId ? (
                     showRepairPanel ? null : (
-                      <button type="button" onClick={() => setShowRepairPanel((prev) => !prev)} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)]">
+                      <button
+                        type="button"
+                        onClick={() => setShowRepairPanel((prev) => !prev)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)]"
+                      >
                         <Wrench className="h-4 w-4" />
                         {repairLabel} Details
                       </button>
@@ -472,18 +578,45 @@ export default function ConversationsPage() {
                 </div>
               </header>
 
-              <div ref={messageWindowRef} className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
+              <div
+                ref={messageWindowRef}
+                className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto p-4"
+              >
                 {selectedThread.messages.map((msg) => (
-                  <div key={msg.id} className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${msg.role === "agent" ? "ml-auto" : ""}`} style={msg.role === "agent" ? { background: "var(--surface-3)", color: "var(--text-primary)" } : { background: "var(--surface-muted)", color: "var(--text-primary)" }}>
+                  <div
+                    key={msg.id}
+                    className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${
+                      msg.role === "agent" ? "ml-auto" : ""
+                    }`}
+                    style={
+                      msg.role === "agent"
+                        ? {
+                            background: "var(--surface-3)",
+                            color: "var(--text-primary)",
+                          }
+                        : {
+                            background: "var(--surface-muted)",
+                            color: "var(--text-primary)",
+                          }
+                    }
+                  >
                     {msg.text}
                     <div className="mt-1 text-right text-xs opacity-70">{msg.at}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t p-3" style={{ borderColor: "var(--border)" }}>
+              <div
+                className="border-t p-3"
+                style={{ borderColor: "var(--border)" }}
+              >
                 <div className="flex items-center gap-2">
-                  <input className="input chat-input" placeholder="Type a message..." value={message} onChange={(event) => setMessage(event.target.value)} />
+                  <input
+                    className="input chat-input"
+                    placeholder="Type a message..."
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                  />
                   <button
                     type="button"
                     onClick={() => setShowTemplatePicker(true)}
@@ -500,7 +633,13 @@ export default function ConversationsPage() {
                   >
                     <Camera className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={sendMessage} className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#25d3c4] text-[#022a36]"><Send className="h-4 w-4" /></button>
+                  <button
+                    type="button"
+                    onClick={sendMessage}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#25d3c4] text-[#022a36]"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
                 </div>
                 <input
                   ref={imageInputRef}
@@ -519,17 +658,25 @@ export default function ConversationsPage() {
         </div>
 
         {showRepairColumn && linkedRepair ? (
-          <div className="relative">
+          <div
+            className="relative h-full border-l"
+            style={{
+              borderColor: "var(--border)",
+              background: "var(--surface-2)",
+            }}
+          >
             <RepairDetailsPanel
               repair={linkedRepair}
               itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
-              className="relative h-full border-l pl-6 pr-5 py-5"
-              style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+              className="relative h-full pl-6 pr-5 py-5"
             />
             {openRepairLinkMenu && selectedThread ? (
-              <div data-repair-link-menu="true" className="absolute bottom-16 right-5 z-20 w-48 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
+              <div
+                data-repair-link-menu="true"
+                className="absolute bottom-16 right-5 z-20 w-48 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
+              >
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
