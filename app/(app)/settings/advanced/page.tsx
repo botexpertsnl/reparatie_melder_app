@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal, Link2 } from "lucide-react";
 import clsx from "clsx";
 import { useSearchParams } from "next/navigation";
@@ -134,7 +134,6 @@ function normalizeStages(stages: Stage[]): Stage[] {
     ...finalStages.map((stage) => ({ ...stage, isStart: false, isTerminal: true }))
   ];
 }
-
 
 const emptyFormValues: StageFormValues = {
   name: "",
@@ -540,7 +539,7 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
   );
 }
 
-export default function AdvancedSettingsPage() {
+function AdvancedSettingsPageContent() {
   const searchParams = useSearchParams();
   const [stages, setStages] = useState<Stage[]>(() => normalizeStages(readStoredWorkflowStages(defaultWorkflowStages)));
   const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultTemplates).filter((template) => template.active));
@@ -682,7 +681,6 @@ export default function AdvancedSettingsPage() {
     const canMoveDown = Boolean(
       !isFixedStage &&
       nextStage &&
-      nextStage.key !== START_STAGE_KEY &&
       !FINAL_STAGE_KEY_SET.has(nextStage.key)
     );
     const delayLabel = stage.templateSendDelayEnabled
@@ -859,5 +857,13 @@ export default function AdvancedSettingsPage() {
         <DeleteStageModal stageName={deletingStage.name} onCancel={() => setDeletingStageId(null)} onConfirm={() => handleDeleteStage(deletingStage.id)} />
       ) : null}
     </>
+  );
+}
+
+export default function AdvancedSettingsPage() {
+  return (
+    <Suspense fallback={<div className="space-y-6" />}>
+      <AdvancedSettingsPageContent />
+    </Suspense>
   );
 }
