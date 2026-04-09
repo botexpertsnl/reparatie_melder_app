@@ -484,8 +484,8 @@ function StageModal({
                       <option key={template.id} value={template.id}>
                         {template.name}
                       </option>
-                      ))}
-                    </select>
+                    ))}
+                  </select>
                   {duplicateTemplateStageName ? (
                     <p className="mt-2 text-sm font-medium text-red-600">
                       This template is already used in {duplicateTemplateStageName} and can&apos;t be used again.
@@ -1121,8 +1121,8 @@ function AdvancedSettingsPageContent() {
   };
 
   const startStage = stages.find((stage) => stage.key === START_STAGE_KEY) ?? null;
+  const middleStages = stages.filter((stage) => stage.key !== START_STAGE_KEY && !FINAL_STAGE_KEY_SET.has(stage.key));
   const finalStages = FINAL_STAGE_KEYS.map((key) => stages.find((stage) => stage.key === key)).filter((stage): stage is Stage => Boolean(stage));
-  const middleAndStartStages = stages.filter((stage) => !FINAL_STAGE_KEY_SET.has(stage.key));
   const addModalTemplateUsageById = stages.reduce<Record<string, string>>((acc, stage) => {
     if (stage.templateAutomationEnabled && stage.templateId) {
       acc[stage.templateId] = stage.name;
