@@ -11,6 +11,7 @@ import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminolo
 
 type RepairItem = StoredRepair;
 const UNKNOWN_STAGE = "Unknown";
+const SELECTED_REPAIR_STORAGE_KEY = "statusflow.selected-repair-id";
 
 type NewRepairFormValues = {
   customerName: string;
@@ -77,17 +78,33 @@ function normalizeRepairStage(stage: string, validStageNames: Set<string>) {
   return validStageNames.has(stage) ? stage : UNKNOWN_STAGE;
 }
 
-function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
+function StageBadge({
+  stage,
+  stageColor
+}: {
+  stage: RepairItem["stage"];
+  stageColor?: string;
+}) {
   if (stage === UNKNOWN_STAGE) {
     return <span className="inline-flex rounded-xl border border-slate-600 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">{stage}</span>;
   }
-  if (stage === "Awaiting Approval") {
-    return <span className="inline-flex rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-400">{stage}</span>;
+
+  if (!stageColor) {
+    return <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{stage}</span>;
   }
-  if (stage === "New") {
-    return <span className="inline-flex rounded-xl border border-slate-700 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">{stage}</span>;
-  }
-  return <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{stage}</span>;
+
+  return (
+    <span
+      className="inline-flex rounded-xl px-3 py-1 text-sm font-semibold"
+      style={{
+        color: stageColor,
+        border: `1px solid ${stageColor}66`,
+        backgroundColor: `${stageColor}1A`
+      }}
+    >
+      {stage}
+    </span>
+  );
 }
 
 function AddRepairModal({
@@ -166,6 +183,10 @@ export default function WorkItemsPage() {
   const repairLabelPlural = pluralizeLabel(repairLabel);
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() => readStoredWorkflowStages(defaultWorkflowStages));
   const stageNames = useMemo(() => new Set(workflowStages.map((stage) => stage.name)), [workflowStages]);
+  const stageColorByName = useMemo(
+    () => new Map(workflowStages.map((stage) => [stage.name, stage.color])),
+    [workflowStages]
+  );
   const stageOptions = useMemo(() => workflowStages.map((stage) => stage.name), [workflowStages]);
   const initialStage = useMemo(
     () => workflowStages.find((stage) => stage.isStart)?.name ?? workflowStages[0]?.name ?? UNKNOWN_STAGE,
@@ -181,7 +202,10 @@ export default function WorkItemsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [deletingRepairId, setDeletingRepairId] = useState<string | null>(null);
-  const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
+  const [selectedRepairId, setSelectedRepairId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(SELECTED_REPAIR_STORAGE_KEY);
+  });
   const [conversations, setConversations] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
@@ -208,6 +232,23 @@ export default function WorkItemsPage() {
   useEffect(() => {
     setRepairs((prev) => prev.map((repair) => ({ ...repair, stage: normalizeRepairStage(repair.stage, stageNames) })));
   }, [stageNames]);
+
+  useEffect(() => {
+    if (!selectedRepairId) {
+      window.localStorage.removeItem(SELECTED_REPAIR_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(SELECTED_REPAIR_STORAGE_KEY, selectedRepairId);
+  }, [selectedRepairId]);
+
+  useEffect(() => {
+    if (!selectedRepairId) return;
+    const selectedRepairStillExists = repairs.some((repair) => repair.id === selectedRepairId);
+    if (!selectedRepairStillExists) {
+      setSelectedRepairId(null);
+    }
+  }, [repairs, selectedRepairId]);
 
   useEffect(() => {
     const refreshConversations = () => setConversations(readStoredConversations(defaultConversations));
@@ -323,7 +364,7 @@ export default function WorkItemsPage() {
                   >
                     <td className="px-5 py-4 align-middle"><button type="button" className="w-full min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
                     <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">{repair.customerName}</td>
-                    <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
+                    <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} /></td>
                     <td className={`relative px-5 py-4 align-middle text-right text-slate-400 ${selectedRepair ? "pr-4" : "pr-2"}`}>
                       <button data-action-menu="true" className="rounded-md p-2 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
                       {openMenuId === repair.id ? (
