@@ -13,6 +13,16 @@ export type StoredWorkflowStage = {
   templateSendDelayEnabled?: boolean;
   templateSendDelayHours?: number;
   templateSendDelayMinutes?: number;
+  templateButtonActions?: StoredTemplateButtonAction[];
+};
+
+export type StoredTemplateButtonAction = {
+  buttonId: string;
+  buttonText?: string;
+  sendQuickReplyEnabled?: boolean;
+  quickReplyId?: string;
+  moveToStageEnabled?: boolean;
+  moveToStageId?: string;
 };
 
 const STORAGE_KEY = "statusflow.workflow-stages";

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal, Link2 } from "lucide-react";
 import clsx from "clsx";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
-import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredTemplateButtonAction, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
 type Stage = StoredWorkflowStage;
 
@@ -17,6 +17,13 @@ type StageFormValues = {
   templateSendDelayEnabled: boolean;
   templateSendDelayHours: number;
   templateSendDelayMinutes: number;
+  templateButtonActions: StoredTemplateButtonAction[];
+};
+
+type QuickReply = {
+  id: string;
+  name: string;
+  body: string;
 };
 
 const colorOptions = ["#76d2b0", "#4e8de8", "#ecbd69", "#e88e8e", "#b18be6", "#7ec5d4", "#efb37e", "#e59fcd", "#e48998", "#9a9de7", "#74c8bf", "#9ca3af"];
@@ -75,6 +82,53 @@ const defaultTemplates: StoredTemplate[] = [
     active: true
   }
 ];
+
+const quickReplyStorageKey = "statusflow.quick-replies";
+const initialQuickReplies: QuickReply[] = [
+  { id: "qr_1", name: "Greeting", body: "Thanks for your message! We will check this right away." },
+  { id: "qr_2", name: "Pickup Info", body: "Your repair is ready for pickup. Please visit us during opening hours." }
+];
+
+function readStoredQuickReplies(fallback: QuickReply[]) {
+  if (typeof window === "undefined") return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(quickReplyStorageKey);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as QuickReply[];
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function syncTemplateButtonActions(
+  template: StoredTemplate | undefined,
+  currentActions: StoredTemplateButtonAction[]
+): StoredTemplateButtonAction[] {
+  const buttons = template?.buttons ?? [];
+  if (buttons.length === 0) return [];
+
+  return buttons.map((button) => {
+    const existing = currentActions.find((action) => action.buttonId === button.id);
+    return {
+      buttonId: button.id,
+      buttonText: button.text?.trim() || "Button",
+      sendQuickReplyEnabled: Boolean(existing?.sendQuickReplyEnabled),
+      quickReplyId: existing?.quickReplyId ?? "",
+      moveToStageEnabled: Boolean(existing?.moveToStageEnabled),
+      moveToStageId: existing?.moveToStageId ?? ""
+    };
+  });
+}
+
+function sanitizeTemplateButtonActions(actions: StoredTemplateButtonAction[]) {
+  return actions.map((action) => ({
+    ...action,
+    quickReplyId: action.sendQuickReplyEnabled ? action.quickReplyId ?? "" : "",
+    moveToStageId: action.moveToStageEnabled ? action.moveToStageId ?? "" : ""
+  }));
+}
 
 function normalizeStages(stages: Stage[]): Stage[] {
   const withoutWaitingParts = stages.filter((stage) => stage.key !== "waiting_parts");
@@ -143,7 +197,8 @@ const emptyFormValues: StageFormValues = {
   templateId: "",
   templateSendDelayEnabled: false,
   templateSendDelayHours: 0,
-  templateSendDelayMinutes: 0
+  templateSendDelayMinutes: 0,
+  templateButtonActions: []
 };
 
 function stageToFormValues(stage: Stage): StageFormValues {
@@ -155,7 +210,8 @@ function stageToFormValues(stage: Stage): StageFormValues {
     templateId: stage.templateId ?? "",
     templateSendDelayEnabled: Boolean(stage.templateSendDelayEnabled),
     templateSendDelayHours: Math.max(0, stage.templateSendDelayHours ?? 0),
-    templateSendDelayMinutes: Math.min(59, Math.max(0, stage.templateSendDelayMinutes ?? 0))
+    templateSendDelayMinutes: Math.min(59, Math.max(0, stage.templateSendDelayMinutes ?? 0)),
+    templateButtonActions: stage.templateButtonActions ?? []
   };
 }
 
@@ -241,6 +297,9 @@ function StageModal({
   confirmLabel,
   initialValues,
   templates,
+  quickReplies,
+  stageOptions,
+  currentStageId,
   onClose,
   onSubmit
 }: {
@@ -248,6 +307,9 @@ function StageModal({
   confirmLabel: string;
   initialValues: StageFormValues;
   templates: StoredTemplate[];
+  quickReplies: QuickReply[];
+  stageOptions: Stage[];
+  currentStageId?: string;
   onClose: () => void;
   onSubmit: (values: StageFormValues) => void;
 }) {
@@ -262,6 +324,16 @@ function StageModal({
   };
 
   const selectedTemplate = templates.find((template) => template.id === values.templateId);
+  const actionableButtons = selectedTemplate?.buttons ?? [];
+
+  useEffect(() => {
+    if (!values.templateId) return;
+    setValues((prev) => {
+      const synced = syncTemplateButtonActions(selectedTemplate, prev.templateButtonActions);
+      const changed = JSON.stringify(synced) !== JSON.stringify(prev.templateButtonActions);
+      return changed ? { ...prev, templateButtonActions: synced } : prev;
+    });
+  }, [selectedTemplate, values.templateId]);
 
   const canSubmit = useMemo(() => {
     if (!values.name.trim() || !values.description.trim()) {
@@ -274,6 +346,15 @@ function StageModal({
 
     if (values.templateSendDelayHours < 0 || values.templateSendDelayMinutes < 0 || values.templateSendDelayMinutes > 59) {
       return false;
+    }
+
+    for (const action of values.templateButtonActions) {
+      if (action.sendQuickReplyEnabled && !action.quickReplyId) {
+        return false;
+      }
+      if (action.moveToStageEnabled && !action.moveToStageId) {
+        return false;
+      }
     }
 
     return true;
@@ -355,7 +436,8 @@ function StageModal({
                     templateId: !prev.templateAutomationEnabled ? prev.templateId : "",
                     templateSendDelayEnabled: !prev.templateAutomationEnabled ? prev.templateSendDelayEnabled : false,
                     templateSendDelayHours: !prev.templateAutomationEnabled ? prev.templateSendDelayHours : 0,
-                    templateSendDelayMinutes: !prev.templateAutomationEnabled ? prev.templateSendDelayMinutes : 0
+                    templateSendDelayMinutes: !prev.templateAutomationEnabled ? prev.templateSendDelayMinutes : 0,
+                    templateButtonActions: !prev.templateAutomationEnabled ? prev.templateButtonActions : []
                   }))
                 }
                 aria-label="Toggle automatic template message"
@@ -373,13 +455,18 @@ function StageModal({
                     className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
                     value={values.templateId}
                     onChange={(event) =>
-                      setValues((prev) => ({
-                        ...prev,
-                        templateId: event.target.value,
-                        templateSendDelayEnabled: event.target.value ? prev.templateSendDelayEnabled : false,
-                        templateSendDelayHours: event.target.value ? prev.templateSendDelayHours : 0,
-                        templateSendDelayMinutes: event.target.value ? prev.templateSendDelayMinutes : 0
-                      }))
+                      setValues((prev) => {
+                        const nextTemplateId = event.target.value;
+                        const nextTemplate = templates.find((template) => template.id === nextTemplateId);
+                        return {
+                          ...prev,
+                          templateId: nextTemplateId,
+                          templateSendDelayEnabled: nextTemplateId ? prev.templateSendDelayEnabled : false,
+                          templateSendDelayHours: nextTemplateId ? prev.templateSendDelayHours : 0,
+                          templateSendDelayMinutes: nextTemplateId ? prev.templateSendDelayMinutes : 0,
+                          templateButtonActions: syncTemplateButtonActions(nextTemplate, prev.templateButtonActions)
+                        };
+                      })
                     }
                   >
                     <option value="">Select a template</option>
@@ -402,6 +489,130 @@ function StageModal({
                     <p className="mt-2 min-h-[60px] text-sm text-slate-600">Select a template to preview its message.</p>
                   )}
                 </div>
+
+                {values.templateId && actionableButtons.length > 0 ? (
+                  <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
+                    <div className="text-sm font-semibold text-slate-800">Button actions after customer selection</div>
+                    <p className="mt-1 text-sm text-slate-500">For each button, choose whether to send a quick reply, move to another stage, or both.</p>
+                    <div className="mt-3 space-y-3">
+                      {values.templateButtonActions.map((action) => {
+                        const nextStageOptions = stageOptions.filter((stage) => stage.id !== currentStageId);
+                        const currentQuickReply = quickReplies.find((item) => item.id === action.quickReplyId);
+                        const currentTargetStage = stageOptions.find((stage) => stage.id === action.moveToStageId);
+                        return (
+                          <div key={action.buttonId} className="rounded-lg border border-[#d7dce3] bg-white p-3">
+                            <div className="text-sm font-semibold text-slate-800">
+                              Button: <span className="text-slate-700">{action.buttonText || "Button"}</span>
+                            </div>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-md border border-[#dfe6f0] bg-[#fafcff] p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-medium text-slate-700">Send quick reply</span>
+                                  <button
+                                    type="button"
+                                    className={clsx("relative inline-flex h-6 w-11 items-center rounded-full transition", action.sendQuickReplyEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
+                                    onClick={() =>
+                                      setValues((prev) => ({
+                                        ...prev,
+                                        templateButtonActions: prev.templateButtonActions.map((item) =>
+                                          item.buttonId === action.buttonId
+                                            ? {
+                                                ...item,
+                                                sendQuickReplyEnabled: !item.sendQuickReplyEnabled,
+                                                quickReplyId: !item.sendQuickReplyEnabled ? item.quickReplyId : ""
+                                              }
+                                            : item
+                                        )
+                                      }))
+                                    }
+                                    aria-label={`Toggle quick reply action for button ${action.buttonText || "Button"}`}
+                                  >
+                                    <span className={clsx("inline-block h-4 w-4 transform rounded-full bg-white transition", action.sendQuickReplyEnabled ? "translate-x-6" : "translate-x-1")} />
+                                  </button>
+                                </div>
+                                {action.sendQuickReplyEnabled ? (
+                                  <div className="mt-2">
+                                    <label htmlFor={`button-quick-reply-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-600">Quick reply</label>
+                                    <select
+                                      id={`button-quick-reply-${action.buttonId}`}
+                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]"
+                                      value={action.quickReplyId ?? ""}
+                                      onChange={(event) =>
+                                        setValues((prev) => ({
+                                          ...prev,
+                                          templateButtonActions: prev.templateButtonActions.map((item) => (item.buttonId === action.buttonId ? { ...item, quickReplyId: event.target.value } : item))
+                                        }))
+                                      }
+                                    >
+                                      <option value="">Select a quick reply</option>
+                                      {quickReplies.map((quickReply) => (
+                                        <option key={quickReply.id} value={quickReply.id}>
+                                          {quickReply.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {currentQuickReply ? <p className="mt-1 text-xs text-slate-500">Preview: {currentQuickReply.body}</p> : null}
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              <div className="rounded-md border border-[#dfe6f0] bg-[#fafcff] p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-medium text-slate-700">Move to stage</span>
+                                  <button
+                                    type="button"
+                                    className={clsx("relative inline-flex h-6 w-11 items-center rounded-full transition", action.moveToStageEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
+                                    onClick={() =>
+                                      setValues((prev) => ({
+                                        ...prev,
+                                        templateButtonActions: prev.templateButtonActions.map((item) =>
+                                          item.buttonId === action.buttonId
+                                            ? {
+                                                ...item,
+                                                moveToStageEnabled: !item.moveToStageEnabled,
+                                                moveToStageId: !item.moveToStageEnabled ? item.moveToStageId : ""
+                                              }
+                                            : item
+                                        )
+                                      }))
+                                    }
+                                    aria-label={`Toggle move stage action for button ${action.buttonText || "Button"}`}
+                                  >
+                                    <span className={clsx("inline-block h-4 w-4 transform rounded-full bg-white transition", action.moveToStageEnabled ? "translate-x-6" : "translate-x-1")} />
+                                  </button>
+                                </div>
+                                {action.moveToStageEnabled ? (
+                                  <div className="mt-2">
+                                    <label htmlFor={`button-stage-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-600">Target stage</label>
+                                    <select
+                                      id={`button-stage-${action.buttonId}`}
+                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]"
+                                      value={action.moveToStageId ?? ""}
+                                      onChange={(event) =>
+                                        setValues((prev) => ({
+                                          ...prev,
+                                          templateButtonActions: prev.templateButtonActions.map((item) => (item.buttonId === action.buttonId ? { ...item, moveToStageId: event.target.value } : item))
+                                        }))
+                                      }
+                                    >
+                                      <option value="">Select a target stage</option>
+                                      {nextStageOptions.map((stage) => (
+                                        <option key={stage.id} value={stage.id}>
+                                          {stage.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {currentTargetStage ? <p className="mt-1 text-xs text-slate-500">Selected: {currentTargetStage.name}</p> : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
 
                 {values.templateId ? (
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
@@ -542,6 +753,7 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
 export default function AdvancedSettingsPage() {
   const [stages, setStages] = useState<Stage[]>(() => normalizeStages(readStoredWorkflowStages(defaultWorkflowStages)));
   const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultTemplates).filter((template) => template.active));
+  const [quickReplyOptions, setQuickReplyOptions] = useState<QuickReply[]>(() => readStoredQuickReplies(initialQuickReplies));
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
@@ -550,6 +762,7 @@ export default function AdvancedSettingsPage() {
   useEffect(() => {
     const refreshTemplates = () => {
       setTemplateOptions(readStoredTemplates(defaultTemplates).filter((template) => template.active));
+      setQuickReplyOptions(readStoredQuickReplies(initialQuickReplies));
     };
 
     refreshTemplates();
@@ -615,7 +828,8 @@ export default function AdvancedSettingsPage() {
       templateId: values.templateAutomationEnabled ? values.templateId : undefined,
       templateSendDelayEnabled: values.templateAutomationEnabled ? values.templateSendDelayEnabled : false,
       templateSendDelayHours: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayHours : 0,
-      templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0
+      templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0,
+      templateButtonActions: values.templateAutomationEnabled ? sanitizeTemplateButtonActions(values.templateButtonActions) : []
     };
 
     setStages((prev) => normalizeStages([...prev, newStage]));
@@ -641,7 +855,8 @@ export default function AdvancedSettingsPage() {
           templateId: values.templateAutomationEnabled ? values.templateId : undefined,
           templateSendDelayEnabled: values.templateAutomationEnabled ? values.templateSendDelayEnabled : false,
           templateSendDelayHours: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayHours : 0,
-          templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0
+          templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0,
+          templateButtonActions: values.templateAutomationEnabled ? sanitizeTemplateButtonActions(values.templateButtonActions) : []
         };
       }))
     );
@@ -674,6 +889,7 @@ export default function AdvancedSettingsPage() {
     const delayLabel = stage.templateSendDelayEnabled
       ? `${stage.templateSendDelayHours ?? 0}h ${stage.templateSendDelayMinutes ?? 0}m after assignment`
       : "Directly";
+    const enabledButtonActionCount = (stage.templateButtonActions ?? []).filter((action) => action.sendQuickReplyEnabled || action.moveToStageEnabled).length;
 
     return (
       <div
@@ -738,6 +954,7 @@ export default function AdvancedSettingsPage() {
               {stage.templateAutomationEnabled && stage.templateId ? (
                 <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
                   Template: {templateNameById(stage.templateId) ?? "Deleted template"} · {delayLabel}
+                  {enabledButtonActionCount > 0 ? ` · ${enabledButtonActionCount} button action(s)` : ""}
                 </span>
               ) : null}
             </div>
@@ -827,7 +1044,16 @@ export default function AdvancedSettingsPage() {
       </div>
 
       {isAddModalOpen ? (
-        <StageModal title="Add Stage" confirmLabel="Create" initialValues={emptyFormValues} templates={templateOptions} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddStage} />
+        <StageModal
+          title="Add Stage"
+          confirmLabel="Create"
+          initialValues={emptyFormValues}
+          templates={templateOptions}
+          quickReplies={quickReplyOptions}
+          stageOptions={stages}
+          onClose={() => setIsAddModalOpen(false)}
+          onSubmit={handleAddStage}
+        />
       ) : null}
 
       {editingStage ? (
@@ -836,6 +1062,9 @@ export default function AdvancedSettingsPage() {
           confirmLabel="Save"
           initialValues={stageToFormValues(editingStage)}
           templates={templateOptions}
+          quickReplies={quickReplyOptions}
+          stageOptions={stages}
+          currentStageId={editingStage.id}
           onClose={() => setEditingStageId(null)}
           onSubmit={(values) => handleEditStage(editingStage.id, values)}
         />
