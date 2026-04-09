@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Plus, MoreHorizontal, X, ChevronDown, ChevronUp, Pencil, Trash2, Link2 } from "lucide-react";
 import clsx from "clsx";
+import Link from "next/link";
 
 import { defaultStoredTemplates, readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
+import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
 type TemplateVariable = {
   id: string;
@@ -100,20 +102,10 @@ function writeStoredQuickReplies(items: QuickReply[]) {
   window.dispatchEvent(new Event("templates:changed"));
 }
 
-function categoryBadgeClass(category: string) {
-  return category === "MARKETING"
-    ? "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200"
-    : "border-cyan-500/40 bg-cyan-500/10 text-cyan-200";
-}
-
 const CATEGORY_OPTIONS: Array<{ label: string; value: TemplateCategory }> = [
   { label: "Utility", value: "UTILITY" },
   { label: "Marketing", value: "MARKETING" }
 ];
-
-function categoryLabel(category: TemplateCategory) {
-  return category === "MARKETING" ? "Marketing" : "Utility";
-}
 
 function normalizeCategory(category?: string): TemplateCategory {
   const value = (category ?? "").toUpperCase().trim();
@@ -371,6 +363,7 @@ function TemplateModal({
   onClose: () => void;
   onSubmit: (values: TemplateFormValues) => void;
 }) {
+  const isTemplateLocked = mode === "edit";
   const [values, setValues] = useState<TemplateFormValues>({
     ...initialValues,
     category: normalizeCategory(initialValues.category),
@@ -494,6 +487,7 @@ function TemplateModal({
   };
 
   const toggleVariablePicker = () => {
+    if (isTemplateLocked) return;
     setShowVariablePicker((prev) => !prev);
     setShowAddButtonMenu(false);
     setIsVariablesOpen(true);
@@ -502,6 +496,7 @@ function TemplateModal({
   };
 
   const toggleButtonPicker = () => {
+    if (isTemplateLocked) return;
     setShowAddButtonMenu((prev) => !prev);
     setShowVariablePicker(false);
     setIsButtonsOpen(true);
@@ -510,6 +505,7 @@ function TemplateModal({
   };
 
   const addButton = (type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER") => {
+    if (isTemplateLocked) return;
     const nextButtonId = `btn_${Date.now()}`;
     setValues((prev) => {
       const nextButton: TemplateButton =
@@ -631,6 +627,11 @@ function TemplateModal({
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
           <div ref={modalScrollRef} className="subtle-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+            {isTemplateLocked ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Existing templates are locked. You can only update the template name and active status.
+              </div>
+            ) : null}
             <div>
               <label htmlFor="template-name" className="mb-2 block text-sm font-medium text-slate-700">Name *</label>
               <input id="template-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={values.name} onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))} />
@@ -640,7 +641,7 @@ function TemplateModal({
               <div>
                 <label htmlFor="template-category" className="mb-2 block text-sm font-medium text-slate-700">Category</label>
                 <div className="relative">
-                  <select id="template-category" className="w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm" value={values.category} onChange={(event) => setValues((prev) => ({ ...prev, category: normalizeCategory(event.target.value) }))}>
+                  <select id="template-category" disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)} value={values.category} onChange={(event) => setValues((prev) => ({ ...prev, category: normalizeCategory(event.target.value) }))}>
                     {CATEGORY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
@@ -652,7 +653,7 @@ function TemplateModal({
               <div>
                 <label htmlFor="template-language" className="mb-2 block text-sm font-medium text-slate-700">Language</label>
                 <div className="relative">
-                  <select id="template-language" className="w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm" value={values.language} onChange={(event) => setValues((prev) => ({ ...prev, language: event.target.value }))}>
+                  <select id="template-language" disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)} value={values.language} onChange={(event) => setValues((prev) => ({ ...prev, language: event.target.value }))}>
                     <option>Dutch</option>
                     <option>English</option>
                     <option>German</option>
@@ -674,6 +675,7 @@ function TemplateModal({
                 className="mt-3 min-h-28 w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
                 placeholder="Hello {{1}}, your repair is {{2}}."
                 value={values.body}
+                readOnly={isTemplateLocked}
                 onClick={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
                 onKeyUp={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
                 onSelect={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
@@ -685,7 +687,7 @@ function TemplateModal({
 
               <div className="mt-3 flex flex-wrap items-center justify-start gap-2">
                 <div ref={variablePickerRef} className="relative">
-                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={toggleVariablePicker}>
+                  <button type="button" disabled={isTemplateLocked} className={clsx("inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20", isTemplateLocked ? "cursor-not-allowed opacity-50" : undefined)} onClick={toggleVariablePicker}>
                     <Plus className="h-3.5 w-3.5" />
                     Add Variable
                   </button>
@@ -726,7 +728,7 @@ function TemplateModal({
                 </div>
 
                 <div ref={buttonPickerRef} className="relative">
-                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={toggleButtonPicker}>
+                  <button type="button" disabled={isTemplateLocked} className={clsx("inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20", isTemplateLocked ? "cursor-not-allowed opacity-50" : undefined)} onClick={toggleButtonPicker}>
                     <Plus className="h-3.5 w-3.5" />
                     Add Button
                   </button>
@@ -781,12 +783,12 @@ function TemplateModal({
                             {variable.mode === "repair_field" ? <Link2 className="mr-1 h-3.5 w-3.5 text-[#1f8e82]" aria-hidden="true" /> : null}
                             Placeholder {variable.key}
                           </div>
-                          <button type="button" className="text-xs font-semibold text-red-500 hover:text-red-600" onClick={() => setValues((prev) => ({ ...prev, variables: syncVariablesMetadata(prev.variables.filter((item) => item.id !== variable.id)) }))}>Remove</button>
+                          <button type="button" disabled={isTemplateLocked} className={clsx("text-xs font-semibold text-red-500 hover:text-red-600", isTemplateLocked ? "cursor-not-allowed opacity-40" : undefined)} onClick={() => setValues((prev) => ({ ...prev, variables: syncVariablesMetadata(prev.variables.filter((item) => item.id !== variable.id)) }))}>Remove</button>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <input ref={(node) => { variableInputRefs.current[variable.id] = node; }} className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" placeholder="Variable label" value={variable.label} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, label: event.target.value }))} />
+                          <input ref={(node) => { variableInputRefs.current[variable.id] = node; }} readOnly={isTemplateLocked} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)} placeholder="Variable label" value={variable.label} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, label: event.target.value }))} />
                           <div className="relative">
-                            <select className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" value={variable.mode} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, mode: event.target.value as TemplateVariable["mode"], source: event.target.value === "repair_field" ? `repair.${current.repairField}` : "manual" }))}>
+                            <select disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)} value={variable.mode} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, mode: event.target.value as TemplateVariable["mode"], source: event.target.value === "repair_field" ? `repair.${current.repairField}` : "manual" }))}>
                               <option value="manual">Manual</option>
                               <option value="repair_field">Connect to repair</option>
                             </select>
@@ -795,10 +797,10 @@ function TemplateModal({
                         </div>
 
                         {variable.mode === "manual" ? (
-                          <input className="mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" placeholder="Manual default value" value={variable.manualValue} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, manualValue: event.target.value, source: "manual" }))} />
+                          <input readOnly={isTemplateLocked} className={clsx("mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)} placeholder="Manual default value" value={variable.manualValue} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, manualValue: event.target.value, source: "manual" }))} />
                         ) : (
                           <div className="relative mt-3">
-                            <select className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" value={variable.repairField} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, repairField: event.target.value as TemplateVariable["repairField"], source: `repair.${event.target.value}` }))}>
+                            <select disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)} value={variable.repairField} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, repairField: event.target.value as TemplateVariable["repairField"], source: `repair.${event.target.value}` }))}>
                               <option value="customerName">Customer name</option>
                               <option value="customerPhone">Customer phone</option>
                               <option value="assetName">Device name</option>
@@ -838,12 +840,13 @@ function TemplateModal({
                       <div key={button.id} className={clsx("rounded-lg border bg-[#f8fafc] p-3 transition-colors", highlightedButtonId === button.id ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20" : "border-[#d7dce3]")}>
                         <div className="mb-2 flex items-center justify-between">
                           <div className="text-xs font-semibold text-slate-500">{button.type === "QUICK_REPLY" ? "Quick Reply" : "CTA"}</div>
-                          <button type="button" className="text-xs font-semibold text-red-500 hover:text-red-600" onClick={() => setValues((prev) => ({ ...prev, buttons: prev.buttons.filter((item) => item.id !== button.id) }))}>Remove</button>
+                          <button type="button" disabled={isTemplateLocked} className={clsx("text-xs font-semibold text-red-500 hover:text-red-600", isTemplateLocked ? "cursor-not-allowed opacity-40" : undefined)} onClick={() => setValues((prev) => ({ ...prev, buttons: prev.buttons.filter((item) => item.id !== button.id) }))}>Remove</button>
                         </div>
                         {button.type === "URL" || button.type === "PHONE_NUMBER" ? (
                           <div className="relative mb-3">
                             <select
-                              className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                              disabled={isTemplateLocked}
+                              className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)}
                               value={button.type}
                               onChange={(event) =>
                                 updateButton(button.id, (current) =>
@@ -860,7 +863,7 @@ function TemplateModal({
                           </div>
                         ) : null}
 
-                        <input ref={(node) => { buttonInputRefs.current[button.id] = node; }} className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
+                        <input ref={(node) => { buttonInputRefs.current[button.id] = node; }} readOnly={isTemplateLocked} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)} placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
                         <div className="mt-1 text-xs text-slate-500">{button.text.trim().length}/20</div>
                         {emptyButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot be empty.</p> : null}
                         {tooLongButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot exceed 20 characters.</p> : null}
@@ -868,7 +871,8 @@ function TemplateModal({
                         {button.type === "URL" || button.type === "PHONE_NUMBER" ? (
                           <>
                             <input
-                              className="mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                              readOnly={isTemplateLocked}
+                              className={clsx("mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-500" : undefined)}
                               placeholder={button.type === "URL" ? "https://example.com" : "+31123456789"}
                               value={button.type === "URL" ? button.url : button.phoneNumber}
                               onChange={(event) => updateButton(button.id, (current) => current.type === "URL" ? { ...current, url: event.target.value } : { ...current, phoneNumber: event.target.value })}
@@ -1018,6 +1022,7 @@ export default function TemplatesPage() {
     category: normalizeCategory(template.category),
     buttons: (template.buttons ?? []).map((button) => normalizeButton(button))
   })));
+  const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() => readStoredWorkflowStages(defaultWorkflowStages));
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>(() => readStoredQuickReplies(initialQuickReplies));
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreateQuickReplyModalOpen, setIsCreateQuickReplyModalOpen] = useState(false);
@@ -1036,6 +1041,21 @@ export default function TemplatesPage() {
   useEffect(() => {
     writeStoredQuickReplies(quickReplies);
   }, [quickReplies]);
+
+  useEffect(() => {
+    const refreshWorkflowStages = () => {
+      setWorkflowStages(readStoredWorkflowStages(defaultWorkflowStages));
+    };
+
+    refreshWorkflowStages();
+    window.addEventListener("workflow-stages:changed", refreshWorkflowStages);
+    window.addEventListener("storage", refreshWorkflowStages);
+
+    return () => {
+      window.removeEventListener("workflow-stages:changed", refreshWorkflowStages);
+      window.removeEventListener("storage", refreshWorkflowStages);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1078,9 +1098,6 @@ export default function TemplatesPage() {
   };
 
   const handleEditTemplate = (templateId: string, values: TemplateFormValues) => {
-    const normalizedButtons = sanitizeButtonsForSave(values.buttons);
-    if (hasMixedButtonModes(normalizedButtons)) return;
-
     setTemplates((prev) =>
       prev.map((template) => {
         if (template.id !== templateId) return template;
@@ -1088,12 +1105,7 @@ export default function TemplatesPage() {
         return {
           ...template,
           name: values.name.trim(),
-          category: values.category,
-          language: toStoredLanguage(values.language),
-          body: values.body.trim(),
-          active: values.active,
-          variables: values.variables,
-          buttons: normalizedButtons
+          active: values.active
         };
       })
     );
@@ -1139,14 +1151,29 @@ export default function TemplatesPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           {templates.map((template) => (
-            <article key={template.id} className="relative rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5">
+            <article
+              key={template.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setEditingTemplateId(template.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setEditingTemplateId(template.id);
+                }
+              }}
+              className="relative cursor-pointer rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5 transition-colors hover:bg-[#1a2538]"
+            >
               <div className="flex items-start justify-between">
                 <h2 className="text-lg font-semibold text-white">{template.name}</h2>
                 <button
                   data-action-menu="true"
                   className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
                   aria-label={`Open actions for ${template.name}`}
-                  onClick={() => setOpenMenuId((prev) => (prev === template.id ? null : template.id))}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setOpenMenuId((prev) => (prev === template.id ? null : template.id));
+                  }}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
@@ -1157,7 +1184,8 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.stopPropagation();
                       setEditingTemplateId(template.id);
                       setOpenMenuId(null);
                     }}
@@ -1168,7 +1196,8 @@ export default function TemplatesPage() {
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.stopPropagation();
                       setDeletingTemplateId(template.id);
                       setOpenMenuId(null);
                     }}
@@ -1179,19 +1208,25 @@ export default function TemplatesPage() {
                 </div>
               ) : null}
 
-              <div className={clsx("mt-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold", categoryBadgeClass(template.category))}>{categoryLabel(template.category)}</div>
-
-              <p className="mt-3 text-sm leading-7 text-slate-400">{template.body}</p>
-              {template.buttons.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {template.buttons.map((button) => (
-                    <span key={button.id} className="rounded-full border border-[#355073] bg-[#18283f] px-2 py-1 text-xs text-slate-300">
-                      {button.type === "QUICK_REPLY" ? "Quick reply" : button.type === "URL" ? "CTA URL" : "CTA Phone"}: {button.text}
-                    </span>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {workflowStages
+                  .filter((stage) => stage.templateAutomationEnabled && stage.templateId === template.id)
+                  .map((stage) => (
+                    <Link
+                      key={stage.id}
+                      href={{ pathname: "/settings/advanced", query: { stageId: stage.id } }}
+                      onClick={(event) => event.stopPropagation()}
+                      className="inline-flex items-center rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/20"
+                    >
+                      {stage.name}
+                    </Link>
                   ))}
-                </div>
-              ) : null}
-              <div className="mt-3 text-sm text-slate-500">Lang: {template.language}</div>
+              </div>
+
+              <div className="mt-3 rounded-lg border border-[#253149] bg-[#0f1727] p-3">
+                <div className="text-sm leading-6 text-slate-300">{renderPreviewTokens(template.body, template.variables)}</div>
+                {renderPreviewButtons(template.buttons)}
+              </div>
             </article>
           ))}
         </section>

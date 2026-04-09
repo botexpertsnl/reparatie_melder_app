@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal, Link2 } from "lucide-react";
 import clsx from "clsx";
+import { useSearchParams } from "next/navigation";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
@@ -540,10 +541,12 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
 }
 
 export default function AdvancedSettingsPage() {
+  const searchParams = useSearchParams();
   const [stages, setStages] = useState<Stage[]>(() => normalizeStages(readStoredWorkflowStages(defaultWorkflowStages)));
   const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultTemplates).filter((template) => template.active));
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [handledRequestedStageId, setHandledRequestedStageId] = useState<string | null>(null);
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
   const [openStageMenuId, setOpenStageMenuId] = useState<string | null>(null);
 
@@ -576,6 +579,17 @@ export default function AdvancedSettingsPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const requestedStageId = searchParams.get("stageId");
+    if (!requestedStageId) return;
+    if (handledRequestedStageId === requestedStageId) return;
+
+    const targetStage = stages.find((stage) => stage.id === requestedStageId);
+    if (!targetStage) return;
+    setEditingStageId(targetStage.id);
+    setHandledRequestedStageId(requestedStageId);
+  }, [handledRequestedStageId, searchParams, stages]);
 
   const editingStage = stages.find((stage) => stage.id === editingStageId) ?? null;
   const deletingStage = stages.find((stage) => stage.id === deletingStageId) ?? null;
