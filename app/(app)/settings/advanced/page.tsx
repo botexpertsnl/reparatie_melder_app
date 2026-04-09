@@ -830,9 +830,6 @@ function AdvancedSettingsPageContent() {
 
   const editingStage = stages.find((stage) => stage.id === editingStageId) ?? null;
   const deletingStage = stages.find((stage) => stage.id === deletingStageId) ?? null;
-  const startStage = stages.find((stage) => stage.key === START_STAGE_KEY) ?? null;
-  const finalStages = stages.filter((stage) => FINAL_STAGE_KEY_SET.has(stage.key));
-  const middleStages = stages.filter((stage) => stage.key !== START_STAGE_KEY && !FINAL_STAGE_KEY_SET.has(stage.key));
 
   const templateNameById = (templateId?: string) => templateOptions.find((template) => template.id === templateId)?.name;
 
@@ -942,7 +939,7 @@ function AdvancedSettingsPageContent() {
             setEditingStageId(stage.id);
           }
         }}
-        className="flex cursor-pointer items-center justify-between gap-4 border-b border-[#253149] px-4 py-4 transition-colors hover:bg-[#1a2538] last:border-b-0"
+        className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
       >
         <div className="flex items-start gap-4">
           <div className="mt-0.5 flex min-h-9 w-5 shrink-0 flex-col items-center text-slate-500">
@@ -1070,23 +1067,20 @@ function AdvancedSettingsPageContent() {
           </button>
         </div>
 
-        {startStage ? (
-          <section className="mb-3 overflow-visible rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-            {renderStageRow(startStage)}
-          </section>
-        ) : null}
-
-        {middleStages.length > 0 ? (
-          <section className="overflow-visible rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-            {middleStages.map(renderStageRow)}
-          </section>
-        ) : null}
-
-        {finalStages.length > 0 ? (
-          <section className="mb-8 mt-3 overflow-visible rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-            {finalStages.map(renderStageRow)}
-          </section>
-        ) : null}
+        <section className="space-y-0.5">
+          {stages.map((stage, index) => (
+            <div key={stage.id}>
+              {renderStageRow(stage)}
+              {index < stages.length - 1 ? (
+                <div aria-hidden="true" className="flex flex-col items-center py-2">
+                  <span className="h-4 border-l-2 border-dashed border-slate-600" />
+                  <ChevronDown className="h-4 w-4 text-slate-500" />
+                  <span className="h-4 border-l-2 border-dashed border-slate-600" />
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </section>
       </div>
 
       {isAddModalOpen ? (
