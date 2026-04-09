@@ -73,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       items: [
         { name: "Workflow", href: "/settings/advanced", icon: Workflow },
         { name: "Templates", href: "/templates", icon: FileText },
+        { name: "Quick Replies", href: "/quick-replies", icon: MessageSquareText },
         { name: "Settings", href: "/customers", icon: Settings }
       ]
     },
