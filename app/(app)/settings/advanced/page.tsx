@@ -1120,6 +1120,7 @@ function AdvancedSettingsPageContent() {
     );
   };
 
+  const startStage = stages.find((stage) => stage.key === START_STAGE_KEY) ?? null;
   const finalStages = FINAL_STAGE_KEYS.map((key) => stages.find((stage) => stage.key === key)).filter((stage): stage is Stage => Boolean(stage));
   const middleAndStartStages = stages.filter((stage) => !FINAL_STAGE_KEY_SET.has(stage.key));
   const addModalTemplateUsageById = stages.reduce<Record<string, string>>((acc, stage) => {
@@ -1152,10 +1153,38 @@ function AdvancedSettingsPageContent() {
         </div>
 
         <section className="space-y-0.5">
-          {middleAndStartStages.map((stage, index) => (
+          {startStage ? (
+            <div className="rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-4">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
+                <span className="inline-flex h-2 w-2 rounded-full bg-slate-300" />
+                Starting stage
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingStageId(startStage.id)}
+                className="flex w-full items-start gap-3 rounded-xl border border-[#34445f] bg-[#0f1726]/80 px-3 py-3 text-left hover:border-[#4a5d80]"
+              >
+                <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: startStage.color }} />
+                <div>
+                  <div className="text-sm font-semibold text-white">{startStage.name}</div>
+                  <div className="text-xs text-slate-400">{startStage.description}</div>
+                </div>
+              </button>
+            </div>
+          ) : null}
+
+          {startStage && (middleStages.length > 0 || finalStages.length > 0) ? (
+            <div aria-hidden="true" className="flex flex-col items-center py-2">
+              <span className="h-2 border-l border-dashed border-slate-300/70" />
+              <ChevronDown className="h-3 w-3 text-slate-300/80" />
+              <span className="h-2 border-l border-dashed border-slate-300/70" />
+            </div>
+          ) : null}
+
+          {middleStages.map((stage, index) => (
             <div key={stage.id}>
               {renderStageRow(stage)}
-              {index < middleAndStartStages.length - 1 || finalStages.length > 0 ? (
+              {index < middleStages.length - 1 || finalStages.length > 0 ? (
                 <div aria-hidden="true" className="flex flex-col items-center py-2">
                   <span className="h-2 border-l border-dashed border-slate-300/70" />
                   <ChevronDown className="h-3 w-3 text-slate-300/80" />
@@ -1177,7 +1206,7 @@ function AdvancedSettingsPageContent() {
                     key={stage.id}
                     type="button"
                     onClick={() => setEditingStageId(stage.id)}
-                    className="flex items-start gap-3 rounded-xl border border-[#34445f] bg-[#0f1726]/80 px-3 py-3 text-left hover:border-[#486089]"
+                    className="flex items-start gap-3 rounded-xl border border-[#34445f] bg-[#0f1726]/80 px-3 py-3 text-left hover:border-[#4a5d80]"
                   >
                     <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
                     <div>
