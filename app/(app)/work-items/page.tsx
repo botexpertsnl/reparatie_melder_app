@@ -90,48 +90,6 @@ function StageBadge({ stage }: { stage: RepairItem["stage"] }) {
   return <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{stage}</span>;
 }
 
-function ChangeStageModal({
-  repair,
-  stageOptions,
-  onClose,
-  onSubmit
-}: {
-  repair: RepairItem;
-  stageOptions: string[];
-  onClose: () => void;
-  onSubmit: (stage: RepairItem["stage"]) => void;
-}) {
-  const [selectedStage, setSelectedStage] = useState<RepairItem["stage"]>(repair.stage);
-  const selectOptions = useMemo(
-    () => (stageOptions.includes(selectedStage) ? stageOptions : [...stageOptions, selectedStage]),
-    [selectedStage, stageOptions]
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Change stage</h2>
-          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button" aria-label="Close stage dialog"><X className="h-5 w-5" /></button>
-        </div>
-        <p className="mb-4 text-sm text-slate-600">
-          Update the stage for <span className="font-semibold">{repair.title}</span>.
-        </p>
-        <label htmlFor="change-repair-stage" className="mb-2 block text-sm font-medium text-slate-700">Stage</label>
-        <select id="change-repair-stage" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={selectedStage} onChange={(event) => setSelectedStage(event.target.value as RepairItem["stage"])}>
-          {selectOptions.map((stageName) => (
-            <option key={stageName}>{stageName}</option>
-          ))}
-        </select>
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
-          <button type="button" onClick={() => onSubmit(selectedStage)} className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91]">Save stage</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AddRepairModal({
   mode,
   initialValues,
@@ -223,7 +181,6 @@ export default function WorkItemsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [deletingRepairId, setDeletingRepairId] = useState<string | null>(null);
-  const [changingStageRepairId, setChangingStageRepairId] = useState<string | null>(null);
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
@@ -284,7 +241,6 @@ export default function WorkItemsPage() {
         : null,
     [conversations, selectedRepair]
   );
-  const stageChangingRepair = repairs.find((repair) => repair.id === changingStageRepairId) ?? null;
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
     const newRepair = { id: `repair_${Date.now()}`, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: "Medium" as const, status: "Open" as const };
@@ -297,11 +253,6 @@ export default function WorkItemsPage() {
     setRepairs((prev) => prev.map((repair) => (repair.id === repairId ? { ...repair, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage } : repair)));
     setEditingRepairId(null);
   };
-  const handleChangeRepairStage = (repairId: string, stage: RepairItem["stage"]) => {
-    setRepairs((prev) => prev.map((repair) => (repair.id === repairId ? { ...repair, stage } : repair)));
-    setChangingStageRepairId(null);
-  };
-
   const toFormValues = (repair: RepairItem): NewRepairFormValues => ({ customerName: repair.customerName, customerPhone: repair.customerPhone, assetName: repair.assetName, repairTitle: repair.title, description: repair.description, repairStage: repair.stage });
   const availableConversations = useMemo(() => conversations.filter((thread) => !thread.linkedRepairId || thread.linkedRepairId === selectedRepairId), [conversations, selectedRepairId]);
 
@@ -359,19 +310,7 @@ export default function WorkItemsPage() {
                   >
                     <td className="px-5 py-4 align-middle"><button type="button" className="w-full min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
                     <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">{repair.customerName}</td>
-                    <td className="px-5 py-4 align-middle">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setChangingStageRepairId(repair.id);
-                        }}
-                        className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25d3c4]"
-                        aria-label={`Change stage for ${repair.title}`}
-                      >
-                        <StageBadge stage={repair.stage} />
-                      </button>
-                    </td>
+                    <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
                     <td className={`relative px-5 py-4 align-middle text-right text-slate-400 ${selectedRepair ? "pr-4" : "pr-2"}`}>
                       <button data-action-menu="true" className="rounded-md p-2 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
                       {openMenuId === repair.id ? (
@@ -440,14 +379,6 @@ export default function WorkItemsPage() {
       ) : null}
       {isLinkConversationOpen && selectedRepair ? (
         <LinkConversationModal conversations={availableConversations} onClose={() => setIsLinkConversationOpen(false)} onSelect={(threadId) => linkConversationToRepair(threadId, selectedRepair.id)} />
-      ) : null}
-      {stageChangingRepair ? (
-        <ChangeStageModal
-          repair={stageChangingRepair}
-          stageOptions={stageOptions}
-          onClose={() => setChangingStageRepairId(null)}
-          onSubmit={(stage) => handleChangeRepairStage(stageChangingRepair.id, stage)}
-        />
       ) : null}
     </>
   );
