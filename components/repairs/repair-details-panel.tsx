@@ -60,6 +60,14 @@ export function RepairDetailsPanel({
             >
               Open conversation
             </a>
+          ) : onLinkChange ? (
+            <button
+              type="button"
+              onClick={onLinkChange}
+              className="rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
+            >
+              Link conversation
+            </button>
           ) : null}
           {onLinkChange ? (
             <button
