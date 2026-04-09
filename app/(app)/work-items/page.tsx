@@ -216,15 +216,15 @@ export default function WorkItemsPage() {
           <section className="min-h-0 flex-1 overflow-hidden">
             <div className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border border-[#253149] bg-[#121b2b]/65 ${selectedRepair ? "border-r-0" : ""}`}>
             <table className="w-full table-fixed">
-              <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[25%] px-5 py-4">Stage</th><th className="w-[5%] px-5 py-4" /></tr></thead>
+              <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[25%] px-5 py-4">Stage</th><th className="w-[5%] px-5 py-4 pr-7" /></tr></thead>
               <tbody>
                 {repairs.map((repair) => (
                   <tr key={repair.id} onClick={() => setSelectedRepairId(repair.id)} className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-[#182236]/60 shadow-[inset_3px_0_0_#25d3c4]" : ""}`}>
-                    <td className="px-5 py-4 align-middle"><button type="button" className="min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
+                    <td className="px-5 py-4 align-middle"><button type="button" className="w-full min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
                     <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">{repair.customerName}</td>
                     <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
-                    <td className="relative px-5 py-4 align-middle text-center text-slate-400">
-                      <button data-action-menu="true" className="rounded-md p-1 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
+                    <td className="relative px-5 py-4 pr-7 align-middle text-right text-slate-400">
+                      <button data-action-menu="true" className="rounded-md p-2 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
                       {openMenuId === repair.id ? (
                         <div data-action-menu="true" className="absolute right-7 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
                           <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200" onClick={() => { setEditingRepairId(repair.id); setOpenMenuId(null); }}><Pencil className="h-4 w-4" />Edit</button>
