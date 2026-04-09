@@ -430,7 +430,31 @@ export default function WorkItemsPage() {
       {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={{ ...initialFormValues, repairStage: initialStage }} stageOptions={stageOptions} repairLabel={repairLabel} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
       {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} stageOptions={stageOptions} repairLabel={repairLabel} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
       {deletingRepair ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"><h2 className="text-xl font-semibold">Delete repair</h2><p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p><div className="mt-6 flex items-center justify-end gap-3"><button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button><button type="button" onClick={() => { setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id)); if (selectedRepairId === deletingRepair.id) setSelectedRepairId(null); setDeletingRepairId(null); }} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Delete</button></div></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Delete repair</h2>
+              <button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close delete repair dialog">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id));
+                  if (selectedRepairId === deletingRepair.id) setSelectedRepairId(null);
+                  setDeletingRepairId(null);
+                }}
+                className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
       {isLinkConversationOpen && selectedRepair ? (
         <LinkConversationModal conversations={availableConversations} onClose={() => setIsLinkConversationOpen(false)} onSelect={(threadId) => linkConversationToRepair(threadId, selectedRepair.id)} />

@@ -778,7 +778,12 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <h2 className="text-xl font-semibold">Delete stage</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Delete stage</h2>
+          <button type="button" onClick={onCancel} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close delete stage dialog">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
         <p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{stageName}</span>? This action cannot be undone.</p>
 
         <div className="mt-6 flex items-center justify-end gap-3">
