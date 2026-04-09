@@ -1133,7 +1133,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[var(--surface-3)]/10 px-5 text-sm font-semibold text-[#69f0df]"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
             >
               <Plus className="h-4 w-4" />
               Add Template
@@ -1141,7 +1141,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               onClick={() => setIsCreateQuickReplyModalOpen(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[var(--surface-3)]/10 px-5 text-sm font-semibold text-[#69f0df]"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
             >
               <Plus className="h-4 w-4" />
               Add Quick Reply
@@ -1249,48 +1249,77 @@ export default function TemplatesPage() {
             <p className="text-sm text-slate-400">Short reusable messages for faster responses.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {quickReplies.map((reply) => (
-              <article key={reply.id} className="relative rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5">
-                <div className="flex items-start justify-between">
-                  <h3 className="text-lg font-semibold text-white">{reply.name}</h3>
-                  <button
-                    data-action-menu="true"
-                    className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
-                    aria-label={`Open actions for ${reply.name}`}
-                    onClick={() => setOpenMenuId((prev) => (prev === reply.id ? null : reply.id))}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                </div>
-                {openMenuId === reply.id ? (
-                  <div data-action-menu="true" className="absolute right-6 top-14 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+            {quickReplies.map((reply) => {
+              const linkedStages = workflowStages.filter((stage) =>
+                (stage.templateButtonActions ?? []).some((action) => action.sendQuickReplyEnabled && action.quickReplyId === reply.id)
+              );
+
+              return (
+                <article key={reply.id} className="relative rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5">
+                  <div className="flex items-start justify-between">
+                    <h3 className="text-lg font-semibold text-white">{reply.name}</h3>
                     <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
-                      onClick={() => {
-                        setEditingQuickReplyId(reply.id);
-                        setOpenMenuId(null);
-                      }}
+                      data-action-menu="true"
+                      className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
+                      aria-label={`Open actions for ${reply.name}`}
+                      onClick={() => setOpenMenuId((prev) => (prev === reply.id ? null : reply.id))}
                     >
-                      <Pencil className="h-4 w-4" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
-                      onClick={() => {
-                        setDeletingQuickReplyId(reply.id);
-                        setOpenMenuId(null);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
+                      <MoreHorizontal className="h-4 w-4" />
                     </button>
                   </div>
-                ) : null}
-                <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-400">{reply.body}</p>
-              </article>
-            ))}
+                  {openMenuId === reply.id ? (
+                    <div data-action-menu="true" className="absolute right-6 top-14 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
+                        onClick={() => {
+                          setEditingQuickReplyId(reply.id);
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+                        onClick={() => {
+                          setDeletingQuickReplyId(reply.id);
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-semibold text-slate-300">Workflow stage:</span>
+                    {linkedStages.length > 0 ? (
+                      linkedStages.map((stage) => (
+                        <Link
+                          key={stage.id}
+                          href={{ pathname: "/settings/advanced", query: { stageId: stage.id } }}
+                          style={{
+                            color: stage.color,
+                            borderColor: stage.color,
+                            backgroundColor: `${stage.color}1a`
+                          }}
+                          className="inline-flex items-center rounded-full border px-2.5 py-1 font-semibold hover:brightness-110"
+                        >
+                          {stage.name}
+                        </Link>
+                      ))
+                    ) : (
+                      <span className="font-medium text-slate-400">None</span>
+                    )}
+                  </div>
+
+                  <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-400">{reply.body}</p>
+                </article>
+              );
+            })}
           </div>
         </section>
       </div>
