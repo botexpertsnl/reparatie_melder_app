@@ -10,6 +10,9 @@ export type StoredWorkflowStage = {
   requiresApproval?: boolean;
   templateAutomationEnabled?: boolean;
   templateId?: string;
+  templateSendDelayEnabled?: boolean;
+  templateSendDelayHours?: number;
+  templateSendDelayMinutes?: number;
 };
 
 const STORAGE_KEY = "statusflow.workflow-stages";
