@@ -616,38 +616,63 @@ function StageModal({
 
                 {values.templateId ? (
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-800">Moment of sending</div>
-                        <div className="mt-1 text-sm text-slate-500">
-                          The template message will be triggered immediately by default after the repair is moved to this stage.
-                        </div>
-                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
-                          <span className={clsx("rounded-full px-2.5 py-1", values.templateSendDelayEnabled ? "bg-slate-200 text-slate-700" : "bg-[#d3f3ef] text-[#0d7f73]")}>Default: Directly</span>
-                          <span className={clsx("rounded-full px-2.5 py-1", values.templateSendDelayEnabled ? "bg-[#d3f3ef] text-[#0d7f73]" : "bg-slate-200 text-slate-700")}>Left = Custom time</span>
-                        </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-800">Moment of sending</div>
+                      <div className="mt-1 text-sm text-slate-500">
+                        Choose when the template message should be triggered after the repair is moved to this stage.
                       </div>
-                      <button
-                        type="button"
-                        className={clsx("relative mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full transition", values.templateSendDelayEnabled ? "bg-slate-300" : "bg-[#2fb2a3]")}
-                        onClick={() =>
-                          setValues((prev) => ({
-                            ...prev,
-                            templateSendDelayEnabled: !prev.templateSendDelayEnabled
-                          }))
-                        }
-                        aria-label="Toggle sending mode (right: directly, left: custom time)"
-                      >
-                        <span className={clsx("inline-block h-5 w-5 transform rounded-full bg-white transition", values.templateSendDelayEnabled ? "translate-x-1" : "translate-x-6")} />
-                      </button>
-                    </div>
+                      <div className="mt-3 space-y-2">
+                        <button
+                          type="button"
+                          className={clsx(
+                            "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left transition",
+                            values.templateSendDelayEnabled ? "border-[#d7dce3] bg-white hover:bg-slate-50" : "border-[#2fb2a3] bg-[#ecfbf8]"
+                          )}
+                          onClick={() => setValues((prev) => ({ ...prev, templateSendDelayEnabled: false }))}
+                          aria-pressed={!values.templateSendDelayEnabled}
+                          aria-label="Select directly trigger mode"
+                        >
+                          <span
+                            className={clsx(
+                              "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                              values.templateSendDelayEnabled ? "border-slate-300 bg-white" : "border-[#2fb2a3] bg-white"
+                            )}
+                          >
+                            {!values.templateSendDelayEnabled ? <span className="h-2.5 w-2.5 rounded-full bg-[#2fb2a3]" /> : null}
+                          </span>
+                          <span>
+                            <span className="block text-sm font-semibold text-slate-800">Directly</span>
+                            <span className="mt-0.5 block text-sm text-slate-600">Template message will be triggered directly after the repair is set to this stage.</span>
+                          </span>
+                        </button>
 
-                    <div className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">{values.templateSendDelayEnabled ? "Custom delay" : "Directly"}</div>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {values.templateSendDelayEnabled
-                        ? `Template message will be triggered ${values.templateSendDelayHours} hour(s) and ${values.templateSendDelayMinutes} minute(s) after the repair is set to this stage.`
-                        : "Template message will be triggered directly after the repair is set to this stage."}
-                    </p>
+                        <button
+                          type="button"
+                          className={clsx(
+                            "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left transition",
+                            values.templateSendDelayEnabled ? "border-[#2fb2a3] bg-[#ecfbf8]" : "border-[#d7dce3] bg-white hover:bg-slate-50"
+                          )}
+                          onClick={() => setValues((prev) => ({ ...prev, templateSendDelayEnabled: true }))}
+                          aria-pressed={values.templateSendDelayEnabled}
+                          aria-label="Select custom time trigger mode"
+                        >
+                          <span
+                            className={clsx(
+                              "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                              values.templateSendDelayEnabled ? "border-[#2fb2a3] bg-white" : "border-slate-300 bg-white"
+                            )}
+                          >
+                            {values.templateSendDelayEnabled ? <span className="h-2.5 w-2.5 rounded-full bg-[#2fb2a3]" /> : null}
+                          </span>
+                          <span>
+                            <span className="block text-sm font-semibold text-slate-800">Custom time</span>
+                            <span className="mt-0.5 block text-sm text-slate-600">
+                              Template message will be triggered {values.templateSendDelayHours} hour(s) and {values.templateSendDelayMinutes} minute(s) after the repair is set to this stage.
+                            </span>
+                          </span>
+                        </button>
+                      </div>
+                    </div>
 
                     {values.templateSendDelayEnabled ? (
                       <div className="mt-3 grid grid-cols-2 gap-3">
