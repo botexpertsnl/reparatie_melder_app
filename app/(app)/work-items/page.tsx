@@ -275,6 +275,19 @@ export default function WorkItemsPage() {
     setOpenRepairLinkMenu(false);
   };
 
+  const updateRepairStage = (repairId: string, stageName: string) => {
+    setRepairs((prev) =>
+      prev.map((repair) =>
+        repair.id === repairId
+          ? {
+            ...repair,
+            stage: stageName
+          }
+          : repair
+      )
+    );
+  };
+
   return (
     <>
       <div
@@ -337,6 +350,7 @@ export default function WorkItemsPage() {
               repair={selectedRepair}
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
+              onStageChange={(stageName) => updateRepairStage(selectedRepair.id, stageName)}
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}

@@ -476,6 +476,21 @@ function ConversationsPageContent() {
     });
   };
 
+  const updateRepairStage = (repairId: string, stageName: string) => {
+    setRepairs((prev) => {
+      const updated = prev.map((repair) =>
+        repair.id === repairId
+          ? {
+            ...repair,
+            stage: stageName
+          }
+          : repair
+      );
+      writeStoredRepairs(updated);
+      return updated;
+    });
+  };
+
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
 
   return (
@@ -713,6 +728,7 @@ function ConversationsPageContent() {
               repair={linkedRepair}
               itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
+              onStageChange={(stageName) => updateRepairStage(linkedRepair.id, stageName)}
               className="relative h-full min-h-0 pl-6 pr-5 py-5"
             />
           </div>
