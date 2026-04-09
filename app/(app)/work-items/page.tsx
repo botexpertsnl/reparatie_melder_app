@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -42,33 +41,58 @@ function LinkConversationModal({
   onSelect: (threadId: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const filtered = conversations.filter((thread) => `${thread.customerName} ${thread.customerPhone} ${thread.preview}`.toLowerCase().includes(query.toLowerCase()));
+  const filtered = conversations.filter((thread) =>
+    `${thread.customerName} ${thread.customerPhone} ${thread.preview}`.toLowerCase().includes(query.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-semibold">Link conversation</h2>
-          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button" aria-label="Close link conversation dialog"><X className="h-5 w-5" /></button>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
+            type="button"
+            aria-label="Close link conversation dialog"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <label className="mb-4 flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
           <Search className="h-4 w-4 text-slate-500" />
-          <input className="w-full bg-transparent text-sm outline-none" placeholder="Search conversations..." value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input
+            className="w-full bg-transparent text-sm outline-none"
+            placeholder="Search conversations..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </label>
 
         <div className="space-y-2">
           {filtered.map((thread) => (
-            <button key={thread.id} type="button" onClick={() => onSelect(thread.id)} className="w-full rounded-xl border border-[#cdd5e2] bg-white p-3 text-left hover:bg-slate-50">
+            <button
+              key={thread.id}
+              type="button"
+              onClick={() => onSelect(thread.id)}
+              className="w-full rounded-xl border border-[#cdd5e2] bg-white p-3 text-left hover:bg-slate-50"
+            >
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-slate-800">{thread.customerName || thread.customerPhone}</div>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">{thread.open ? "Open" : "Closed"}</span>
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
+                  {thread.open ? "Open" : "Closed"}
+                </span>
               </div>
               <div className="mt-1 text-sm text-slate-600">{thread.customerPhone}</div>
               <div className="truncate text-sm text-slate-500">{thread.preview}</div>
             </button>
           ))}
-          {filtered.length === 0 ? <div className="rounded-xl border border-dashed border-[#bfc9d8] bg-white px-3 py-4 text-center text-sm text-slate-500">No conversations found.</div> : null}
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#bfc9d8] bg-white px-3 py-4 text-center text-sm text-slate-500">
+              No conversations found.
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -87,11 +111,19 @@ function StageBadge({
   stageColor?: string;
 }) {
   if (stage === UNKNOWN_STAGE) {
-    return <span className="inline-flex rounded-xl border border-slate-600 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">{stage}</span>;
+    return (
+      <span className="inline-flex rounded-xl border border-slate-600 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">
+        {stage}
+      </span>
+    );
   }
 
   if (!stageColor) {
-    return <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">{stage}</span>;
+    return (
+      <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">
+        {stage}
+      </span>
+    );
   }
 
   return (
@@ -128,41 +160,111 @@ function AddRepairModal({
     () => (stageOptions.includes(formValues.repairStage) ? stageOptions : [...stageOptions, formValues.repairStage]),
     [formValues.repairStage, stageOptions]
   );
-  const canSubmit = formValues.customerName.trim() && formValues.customerPhone.trim() && formValues.assetName.trim() && formValues.repairTitle.trim() && formValues.description.trim();
+  const canSubmit =
+    formValues.customerName.trim() &&
+    formValues.customerPhone.trim() &&
+    formValues.assetName.trim() &&
+    formValues.repairTitle.trim() &&
+    formValues.description.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-2xl font-semibold">{mode === "create" ? `New ${repairLabel}` : `Edit ${repairLabel}`}</h2>
-          <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" type="button" aria-label="Close repair dialog"><X className="h-5 w-5" /></button>
+          <h2 className="text-2xl font-semibold">
+            {mode === "create" ? `New ${repairLabel}` : `Edit ${repairLabel}`}
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
+            type="button"
+            aria-label="Close repair dialog"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <form className="space-y-5 px-6 pb-6" onSubmit={(event) => { event.preventDefault(); if (!canSubmit) return; onSubmit(formValues); }}>
+        <form
+          className="space-y-5 px-6 pb-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!canSubmit) return;
+            onSubmit(formValues);
+          }}
+        >
           <div>
-            <label htmlFor="repair-customer-name" className="mb-2 block text-sm font-medium text-slate-700">Customer name *</label>
-            <input id="repair-customer-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. John Doe" value={formValues.customerName} onChange={(event) => setFormValues((prev) => ({ ...prev, customerName: event.target.value }))} />
+            <label htmlFor="repair-customer-name" className="mb-2 block text-sm font-medium text-slate-700">
+              Customer name *
+            </label>
+            <input
+              id="repair-customer-name"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="e.g. John Doe"
+              value={formValues.customerName}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, customerName: event.target.value }))}
+            />
           </div>
           <div>
-            <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">Customer phone *</label>
-            <input id="repair-customer-phone" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="+31 6 12345678" value={formValues.customerPhone} onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))} />
+            <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">
+              Customer phone *
+            </label>
+            <input
+              id="repair-customer-phone"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="+31 6 12345678"
+              value={formValues.customerPhone}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))}
+            />
           </div>
           <div>
-            <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">Device / asset *</label>
-            <input id="repair-asset" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. iPhone 14 Pro" value={formValues.assetName} onChange={(event) => setFormValues((prev) => ({ ...prev, assetName: event.target.value }))} />
+            <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
+              Device / asset *
+            </label>
+            <input
+              id="repair-asset"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="e.g. iPhone 14 Pro"
+              value={formValues.assetName}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, assetName: event.target.value }))}
+            />
           </div>
           <div>
-            <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">{repairLabel} title *</label>
-            <input id="repair-title" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="e.g. Screen replacement" value={formValues.repairTitle} onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))} />
+            <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">
+              {repairLabel} title *
+            </label>
+            <input
+              id="repair-title"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="e.g. Screen replacement"
+              value={formValues.repairTitle}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))}
+            />
           </div>
           <div>
-            <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">Description *</label>
-            <textarea id="repair-description" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" placeholder="Describe the issue and any diagnostics." value={formValues.description} onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))} />
+            <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">
+              Description *
+            </label>
+            <textarea
+              id="repair-description"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="Describe the issue and any diagnostics."
+              value={formValues.description}
+              onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
+            />
           </div>
 
           <div>
-            <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">Stage</label>
-            <select id="repair-stage" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={formValues.repairStage} onChange={(event) => setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))}>
+            <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">
+              Stage
+            </label>
+            <select
+              id="repair-stage"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              value={formValues.repairStage}
+              onChange={(event) =>
+                setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))
+              }
+            >
               {selectOptions.map((stageName) => (
                 <option key={stageName}>{stageName}</option>
               ))}
@@ -170,8 +272,23 @@ function AddRepairModal({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-1">
-            <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
-            <button type="submit" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!canSubmit}>{mode === "create" ? `Create ${repairLabel}` : `Save ${repairLabel}`}</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={clsx(
+                "rounded-xl px-5 py-2 text-sm font-semibold text-white",
+                canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
+              )}
+              disabled={!canSubmit}
+            >
+              {mode === "create" ? `Create ${repairLabel}` : `Save ${repairLabel}`}
+            </button>
           </div>
         </form>
       </div>
@@ -180,11 +297,13 @@ function AddRepairModal({
 }
 
 export default function WorkItemsPage() {
-  const searchParams = useSearchParams();
   const repairLabel = useTenantRepairLabel();
   const repairLabelPlural = pluralizeLabel(repairLabel);
-  const repairIdParam = searchParams.get("repairId");
-  const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() => readStoredWorkflowStages(defaultWorkflowStages));
+  const [repairIdParam, setRepairIdParam] = useState<string | null>(null);
+
+  const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
+    readStoredWorkflowStages(defaultWorkflowStages)
+  );
   const stageNames = useMemo(() => new Set(workflowStages.map((stage) => stage.name)), [workflowStages]);
   const stageColorByName = useMemo(
     () => new Map(workflowStages.map((stage) => [stage.name, stage.color])),
@@ -199,7 +318,10 @@ export default function WorkItemsPage() {
   const [repairs, setRepairs] = useState<RepairItem[]>(() => {
     const stagesAtLoad = readStoredWorkflowStages(defaultWorkflowStages);
     const stageNamesAtLoad = new Set(stagesAtLoad.map((stage) => stage.name));
-    return readStoredRepairs(defaultRepairs).map((repair) => ({ ...repair, stage: normalizeRepairStage(repair.stage, stageNamesAtLoad) }));
+    return readStoredRepairs(defaultRepairs).map((repair) => ({
+      ...repair,
+      stage: normalizeRepairStage(repair.stage, stageNamesAtLoad)
+    }));
   });
   const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -209,9 +331,17 @@ export default function WorkItemsPage() {
     if (typeof window === "undefined") return null;
     return window.localStorage.getItem(SELECTED_REPAIR_STORAGE_KEY);
   });
-  const [conversations, setConversations] = useState<StoredConversation[]>(() => readStoredConversations(defaultConversations));
+  const [conversations, setConversations] = useState<StoredConversation[]>(() =>
+    readStoredConversations(defaultConversations)
+  );
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    setRepairIdParam(url.searchParams.get("repairId"));
+  }, []);
 
   useEffect(() => {
     writeStoredRepairs(repairs);
@@ -283,28 +413,65 @@ export default function WorkItemsPage() {
 
   const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
   const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
-  const selectedRepair = useMemo(() => repairs.find((repair) => repair.id === selectedRepairId) ?? null, [repairs, selectedRepairId]);
+  const selectedRepair = useMemo(
+    () => repairs.find((repair) => repair.id === selectedRepairId) ?? null,
+    [repairs, selectedRepairId]
+  );
   const selectedRepairConversation = useMemo(
     () =>
-      selectedRepair
-        ? conversations.find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null
-        : null,
+      selectedRepair ? conversations.find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null : null,
     [conversations, selectedRepair]
   );
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
-    const newRepair = { id: `repair_${Date.now()}`, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: "Medium" as const, status: "Open" as const };
+    const newRepair = {
+      id: `repair_${Date.now()}`,
+      title: payload.repairTitle,
+      description: payload.description,
+      customerName: payload.customerName,
+      customerPhone: payload.customerPhone,
+      assetName: payload.assetName,
+      stage: payload.repairStage,
+      priority: "Medium" as const,
+      status: "Open" as const
+    };
     setRepairs((prev) => [newRepair, ...prev]);
     setSelectedRepairId(newRepair.id);
     setIsAddRepairOpen(false);
   };
 
   const handleEditRepair = (repairId: string, payload: NewRepairFormValues) => {
-    setRepairs((prev) => prev.map((repair) => (repair.id === repairId ? { ...repair, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage } : repair)));
+    setRepairs((prev) =>
+      prev.map((repair) =>
+        repair.id === repairId
+          ? {
+              ...repair,
+              title: payload.repairTitle,
+              description: payload.description,
+              customerName: payload.customerName,
+              customerPhone: payload.customerPhone,
+              assetName: payload.assetName,
+              stage: payload.repairStage
+            }
+          : repair
+      )
+    );
     setEditingRepairId(null);
   };
-  const toFormValues = (repair: RepairItem): NewRepairFormValues => ({ customerName: repair.customerName, customerPhone: repair.customerPhone, assetName: repair.assetName, repairTitle: repair.title, description: repair.description, repairStage: repair.stage });
-  const availableConversations = useMemo(() => conversations.filter((thread) => !thread.linkedRepairId || thread.linkedRepairId === selectedRepairId), [conversations, selectedRepairId]);
+
+  const toFormValues = (repair: RepairItem): NewRepairFormValues => ({
+    customerName: repair.customerName,
+    customerPhone: repair.customerPhone,
+    assetName: repair.assetName,
+    repairTitle: repair.title,
+    description: repair.description,
+    repairStage: repair.stage
+  });
+
+  const availableConversations = useMemo(
+    () => conversations.filter((thread) => !thread.linkedRepairId || thread.linkedRepairId === selectedRepairId),
+    [conversations, selectedRepairId]
+  );
 
   const linkConversationToRepair = (threadId: string, repairId: string) => {
     const updated = conversations.map((thread) => {
@@ -319,7 +486,9 @@ export default function WorkItemsPage() {
   };
 
   const unlinkConversationFromRepair = (repairId: string) => {
-    const updated = conversations.map((thread) => (thread.linkedRepairId === repairId ? { ...thread, linkedRepairId: undefined } : thread));
+    const updated = conversations.map((thread) =>
+      thread.linkedRepairId === repairId ? { ...thread, linkedRepairId: undefined } : thread
+    );
     setConversations(updated);
     writeStoredConversations(updated);
     setOpenRepairLinkMenu(false);
@@ -330,9 +499,9 @@ export default function WorkItemsPage() {
       prev.map((repair) =>
         repair.id === repairId
           ? {
-            ...repair,
-            stage: stageName
-          }
+              ...repair,
+              stage: stageName
+            }
           : repair
       )
     );
@@ -341,7 +510,9 @@ export default function WorkItemsPage() {
   return (
     <>
       <div
-        className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}
+        className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] transition-[grid-template-columns] duration-300 ${
+          selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
+        }`}
         style={{ background: "var(--bg)" }}
       >
         <div className="flex min-h-0 flex-col py-8">
@@ -349,44 +520,131 @@ export default function WorkItemsPage() {
             className="mb-7 flex flex-wrap items-start justify-between gap-4 border-y px-10 py-5"
             style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
           >
-            <div><h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing {repairLabelPlural.toLowerCase()}</p></div>
+            <div>
+              <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
+              <p className="mt-1 text-sm text-slate-400">Manage ongoing {repairLabelPlural.toLowerCase()}</p>
+            </div>
             <div className="mt-1 flex flex-wrap items-center gap-3">
-              <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border px-4 text-sm text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>All<ChevronDown className="ml-4 h-5 w-5" /></button>
-              <label className="flex h-11 min-w-72 items-center gap-3 rounded-xl border px-4 text-sm text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}><Search className="h-5 w-5" /><span className="text-sm">Search...</span></label>
-              <button onClick={() => setIsAddRepairOpen(true)} className="inline-flex h-11 items-center gap-3 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"><Plus className="h-5 w-5" />New {repairLabel}</button>
+              <button
+                className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border px-4 text-sm text-slate-400"
+                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+              >
+                All
+                <ChevronDown className="ml-4 h-5 w-5" />
+              </button>
+              <label
+                className="flex h-11 min-w-72 items-center gap-3 rounded-xl border px-4 text-sm text-slate-400"
+                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+              >
+                <Search className="h-5 w-5" />
+                <span className="text-sm">Search...</span>
+              </label>
+              <button
+                onClick={() => setIsAddRepairOpen(true)}
+                className="inline-flex h-11 items-center gap-3 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
+              >
+                <Plus className="h-5 w-5" />
+                New {repairLabel}
+              </button>
             </div>
           </div>
 
           <section className="min-h-0 flex-1 overflow-hidden">
             <div
-              className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${selectedRepair ? "border-r-0" : ""}`}
+              className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${
+                selectedRepair ? "border-r-0" : ""
+              }`}
               style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
             >
-            <table className="w-full table-fixed">
-              <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[24%] px-5 py-4">Stage</th><th className="w-[6%] px-5 py-4 pr-2" /></tr></thead>
-              <tbody>
-                {repairs.map((repair) => (
-                  <tr
-                    key={repair.id}
-                    onClick={() => setSelectedRepairId(repair.id)}
-                    className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-white/10" : ""}`}
-                  >
-                    <td className="px-5 py-4 align-middle"><button type="button" className="w-full min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
-                    <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">{repair.customerName}</td>
-                    <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} /></td>
-                    <td className={`relative px-5 py-4 align-middle text-right text-slate-400 ${selectedRepair ? "pr-4" : "pr-2"}`}>
-                      <button data-action-menu="true" className="rounded-md p-2 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
-                      {openMenuId === repair.id ? (
-                        <div data-action-menu="true" className={`absolute top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl ${selectedRepair ? "right-4" : "right-2"}`}>
-                          <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200" onClick={() => { setEditingRepairId(repair.id); setOpenMenuId(null); }}><Pencil className="h-4 w-4" />Edit</button>
-                          <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50" onClick={() => { setDeletingRepairId(repair.id); setOpenMenuId(null); }}><Trash2 className="h-4 w-4" />Delete</button>
-                        </div>
-                      ) : null}
-                    </td>
+              <table className="w-full table-fixed">
+                <thead className="border-b border-[#253149] text-left text-sm text-slate-400">
+                  <tr>
+                    <th className="w-[42%] px-5 py-4">Title</th>
+                    <th className="w-[28%] px-5 py-4">Customer</th>
+                    <th className="w-[24%] px-5 py-4">Stage</th>
+                    <th className="w-[6%] px-5 py-4 pr-2" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {repairs.map((repair) => (
+                    <tr
+                      key={repair.id}
+                      onClick={() => setSelectedRepairId(repair.id)}
+                      className={`border-b border-[#253149] last:border-b-0 ${
+                        selectedRepairId === repair.id ? "bg-white/10" : ""
+                      }`}
+                    >
+                      <td className="px-5 py-4 align-middle">
+                        <button
+                          type="button"
+                          className="w-full min-w-0 text-left"
+                          onClick={() => setSelectedRepairId(repair.id)}
+                        >
+                          <div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">
+                            {repair.title}
+                          </div>
+                          <div className="mt-1 truncate text-sm text-slate-500">
+                            {repair.assetName} · {repair.description}
+                          </div>
+                        </button>
+                      </td>
+                      <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">
+                        {repair.customerName}
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+                      </td>
+                      <td
+                        className={`relative px-5 py-4 align-middle text-right text-slate-400 ${
+                          selectedRepair ? "pr-4" : "pr-2"
+                        }`}
+                      >
+                        <button
+                          data-action-menu="true"
+                          className="rounded-md p-2 hover:bg-slate-800/70"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setOpenMenuId((prev) => (prev === repair.id ? null : repair.id));
+                          }}
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                        {openMenuId === repair.id ? (
+                          <div
+                            data-action-menu="true"
+                            className={`absolute top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl ${
+                              selectedRepair ? "right-4" : "right-2"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                              onClick={() => {
+                                setEditingRepairId(repair.id);
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
+                              onClick={() => {
+                                setDeletingRepairId(repair.id);
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
         </div>
@@ -404,16 +662,21 @@ export default function WorkItemsPage() {
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
-              linkedConversationHref={selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined}
+              linkedConversationHref={
+                selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined
+              }
               className="h-full min-h-0 pl-6 pr-5 py-5"
             />
             {openRepairLinkMenu ? (
-              <div data-repair-link-menu="true" className="absolute bottom-16 right-5 z-20 w-52 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">
+              <div
+                data-repair-link-menu="true"
+                className="absolute bottom-16 right-5 z-20 w-52 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
+              >
                 {selectedRepairConversation ? (
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                    onClick={() => selectedRepair ? unlinkConversationFromRepair(selectedRepair.id) : null}
+                    onClick={() => (selectedRepair ? unlinkConversationFromRepair(selectedRepair.id) : null)}
                   >
                     <Unlink2 className="h-4 w-4" />
                     Unlink conversation
@@ -436,20 +699,53 @@ export default function WorkItemsPage() {
         ) : null}
       </div>
 
-      {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={{ ...initialFormValues, repairStage: initialStage }} stageOptions={stageOptions} repairLabel={repairLabel} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
-      {editingRepair ? <AddRepairModal mode="edit" initialValues={toFormValues(editingRepair)} stageOptions={stageOptions} repairLabel={repairLabel} onClose={() => setEditingRepairId(null)} onSubmit={(values) => handleEditRepair(editingRepair.id, values)} /> : null}
+      {isAddRepairOpen ? (
+        <AddRepairModal
+          mode="create"
+          initialValues={{ ...initialFormValues, repairStage: initialStage }}
+          stageOptions={stageOptions}
+          repairLabel={repairLabel}
+          onClose={() => setIsAddRepairOpen(false)}
+          onSubmit={handleCreateRepair}
+        />
+      ) : null}
+
+      {editingRepair ? (
+        <AddRepairModal
+          mode="edit"
+          initialValues={toFormValues(editingRepair)}
+          stageOptions={stageOptions}
+          repairLabel={repairLabel}
+          onClose={() => setEditingRepairId(null)}
+          onSubmit={(values) => handleEditRepair(editingRepair.id, values)}
+        />
+      ) : null}
+
       {deletingRepair ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Delete repair</h2>
-              <button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close delete repair dialog">
+              <button
+                type="button"
+                onClick={() => setDeletingRepairId(null)}
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
+                aria-label="Close delete repair dialog"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?
+            </p>
             <div className="mt-6 flex items-center justify-end gap-3">
-              <button type="button" onClick={() => setDeletingRepairId(null)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+              <button
+                type="button"
+                onClick={() => setDeletingRepairId(null)}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -465,8 +761,13 @@ export default function WorkItemsPage() {
           </div>
         </div>
       ) : null}
+
       {isLinkConversationOpen && selectedRepair ? (
-        <LinkConversationModal conversations={availableConversations} onClose={() => setIsLinkConversationOpen(false)} onSelect={(threadId) => linkConversationToRepair(threadId, selectedRepair.id)} />
+        <LinkConversationModal
+          conversations={availableConversations}
+          onClose={() => setIsLinkConversationOpen(false)}
+          onSelect={(threadId) => linkConversationToRepair(threadId, selectedRepair.id)}
+        />
       ) : null}
     </>
   );
