@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Plus, MoreHorizontal, X, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
+import { Plus, MoreHorizontal, X, ChevronDown, ChevronUp, Pencil, Trash2, Link2 } from "lucide-react";
 import clsx from "clsx";
 
 import { defaultStoredTemplates, readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
@@ -295,7 +295,7 @@ function normalizeBodyAndVariables(body: string, variables: TemplateVariable[]):
 
 function renderPreviewTokens(body: string, variables: TemplateVariable[]) {
   const variableByIndex = new Map(variables.map((variable) => [variable.index, variable]));
-  const parts: Array<{ type: "text"; value: string } | { type: "token"; index: number; label: string }> = [];
+  const parts: Array<{ type: "text"; value: string } | { type: "token"; index: number; label: string; linked: boolean }> = [];
   let cursor = 0;
 
   body.replace(placeholderRegex, (match, value, offset) => {
@@ -308,7 +308,8 @@ function renderPreviewTokens(body: string, variables: TemplateVariable[]) {
     parts.push({
       type: "token",
       index,
-      label: variable?.label?.trim() || `Variable ${index}`
+      label: variable?.label?.trim() || `Variable ${index}`,
+      linked: variable?.mode === "repair_field"
     });
 
     cursor = offset + match.length;
@@ -330,6 +331,7 @@ function renderPreviewTokens(body: string, variables: TemplateVariable[]) {
 
     return (
       <span key={`token_${index}`} className="mx-0.5 inline-flex items-center rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-700">
+        {part.linked ? <Link2 className="mr-1 h-3 w-3" aria-hidden="true" /> : null}
         {part.label}
       </span>
     );
@@ -696,7 +698,10 @@ function TemplateModal({
                         </div>
                         {values.variables.length > 0 ? values.variables.map((variable) => (
                           <button key={variable.id} type="button" className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-slate-100" onClick={() => insertVariableToken(variable)}>
-                            <span className="text-sm font-medium text-slate-700">{variable.label} <span className="text-xs text-slate-500">({variable.key})</span></span>
+                            <span className="inline-flex items-center text-sm font-medium text-slate-700">
+                              {variable.mode === "repair_field" ? <Link2 className="mr-1 h-3.5 w-3.5 text-[#1f8e82]" aria-hidden="true" /> : null}
+                              {variable.label} <span className="ml-1 text-xs text-slate-500">({variable.key})</span>
+                            </span>
                             <span className="text-xs text-slate-500">{variable.mode === "repair_field" ? `Source: repair.${variable.repairField}` : "Source: manual"}</span>
                           </button>
                         )) : <p className="px-3 py-2 text-xs text-slate-500">No variables available yet.</p>}
@@ -772,7 +777,10 @@ function TemplateModal({
                     {values.variables.map((variable) => (
                       <div key={variable.id} className={clsx("rounded-lg border bg-[#f8fafc] p-3 transition-colors", highlightedVariableId === variable.id ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20" : "border-[#d7dce3]")}>
                         <div className="mb-2 flex items-center justify-between">
-                          <div className="text-xs font-semibold text-slate-500">Placeholder {variable.key}</div>
+                          <div className="inline-flex items-center text-xs font-semibold text-slate-500">
+                            {variable.mode === "repair_field" ? <Link2 className="mr-1 h-3.5 w-3.5 text-[#1f8e82]" aria-hidden="true" /> : null}
+                            Placeholder {variable.key}
+                          </div>
                           <button type="button" className="text-xs font-semibold text-red-500 hover:text-red-600" onClick={() => setValues((prev) => ({ ...prev, variables: syncVariablesMetadata(prev.variables.filter((item) => item.id !== variable.id)) }))}>Remove</button>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
