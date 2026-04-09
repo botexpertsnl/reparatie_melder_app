@@ -204,7 +204,7 @@ function StageModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#02050d]/80 px-4 py-6 backdrop-blur-sm sm:items-center sm:py-8">
-      <div className="max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[calc(100vh-4rem)]">
+      <div className="subtle-scrollbar max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[calc(100vh-4rem)]">
         <div className="flex items-center justify-between px-6 py-5">
           <h2 className="text-2xl font-semibold">{title}</h2>
           <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close stage dialog">
@@ -321,25 +321,29 @@ function StageModal({
 
                 {values.templateId ? (
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="text-sm font-semibold text-slate-800">Moment of sending</div>
                         <div className="mt-1 text-sm text-slate-500">
                           The template message will be triggered immediately by default after the repair is moved to this stage.
                         </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
+                          <span className={clsx("rounded-full px-2.5 py-1", values.templateSendDelayEnabled ? "bg-slate-200 text-slate-700" : "bg-[#d3f3ef] text-[#0d7f73]")}>Default: Directly</span>
+                          <span className={clsx("rounded-full px-2.5 py-1", values.templateSendDelayEnabled ? "bg-[#d3f3ef] text-[#0d7f73]" : "bg-slate-200 text-slate-700")}>Left = Custom time</span>
+                        </div>
                       </div>
                       <button
                         type="button"
-                        className={clsx("relative inline-flex h-7 w-12 items-center rounded-full transition", values.templateSendDelayEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
+                        className={clsx("relative mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full transition", values.templateSendDelayEnabled ? "bg-slate-300" : "bg-[#2fb2a3]")}
                         onClick={() =>
                           setValues((prev) => ({
                             ...prev,
                             templateSendDelayEnabled: !prev.templateSendDelayEnabled
                           }))
                         }
-                        aria-label="Toggle custom send moment"
+                        aria-label="Toggle sending mode (right: directly, left: custom time)"
                       >
-                        <span className={clsx("inline-block h-5 w-5 transform rounded-full bg-white transition", values.templateSendDelayEnabled ? "translate-x-6" : "translate-x-1")} />
+                        <span className={clsx("inline-block h-5 w-5 transform rounded-full bg-white transition", values.templateSendDelayEnabled ? "translate-x-1" : "translate-x-6")} />
                       </button>
                     </div>
 
