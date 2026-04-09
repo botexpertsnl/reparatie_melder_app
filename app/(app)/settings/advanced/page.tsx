@@ -372,6 +372,9 @@ export default function AdvancedSettingsPage() {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= stages.length) return;
 
+    const targetStage = stages[targetIndex];
+    if (!targetStage || targetStage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(targetStage.key)) return;
+
     setStages((prev) => {
       const next = [...prev];
       const [moved] = next.splice(index, 1);
@@ -440,20 +443,46 @@ export default function AdvancedSettingsPage() {
         </div>
 
         <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-          {stages.map((stage, index) => (
-            <div key={stage.id} className="flex items-center justify-between gap-4 border-b border-[#253149] px-4 py-4 last:border-b-0">
+          {stages.map((stage, index) => {
+            const isFixedStage = stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key);
+            const previousStage = index > 0 ? stages[index - 1] : null;
+            const nextStage = index < stages.length - 1 ? stages[index + 1] : null;
+            const canMoveUp = Boolean(
+              !isFixedStage &&
+              previousStage &&
+              previousStage.key !== START_STAGE_KEY &&
+              !FINAL_STAGE_KEY_SET.has(previousStage.key)
+            );
+            const canMoveDown = Boolean(
+              !isFixedStage &&
+              nextStage &&
+              nextStage.key !== START_STAGE_KEY &&
+              !FINAL_STAGE_KEY_SET.has(nextStage.key)
+            );
+            const rowClassName = clsx(
+              "flex items-center justify-between gap-4 border-b border-[#253149] px-4 py-4 last:border-b-0",
+              stage.key === START_STAGE_KEY && "mb-3",
+              stage.key === "completed" && "mt-3"
+            );
+
+            return (
+            <div key={stage.id} className={rowClassName}>
               <div className="flex items-start gap-4">
                 <div className="mt-0.5 flex min-h-9 flex-col items-center text-slate-500">
-                  {stage.key !== START_STAGE_KEY && !FINAL_STAGE_KEY_SET.has(stage.key) ? (
-                    <>
-                      <button type="button" onClick={() => moveStage(index, "up")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} up`}>
-                        <ChevronUp className="h-4 w-4" />
-                      </button>
-                      <button type="button" onClick={() => moveStage(index, "down")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} down`}>
-                        <ChevronDown className="h-4 w-4" />
-                      </button>
-                    </>
-                  ) : null}
+                  {canMoveUp ? (
+                    <button type="button" onClick={() => moveStage(index, "up")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} up`}>
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <span className="h-5" aria-hidden="true" />
+                  )}
+                  {canMoveDown ? (
+                    <button type="button" onClick={() => moveStage(index, "down")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} down`}>
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <span className="h-5" aria-hidden="true" />
+                  )}
                 </div>
 
                 <span className="mt-2 h-3.5 w-3.5 rounded-full" style={{ backgroundColor: stage.color }} />
@@ -516,7 +545,8 @@ export default function AdvancedSettingsPage() {
                 ) : null}
               </div>
             </div>
-          ))}
+            );
+          })}
         </section>
       </div>
 
