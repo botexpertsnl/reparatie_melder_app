@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal, Link2 } from "lucide-react";
 import clsx from "clsx";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
@@ -157,6 +157,83 @@ function stageToFormValues(stage: Stage): StageFormValues {
     templateSendDelayHours: Math.max(0, stage.templateSendDelayHours ?? 0),
     templateSendDelayMinutes: Math.min(59, Math.max(0, stage.templateSendDelayMinutes ?? 0))
   };
+}
+
+const placeholderRegex = /{{(\d+)}}/g;
+
+function renderStageTemplatePreviewTokens(template: StoredTemplate) {
+  const variableByIndex = new Map(
+    (template.variables ?? []).map((variable, index) => {
+      const normalizedIndex = typeof variable.index === "number" && Number.isFinite(variable.index) ? Math.max(1, variable.index) : index + 1;
+      const label = variable.label?.trim() || variable.name?.trim() || `Variable ${normalizedIndex}`;
+      return [normalizedIndex, { label, linked: variable.mode === "repair_field" }] as const;
+    })
+  );
+  const parts: Array<{ type: "text"; value: string } | { type: "token"; index: number; label: string; linked: boolean }> = [];
+  let cursor = 0;
+
+  template.body.replace(placeholderRegex, (match, value, offset) => {
+    if (offset > cursor) {
+      parts.push({ type: "text", value: template.body.slice(cursor, offset) });
+    }
+
+    const index = Number(value);
+    const variable = variableByIndex.get(index);
+    parts.push({
+      type: "token",
+      index,
+      label: variable?.label || `Variable ${index}`,
+      linked: Boolean(variable?.linked)
+    });
+
+    cursor = offset + match.length;
+    return match;
+  });
+
+  if (cursor < template.body.length) {
+    parts.push({ type: "text", value: template.body.slice(cursor) });
+  }
+
+  if (parts.length === 0) {
+    return <span className="text-slate-400">Template message preview will appear here.</span>;
+  }
+
+  return parts.map((part, index) => {
+    if (part.type === "text") {
+      return <span key={`text_${index}`}>{part.value}</span>;
+    }
+
+    return (
+      <span key={`token_${index}`} className="mx-0.5 inline-flex items-center rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-700">
+        {part.linked ? <Link2 className="mr-1 h-3 w-3" aria-hidden="true" /> : null}
+        {part.label}
+      </span>
+    );
+  });
+}
+
+function renderStageTemplatePreviewButtons(template: StoredTemplate) {
+  if (!template.buttons || template.buttons.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 border-t border-[#d7dce3] pt-3">
+      {template.buttons.map((button) => {
+        const normalizedType = button.type.toUpperCase();
+        const isQuickReply = normalizedType === "QUICK_REPLY";
+        return (
+          <span
+            key={button.id}
+            className={clsx(
+              "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold",
+              isQuickReply ? "border-[#b8d8ff] bg-[#eef6ff] text-[#285b9b]" : "border-[#b8e8e2] bg-[#ecfbf8] text-[#16786b]"
+            )}
+          >
+            {button.text.trim() || "Button"}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 function StageModal({
@@ -316,7 +393,14 @@ function StageModal({
 
                 <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Template preview</div>
-                  <p className="mt-2 line-clamp-3 min-h-[60px] text-sm text-slate-600">{selectedTemplate ? selectedTemplate.body : "Select a template to preview its message."}</p>
+                  {selectedTemplate ? (
+                    <div className="mt-2 rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                      <div className="text-sm leading-6 text-slate-700">{renderStageTemplatePreviewTokens(selectedTemplate)}</div>
+                      {renderStageTemplatePreviewButtons(selectedTemplate)}
+                    </div>
+                  ) : (
+                    <p className="mt-2 min-h-[60px] text-sm text-slate-600">Select a template to preview its message.</p>
+                  )}
                 </div>
 
                 {values.templateId ? (
