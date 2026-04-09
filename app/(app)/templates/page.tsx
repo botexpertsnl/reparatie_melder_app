@@ -371,7 +371,6 @@ function TemplateModal({
     buttons: (initialValues.buttons ?? []).map((button) => normalizeButton(button))
   });
   const [showAddButtonMenu, setShowAddButtonMenu] = useState(false);
-  const [showVariablePicker, setShowVariablePicker] = useState(false);
   const [isVariablesOpen, setIsVariablesOpen] = useState(initialValues.variables.length > 0);
   const [isButtonsOpen, setIsButtonsOpen] = useState(initialValues.buttons.length > 0);
   const [highlightedVariableId, setHighlightedVariableId] = useState<string | null>(null);
@@ -379,7 +378,6 @@ function TemplateModal({
   const [bodySelection, setBodySelection] = useState({ start: 0, end: 0 });
   const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const modalScrollRef = useRef<HTMLDivElement | null>(null);
-  const variablePickerRef = useRef<HTMLDivElement | null>(null);
   const buttonPickerRef = useRef<HTMLDivElement | null>(null);
   const variablesSectionRef = useRef<HTMLDivElement | null>(null);
   const buttonsSectionRef = useRef<HTMLDivElement | null>(null);
@@ -486,19 +484,21 @@ function TemplateModal({
     });
   };
 
-  const toggleVariablePicker = () => {
+  const addVariable = () => {
     if (isTemplateLocked) return;
-    setShowVariablePicker((prev) => !prev);
-    setShowAddButtonMenu(false);
+    const nextIndex = values.variables.length + 1;
+    const variable = createVariable(nextIndex);
+    setValues((prev) => ({ ...prev, variables: [...syncVariablesMetadata(prev.variables), variable] }));
+    insertVariableToken(variable);
     setIsVariablesOpen(true);
     setIsButtonsOpen(false);
+    setHighlightedVariableId(variable.id);
     scrollToSection("variables");
   };
 
   const toggleButtonPicker = () => {
     if (isTemplateLocked) return;
     setShowAddButtonMenu((prev) => !prev);
-    setShowVariablePicker(false);
     setIsButtonsOpen(true);
     setIsVariablesOpen(false);
     scrollToSection("buttons");
@@ -555,9 +555,6 @@ function TemplateModal({
       const target = event.target as Node | null;
       if (!target) return;
 
-      if (showVariablePicker && variablePickerRef.current && !variablePickerRef.current.contains(target)) {
-        setShowVariablePicker(false);
-      }
       if (showAddButtonMenu && buttonPickerRef.current && !buttonPickerRef.current.contains(target)) {
         setShowAddButtonMenu(false);
       }
@@ -565,7 +562,6 @@ function TemplateModal({
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      setShowVariablePicker(false);
       setShowAddButtonMenu(false);
     };
 
@@ -575,7 +571,7 @@ function TemplateModal({
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [showAddButtonMenu, showVariablePicker]);
+  }, [showAddButtonMenu]);
 
   const insertVariableToken = (variable: TemplateVariable) => {
     const textarea = bodyTextareaRef.current;
@@ -587,7 +583,6 @@ function TemplateModal({
 
     setValues((prev) => ({ ...prev, body: nextBody }));
     setBodySelection({ start: nextCursorPosition, end: nextCursorPosition });
-    setShowVariablePicker(false);
 
     requestAnimationFrame(() => {
       textarea?.focus();
@@ -686,45 +681,11 @@ function TemplateModal({
               />
 
               <div className="mt-3 flex flex-wrap items-center justify-start gap-2">
-                <div ref={variablePickerRef} className="relative">
-                  <button type="button" disabled={isTemplateLocked} className={clsx("inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20", isTemplateLocked ? "cursor-not-allowed opacity-50" : undefined)} onClick={toggleVariablePicker}>
+                <div className="relative">
+                  <button type="button" disabled={isTemplateLocked} className={clsx("inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20", isTemplateLocked ? "cursor-not-allowed opacity-50" : undefined)} onClick={addVariable}>
                     <Plus className="h-3.5 w-3.5" />
                     Add Variable
                   </button>
-                  {showVariablePicker ? (
-                    <div className="absolute left-0 top-9 z-20 w-72 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
-                        <div className="mb-1 flex justify-end px-1">
-                          <button type="button" className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Close variable options" onClick={() => setShowVariablePicker(false)}>
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                        {values.variables.length > 0 ? values.variables.map((variable) => (
-                          <button key={variable.id} type="button" className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-slate-100" onClick={() => insertVariableToken(variable)}>
-                            <span className="inline-flex items-center text-sm font-medium text-slate-700">
-                              {variable.mode === "repair_field" ? <Link2 className="mr-1 h-3.5 w-3.5 text-[#1f8e82]" aria-hidden="true" /> : null}
-                              {variable.label} <span className="ml-1 text-xs text-slate-500">({variable.key})</span>
-                            </span>
-                            <span className="text-xs text-slate-500">{variable.mode === "repair_field" ? `Source: repair.${variable.repairField}` : "Source: manual"}</span>
-                          </button>
-                        )) : <p className="px-3 py-2 text-xs text-slate-500">No variables available yet.</p>}
-                        <button
-                          type="button"
-                          className="mt-1 flex w-full items-center rounded-md border border-dashed border-[#bfc9d8] px-3 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                          onClick={() => {
-                            const nextIndex = values.variables.length + 1;
-                            const variable = createVariable(nextIndex);
-                            setValues((prev) => ({ ...prev, variables: [...syncVariablesMetadata(prev.variables), variable] }));
-                            insertVariableToken(variable);
-                            setIsVariablesOpen(true);
-                            setIsButtonsOpen(false);
-                            setHighlightedVariableId(variable.id);
-                            scrollToSection("variables");
-                          }}
-                        >
-                          Create and insert new variable
-                        </button>
-                      </div>
-                  ) : null}
                 </div>
 
                 <div ref={buttonPickerRef} className="relative">
@@ -1165,7 +1126,7 @@ export default function TemplatesPage() {
                   setEditingTemplateId(template.id);
                 }
               }}
-              className="relative cursor-pointer rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+              className="relative cursor-pointer rounded-2xl border border-[var(--border-strong)] bg-[var(--surface-muted)] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105"
             >
               <div className="flex items-start justify-between">
                 <h2 className="text-lg font-semibold text-white">{template.name}</h2>
@@ -1266,7 +1227,7 @@ export default function TemplatesPage() {
                       setEditingQuickReplyId(reply.id);
                     }
                   }}
-                  className="relative cursor-pointer rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+                  className="relative cursor-pointer rounded-2xl border border-[var(--border-strong)] bg-[var(--surface-muted)] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105"
                 >
                   <div className="flex items-start justify-between">
                     <h3 className="text-lg font-semibold text-white">{reply.name}</h3>
