@@ -330,8 +330,8 @@ export default function WorkItemsPage() {
 
         {selectedRepair ? (
           <div
-            className="relative h-full border-l"
-            style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+            className="relative h-full min-h-0 overflow-hidden border-l"
+            style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
           >
             <RepairDetailsPanel
               repair={selectedRepair}
@@ -341,7 +341,7 @@ export default function WorkItemsPage() {
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
               linkedConversationHref={selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined}
-              className="h-full pl-6 pr-5 py-5"
+              className="h-full min-h-0 pl-6 pr-5 py-5"
             />
             {openRepairLinkMenu ? (
               <div data-repair-link-menu="true" className="absolute bottom-16 right-5 z-20 w-52 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl">

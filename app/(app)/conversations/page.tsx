@@ -11,8 +11,6 @@ import {
   ChevronLeft,
   FileText,
   Camera,
-  Unlink2,
-  Link2,
 } from "lucide-react";
 import {
   defaultConversations,
@@ -249,7 +247,6 @@ function ConversationsPageContent() {
     open: false,
     threadId: null,
   });
-  const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -324,21 +321,6 @@ function ConversationsPageContent() {
       window.removeEventListener("storage", refreshTemplates);
     };
   }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-repair-link-menu='true']")) return;
-      setOpenRepairLinkMenu(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    setOpenRepairLinkMenu(false);
-  }, [selectedThreadId]);
 
   const selectedThread = useMemo(
     () => threads.find((thread) => thread.id === selectedThreadId) ?? null,
@@ -418,24 +400,7 @@ function ConversationsPageContent() {
     );
 
     setLinkModal({ open: false, threadId: null });
-    setOpenRepairLinkMenu(false);
     setShowRepairPanel(true);
-  };
-
-  const unlinkRepairFromThread = (threadId: string) => {
-    setThreads((prev) =>
-      prev.map((thread) =>
-        thread.id === threadId
-          ? {
-              ...thread,
-              linkedRepairId: undefined,
-            }
-          : thread
-      )
-    );
-
-    setShowRepairPanel(false);
-    setOpenRepairLinkMenu(false);
   };
 
   const createRepairFromThread = (threadId: string) => {
@@ -738,45 +703,18 @@ function ConversationsPageContent() {
 
         {showRepairColumn && linkedRepair ? (
           <div
-            className="relative h-full border-l"
+            className="relative h-full min-h-0 overflow-hidden border-l"
             style={{
               borderColor: "var(--border)",
-              background: "var(--surface-2)",
+              background: "var(--surface-1)",
             }}
           >
             <RepairDetailsPanel
               repair={linkedRepair}
               itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
-              onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
-              className="relative h-full pl-6 pr-5 py-5"
+              className="relative h-full min-h-0 pl-6 pr-5 py-5"
             />
-            {openRepairLinkMenu && selectedThread ? (
-              <div
-                data-repair-link-menu="true"
-                className="absolute bottom-16 right-5 z-20 w-48 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
-              >
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                  onClick={() => unlinkRepairFromThread(selectedThread.id)}
-                >
-                  <Unlink2 className="h-4 w-4" />
-                  Unlink {repairLabel.toLowerCase()}
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                  onClick={() => {
-                    setLinkModal({ open: true, threadId: selectedThread.id });
-                    setOpenRepairLinkMenu(false);
-                  }}
-                >
-                  <Link2 className="h-4 w-4" />
-                  Link to other {repairLabel.toLowerCase()}
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : null}
       </section>
