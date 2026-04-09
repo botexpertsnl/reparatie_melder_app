@@ -1,7 +1,7 @@
 export type StoredTemplate = {
   id: string;
   name: string;
-  category: string;
+  category: "UTILITY" | "MARKETING" | string;
   language: string;
   body: string;
   spotlerId?: string;
@@ -19,9 +19,11 @@ export type StoredTemplate = {
   }[];
   buttons?: {
     id: string;
-    type: "quick_reply" | "url" | "phone";
+    type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER" | "quick_reply" | "url" | "phone";
     text: string;
     value?: string;
+    url?: string;
+    phoneNumber?: string;
   }[];
 };
 
@@ -31,7 +33,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
   {
     id: "tpl_1",
     name: "Device Received",
-    category: "Update",
+    category: "UTILITY",
     language: "nl",
     body: "Hallo {{1}}, we hebben uw {{2}} ontvangen en gaan deze diagnosticeren. U ontvangt een update binnen 24 uur.",
     spotlerId: "",
@@ -45,7 +47,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
   {
     id: "tpl_2",
     name: "Device Ready",
-    category: "Pickup",
+    category: "UTILITY",
     language: "nl",
     body: "Hallo {{1}}, uw {{2}} is gerepareerd en klaar voor ophalen! Kom langs op ons adres tijdens openingstijden.",
     spotlerId: "",
@@ -54,7 +56,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
       { id: "var_3", name: "Customer name", mode: "repair_field", repairField: "customerName" },
       { id: "var_4", name: "Device name", mode: "repair_field", repairField: "assetName" }
     ],
-    buttons: [{ id: "btn_1", type: "quick_reply", text: "Ik kom eraan" }]
+    buttons: [{ id: "btn_1", type: "QUICK_REPLY", text: "Ik kom eraan" }]
   }
 ];
 
