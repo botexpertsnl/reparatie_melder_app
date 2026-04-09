@@ -165,6 +165,24 @@ function templateToFormValues(template: Template): TemplateFormValues {
   };
 }
 
+function hasMixedButtonModes(buttons: TemplateButton[]) {
+  const hasQuickReply = buttons.some((button) => button.type === "QUICK_REPLY");
+  const hasCta = buttons.some((button) => button.type === "URL" || button.type === "PHONE_NUMBER");
+  return hasQuickReply && hasCta;
+}
+
+function sanitizeButtonsForSave(buttons: TemplateButton[]): TemplateButton[] {
+  return buttons.map((button) => {
+    if (button.type === "URL") {
+      return { ...button, text: button.text.trim(), url: button.url.trim() };
+    }
+    if (button.type === "PHONE_NUMBER") {
+      return { ...button, text: button.text.trim(), phoneNumber: normalizePhoneNumber(button.phoneNumber) };
+    }
+    return { ...button, text: button.text.trim() };
+  });
+}
+
 const placeholderRegex = /{{(\d+)}}/g;
 const strictPlaceholderRegex = /^{{\d+}}$/;
 
@@ -175,6 +193,37 @@ type NormalizedTemplateDraft = {
 
 function toPlaceholder(index: number) {
   return `{{${index}}}`;
+}
+
+function normalizePhoneNumber(phoneNumber: string) {
+  const trimmed = phoneNumber.trim();
+  if (!trimmed) return "";
+
+  const normalized = trimmed
+    .replace(/\(0\)/g, "")
+    .replace(/[^\d+]/g, "")
+    .replace(/(?!^)\+/g, "");
+
+  if (!normalized) return "";
+  return normalized.startsWith("+") ? normalized : `+${normalized}`;
+}
+
+function isValidPhoneNumber(phoneNumber: string) {
+  return /^\+[1-9]\d{7,14}$/.test(phoneNumber);
+}
+
+function isValidCtaUrl(url: string) {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+
+  const templatedUrl = trimmed.replace(/\{\{\s*\d+\s*\}\}/g, "placeholder");
+
+  try {
+    const parsed = new URL(templatedUrl);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function createVariable(index: number): TemplateVariable {
@@ -330,13 +379,26 @@ function TemplateModal({
   const [showVariablePicker, setShowVariablePicker] = useState(false);
   const [isVariablesOpen, setIsVariablesOpen] = useState(initialValues.variables.length > 0);
   const [isButtonsOpen, setIsButtonsOpen] = useState(initialValues.buttons.length > 0);
+  const [highlightedVariableId, setHighlightedVariableId] = useState<string | null>(null);
+  const [highlightedButtonId, setHighlightedButtonId] = useState<string | null>(null);
   const [bodySelection, setBodySelection] = useState({ start: 0, end: 0 });
   const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const modalScrollRef = useRef<HTMLDivElement | null>(null);
+  const variablePickerRef = useRef<HTMLDivElement | null>(null);
+  const buttonPickerRef = useRef<HTMLDivElement | null>(null);
+  const variablesSectionRef = useRef<HTMLDivElement | null>(null);
+  const buttonsSectionRef = useRef<HTMLDivElement | null>(null);
+  const variableInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const buttonInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const quickReplyCount = values.buttons.filter((button) => button.type === "QUICK_REPLY").length;
   const urlCount = values.buttons.filter((button) => button.type === "URL").length;
   const phoneCount = values.buttons.filter((button) => button.type === "PHONE_NUMBER").length;
   const ctaCount = urlCount + phoneCount;
+  const hasQuickReplyButtons = quickReplyCount > 0;
+  const hasCtaButtons = ctaCount > 0;
+  const hasMixedButtonTypes = hasQuickReplyButtons && hasCtaButtons;
+  const buttonMode: "QUICK_REPLY" | "CTA" | null = hasQuickReplyButtons ? "QUICK_REPLY" : hasCtaButtons ? "CTA" : null;
 
   const normalizedButtonLabels = values.buttons.map((button) => button.text.trim().toLowerCase());
   const duplicateButtonIndexes = new Set(
@@ -355,6 +417,20 @@ function TemplateModal({
       })
       .filter((index) => index >= 0)
   );
+  const invalidUrlIndexes = new Set(
+    values.buttons
+      .map((button, index) => (button.type === "URL" && button.url.trim() && !isValidCtaUrl(button.url) ? index : -1))
+      .filter((index) => index >= 0)
+  );
+  const invalidPhoneIndexes = new Set(
+    values.buttons
+      .map((button, index) => {
+        if (button.type !== "PHONE_NUMBER") return -1;
+        const normalizedPhone = normalizePhoneNumber(button.phoneNumber);
+        return button.phoneNumber.trim() && !isValidPhoneNumber(normalizedPhone) ? index : -1;
+      })
+      .filter((index) => index >= 0)
+  );
 
   const usedPlaceholderIndexes = useMemo(() => getUsedPlaceholderIndexes(values.body), [values.body]);
   const sortedUsedIndexes = useMemo(() => [...usedPlaceholderIndexes].sort((a, b) => a - b), [usedPlaceholderIndexes]);
@@ -367,12 +443,14 @@ function TemplateModal({
     return braces.filter((fragment) => !strictPlaceholderRegex.test(fragment));
   }, [values.body]);
 
-  const hasSequentialGap = sortedUsedIndexes.some((placeholderIndex, position) => placeholderIndex !== position + 1);
   const hasButtonValidationError =
+    hasMixedButtonTypes ||
     duplicateButtonIndexes.size > 0 ||
     emptyButtonIndexes.size > 0 ||
     tooLongButtonIndexes.size > 0 ||
     ctaNeedsValueIndexes.size > 0 ||
+    invalidUrlIndexes.size > 0 ||
+    invalidPhoneIndexes.size > 0 ||
     quickReplyCount > 3 ||
     ctaCount > 2 ||
     urlCount > 1 ||
@@ -403,21 +481,103 @@ function TemplateModal({
     }));
   };
 
+  const scrollToSection = (section: "variables" | "buttons") => {
+    requestAnimationFrame(() => {
+      const container = modalScrollRef.current;
+      const target = section === "variables" ? variablesSectionRef.current : buttonsSectionRef.current;
+      if (!container || !target) return;
+      const offset = target.offsetTop - 12;
+      container.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+    });
+  };
+
+  const toggleVariablePicker = () => {
+    setShowVariablePicker((prev) => !prev);
+    setShowAddButtonMenu(false);
+    setIsVariablesOpen(true);
+    setIsButtonsOpen(false);
+    scrollToSection("variables");
+  };
+
+  const toggleButtonPicker = () => {
+    setShowAddButtonMenu((prev) => !prev);
+    setShowVariablePicker(false);
+    setIsButtonsOpen(true);
+    setIsVariablesOpen(false);
+    scrollToSection("buttons");
+  };
+
   const addButton = (type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER") => {
+    const nextButtonId = `btn_${Date.now()}`;
     setValues((prev) => {
       const nextButton: TemplateButton =
         type === "URL"
-          ? { id: `btn_${Date.now()}`, type: "URL", text: "", url: "" }
+          ? { id: nextButtonId, type: "URL", text: "", url: "" }
           : type === "PHONE_NUMBER"
-            ? { id: `btn_${Date.now()}`, type: "PHONE_NUMBER", text: "", phoneNumber: "" }
-            : { id: `btn_${Date.now()}`, type: "QUICK_REPLY", text: "" };
+            ? { id: nextButtonId, type: "PHONE_NUMBER", text: "", phoneNumber: "" }
+            : { id: nextButtonId, type: "QUICK_REPLY", text: "" };
 
       return { ...prev, buttons: [...prev.buttons, nextButton] };
     });
     setShowAddButtonMenu(false);
     setIsButtonsOpen(true);
     setIsVariablesOpen(false);
+    setHighlightedButtonId(nextButtonId);
+    scrollToSection("buttons");
   };
+
+  useEffect(() => {
+    if (!highlightedVariableId) return;
+
+    const timeout = window.setTimeout(() => {
+      const input = variableInputRefs.current[highlightedVariableId];
+      input?.focus();
+      input?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      window.setTimeout(() => setHighlightedVariableId(null), 1400);
+    }, 80);
+
+    return () => window.clearTimeout(timeout);
+  }, [highlightedVariableId, values.variables]);
+
+  useEffect(() => {
+    if (!highlightedButtonId) return;
+
+    const timeout = window.setTimeout(() => {
+      const input = buttonInputRefs.current[highlightedButtonId];
+      input?.focus();
+      input?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      window.setTimeout(() => setHighlightedButtonId(null), 1400);
+    }, 80);
+
+    return () => window.clearTimeout(timeout);
+  }, [highlightedButtonId, values.buttons]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      if (showVariablePicker && variablePickerRef.current && !variablePickerRef.current.contains(target)) {
+        setShowVariablePicker(false);
+      }
+      if (showAddButtonMenu && buttonPickerRef.current && !buttonPickerRef.current.contains(target)) {
+        setShowAddButtonMenu(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setShowVariablePicker(false);
+      setShowAddButtonMenu(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showAddButtonMenu, showVariablePicker]);
 
   const insertVariableToken = (variable: TemplateVariable) => {
     const textarea = bodyTextareaRef.current;
@@ -453,11 +613,7 @@ function TemplateModal({
         label: variable.label.trim(),
         manualValue: variable.manualValue.trim()
       })),
-      buttons: values.buttons.map((button) => {
-        if (button.type === "URL") return { ...button, text: button.text.trim(), url: button.url.trim() };
-        if (button.type === "PHONE_NUMBER") return { ...button, text: button.text.trim(), phoneNumber: button.phoneNumber.trim() };
-        return { ...button, text: button.text.trim() };
-      })
+      buttons: sanitizeButtonsForSave(values.buttons)
     });
   };
 
@@ -472,7 +628,7 @@ function TemplateModal({
         </div>
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className="subtle-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+          <div ref={modalScrollRef} className="subtle-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
             <div>
               <label htmlFor="template-name" className="mb-2 block text-sm font-medium text-slate-700">Name *</label>
               <input id="template-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]" value={values.name} onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))} />
@@ -526,13 +682,18 @@ function TemplateModal({
               />
 
               <div className="mt-3 flex flex-wrap items-center justify-start gap-2">
-                <div className="relative">
-                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={() => setShowVariablePicker((prev) => !prev)}>
+                <div ref={variablePickerRef} className="relative">
+                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={toggleVariablePicker}>
                     <Plus className="h-3.5 w-3.5" />
                     Add Variable
                   </button>
                   {showVariablePicker ? (
                     <div className="absolute left-0 top-9 z-20 w-72 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
+                        <div className="mb-1 flex justify-end px-1">
+                          <button type="button" className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Close variable options" onClick={() => setShowVariablePicker(false)}>
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
                         {values.variables.length > 0 ? values.variables.map((variable) => (
                           <button key={variable.id} type="button" className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-slate-100" onClick={() => insertVariableToken(variable)}>
                             <span className="text-sm font-medium text-slate-700">{variable.label} <span className="text-xs text-slate-500">({variable.key})</span></span>
@@ -549,6 +710,8 @@ function TemplateModal({
                             insertVariableToken(variable);
                             setIsVariablesOpen(true);
                             setIsButtonsOpen(false);
+                            setHighlightedVariableId(variable.id);
+                            scrollToSection("variables");
                           }}
                         >
                           Create and insert new variable
@@ -557,16 +720,23 @@ function TemplateModal({
                   ) : null}
                 </div>
 
-                <div className="relative">
-                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={() => setShowAddButtonMenu((prev) => !prev)}>
+                <div ref={buttonPickerRef} className="relative">
+                  <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20" onClick={toggleButtonPicker}>
                     <Plus className="h-3.5 w-3.5" />
                     Add Button
                   </button>
                   {showAddButtonMenu ? (
-                    <div className="absolute left-0 top-9 z-10 w-48 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
-                        <button type="button" disabled={quickReplyCount >= 3} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("QUICK_REPLY")}>Quick Reply</button>
-                        <button type="button" disabled={urlCount >= 1 || ctaCount >= 2} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("URL")}>CTA: URL</button>
-                        <button type="button" disabled={phoneCount >= 1 || ctaCount >= 2} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("PHONE_NUMBER")}>CTA: Phone</button>
+                    <div className="absolute left-0 top-9 z-10 w-56 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
+                        <div className="mb-1 flex justify-end px-1">
+                          <button type="button" className="rounded-md p-1 text-slate-500 hover:bg-slate-100" aria-label="Close button options" onClick={() => setShowAddButtonMenu(false)}>
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <button type="button" disabled={buttonMode === "CTA" || quickReplyCount >= 3} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("QUICK_REPLY")}>Quick Reply</button>
+                        <button type="button" disabled={buttonMode === "QUICK_REPLY" || urlCount >= 1 || ctaCount >= 2} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("URL")}>CTA: URL</button>
+                        <button type="button" disabled={buttonMode === "QUICK_REPLY" || phoneCount >= 1 || ctaCount >= 2} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => addButton("PHONE_NUMBER")}>CTA: Phone</button>
+                        {buttonMode === "QUICK_REPLY" ? <p className="px-3 py-2 text-xs text-slate-500">CTA is unavailable while quick replies are present.</p> : null}
+                        {buttonMode === "CTA" ? <p className="px-3 py-2 text-xs text-slate-500">Quick replies are unavailable while CTA buttons are present.</p> : null}
                     </div>
                   ) : null}
                 </div>
@@ -583,12 +753,10 @@ function TemplateModal({
               {!isBodyPresent ? <p className="mt-2 text-xs text-red-500">Body cannot be empty.</p> : null}
               {invalidPlaceholderFragments.length > 0 ? <p className="mt-2 text-xs text-red-500">Invalid placeholder format found. Use only values like {"{{1}}"}.</p> : null}
               {missingVariableIndexes.length > 0 ? <p className="mt-2 text-xs text-red-500">Missing variable definitions for: {missingVariableIndexes.map((index) => toPlaceholder(index)).join(", ")}.</p> : null}
-              {hasSequentialGap ? <p className="mt-2 text-xs text-amber-600">Placeholders will be normalized to sequential order on save for API compatibility.</p> : null}
             </div>
 
-            {values.variables.length > 0 ? (
-              <div className={clsx("rounded-xl border border-[#d7dce3] bg-white", isVariablesOpen ? "p-4" : "px-4 py-3")}>
-                <button type="button" className={clsx("flex w-full items-center justify-between rounded-lg px-2 text-left transition-colors hover:bg-slate-50", isVariablesOpen ? "mb-3 min-h-10" : "min-h-9")} onClick={() => setIsVariablesOpen((prev) => !prev)}>
+            <div ref={variablesSectionRef} className={clsx("rounded-xl border border-[#d7dce3] bg-white", isVariablesOpen ? "p-4" : "px-3 py-2")}>
+                <button type="button" className={clsx("flex w-full items-center justify-between rounded-lg px-2 text-left transition-colors hover:bg-slate-50", isVariablesOpen ? "mb-3 min-h-10" : "min-h-8")} onClick={() => setIsVariablesOpen((prev) => !prev)}>
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800">Variables</h3>
                     <p className="text-xs text-slate-500">Each variable stores index/key/label metadata for backend mapping.</p>
@@ -600,14 +768,15 @@ function TemplateModal({
 
                 {isVariablesOpen ? (
                   <div className="space-y-3">
+                    {values.variables.length === 0 ? <p className="text-xs text-slate-500">No variables yet. Use Add Variable to create one.</p> : null}
                     {values.variables.map((variable) => (
-                      <div key={variable.id} className="rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                      <div key={variable.id} className={clsx("rounded-lg border bg-[#f8fafc] p-3 transition-colors", highlightedVariableId === variable.id ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20" : "border-[#d7dce3]")}>
                         <div className="mb-2 flex items-center justify-between">
                           <div className="text-xs font-semibold text-slate-500">Placeholder {variable.key}</div>
                           <button type="button" className="text-xs font-semibold text-red-500 hover:text-red-600" onClick={() => setValues((prev) => ({ ...prev, variables: syncVariablesMetadata(prev.variables.filter((item) => item.id !== variable.id)) }))}>Remove</button>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <input className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" placeholder="Variable label" value={variable.label} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, label: event.target.value }))} />
+                          <input ref={(node) => { variableInputRefs.current[variable.id] = node; }} className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" placeholder="Variable label" value={variable.label} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, label: event.target.value }))} />
                           <div className="relative">
                             <select className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" value={variable.mode} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, mode: event.target.value as TemplateVariable["mode"], source: event.target.value === "repair_field" ? `repair.${current.repairField}` : "manual" }))}>
                               <option value="manual">Manual</option>
@@ -640,14 +809,14 @@ function TemplateModal({
 
                 {isVariablesOpen && orphanVariableIndexes.length > 0 ? <p className="mt-3 text-xs text-amber-600">Unused variables detected ({orphanVariableIndexes.map((index) => toPlaceholder(index)).join(", ")}); they will be removed during save normalization.</p> : null}
               </div>
-            ) : null}
 
-            {values.buttons.length > 0 ? (
-              <div className={clsx("rounded-xl border border-[#d7dce3] bg-white", isButtonsOpen ? "p-4" : "px-4 py-3")}>
-                <button type="button" className={clsx("flex w-full items-center justify-between rounded-lg px-2 text-left transition-colors hover:bg-slate-50", isButtonsOpen ? "mb-3 min-h-10" : "min-h-9")} onClick={() => setIsButtonsOpen((prev) => !prev)}>
+            <div ref={buttonsSectionRef} className={clsx("rounded-xl border border-[#d7dce3] bg-white", isButtonsOpen ? "p-4" : "px-3 py-2")}>
+                <button type="button" className={clsx("flex w-full items-center justify-between rounded-lg px-2 text-left transition-colors hover:bg-slate-50", isButtonsOpen ? "mb-3 min-h-10" : "min-h-8")} onClick={() => setIsButtonsOpen((prev) => !prev)}>
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800">Buttons</h3>
-                    <p className="text-xs text-slate-500">{quickReplyCount > 0 ? `${quickReplyCount}/3 quick replies used` : "Add quick replies or call-to-action buttons."}</p>
+                    <p className="text-xs text-slate-500">
+                      {buttonMode === "QUICK_REPLY" ? `${quickReplyCount}/3 quick replies used` : buttonMode === "CTA" ? `${ctaCount}/2 CTA buttons used` : "Add quick replies or call-to-action buttons."}
+                    </p>
                   </div>
                   <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#d7dce3] bg-white text-slate-500">
                     {isButtonsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -656,8 +825,9 @@ function TemplateModal({
 
                 {isButtonsOpen ? (
                   <div className="space-y-3">
+                    {values.buttons.length === 0 ? <p className="text-xs text-slate-500">No buttons yet. Use Add Button to start with quick replies or CTA buttons.</p> : null}
                     {values.buttons.map((button, index) => (
-                      <div key={button.id} className="rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                      <div key={button.id} className={clsx("rounded-lg border bg-[#f8fafc] p-3 transition-colors", highlightedButtonId === button.id ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20" : "border-[#d7dce3]")}>
                         <div className="mb-2 flex items-center justify-between">
                           <div className="text-xs font-semibold text-slate-500">{button.type === "QUICK_REPLY" ? "Quick Reply" : "CTA"}</div>
                           <button type="button" className="text-xs font-semibold text-red-500 hover:text-red-600" onClick={() => setValues((prev) => ({ ...prev, buttons: prev.buttons.filter((item) => item.id !== button.id) }))}>Remove</button>
@@ -682,7 +852,7 @@ function TemplateModal({
                           </div>
                         ) : null}
 
-                        <input className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
+                        <input ref={(node) => { buttonInputRefs.current[button.id] = node; }} className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm" placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
                         <div className="mt-1 text-xs text-slate-500">{button.text.trim().length}/20</div>
                         {emptyButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot be empty.</p> : null}
                         {tooLongButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot exceed 20 characters.</p> : null}
@@ -696,10 +866,13 @@ function TemplateModal({
                               onChange={(event) => updateButton(button.id, (current) => current.type === "URL" ? { ...current, url: event.target.value } : { ...current, phoneNumber: event.target.value })}
                             />
                             {ctaNeedsValueIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">CTA requires a URL or phone number.</p> : null}
+                            {invalidUrlIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Enter a valid http(s) URL.</p> : null}
+                            {invalidPhoneIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Enter a valid phone number in international format (e.g. +31612345678).</p> : null}
                           </>
                         ) : null}
                       </div>
                     ))}
+                    {hasMixedButtonTypes ? <p className="text-xs text-red-500">Buttons must be either quick replies or CTA buttons. Remove one type to continue.</p> : null}
                     {quickReplyCount >= 3 ? <p className="text-xs text-amber-600">Maximum of 3 quick replies reached.</p> : null}
                     {ctaCount >= 2 ? <p className="text-xs text-amber-600">Maximum of 2 call-to-action buttons reached.</p> : null}
                     {urlCount > 1 ? <p className="text-xs text-red-500">Only one URL button is allowed.</p> : null}
@@ -708,7 +881,6 @@ function TemplateModal({
                   </div>
                 ) : null}
               </div>
-            ) : null}
 
             <div className="flex items-center gap-3 pt-1">
               <button type="button" className={clsx("relative inline-flex h-7 w-12 items-center rounded-full transition", values.active ? "bg-[#2fb2a3]" : "bg-slate-300")} onClick={() => setValues((prev) => ({ ...prev, active: !prev.active }))} aria-label="Toggle active">
@@ -879,6 +1051,9 @@ export default function TemplatesPage() {
   };
 
   const handleCreateTemplate = (values: TemplateFormValues) => {
+    const normalizedButtons = sanitizeButtonsForSave(values.buttons);
+    if (hasMixedButtonModes(normalizedButtons)) return;
+
     const newTemplate: Template = {
       id: `tpl_${Date.now()}`,
       name: values.name.trim(),
@@ -887,7 +1062,7 @@ export default function TemplatesPage() {
       body: values.body.trim(),
       active: values.active,
       variables: values.variables,
-      buttons: values.buttons
+      buttons: normalizedButtons
     };
 
     setTemplates((prev) => [newTemplate, ...prev]);
@@ -895,6 +1070,9 @@ export default function TemplatesPage() {
   };
 
   const handleEditTemplate = (templateId: string, values: TemplateFormValues) => {
+    const normalizedButtons = sanitizeButtonsForSave(values.buttons);
+    if (hasMixedButtonModes(normalizedButtons)) return;
+
     setTemplates((prev) =>
       prev.map((template) => {
         if (template.id !== templateId) return template;
@@ -907,7 +1085,7 @@ export default function TemplatesPage() {
           body: values.body.trim(),
           active: values.active,
           variables: values.variables,
-          buttons: values.buttons
+          buttons: normalizedButtons
         };
       })
     );
