@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
@@ -184,9 +184,10 @@ function TemplatePickerModal({
   );
 }
 
-export default function ConversationsPage() {
+function ConversationsPageContent() {
   const searchParams = useSearchParams();
   const repairLabel = useTenantRepairLabel();
+
   const [threads, setThreads] = useState<StoredConversation[]>(() =>
     readStoredConversations(defaultConversations)
   );
@@ -207,6 +208,7 @@ export default function ConversationsPage() {
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+
   const threadIdParam = searchParams.get("threadId");
 
   useEffect(() => {
@@ -236,6 +238,7 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     if (!threadIdParam) return;
+
     if (threads.some((thread) => thread.id === threadIdParam)) {
       setSelectedThreadId(threadIdParam);
       setShowRepairPanel(true);
@@ -733,5 +736,24 @@ export default function ConversationsPage() {
         />
       ) : null}
     </div>
+  );
+}
+
+function ConversationsPageFallback() {
+  return (
+    <div
+      className="-mx-10 -my-8 flex h-[calc(100vh-69px)] items-center justify-center"
+      style={{ background: "var(--bg)" }}
+    >
+      <div className="text-sm text-slate-400">Loading conversations...</div>
+    </div>
+  );
+}
+
+export default function ConversationsPage() {
+  return (
+    <Suspense fallback={<ConversationsPageFallback />}>
+      <ConversationsPageContent />
+    </Suspense>
   );
 }
