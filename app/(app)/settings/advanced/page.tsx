@@ -927,6 +927,8 @@ function AdvancedSettingsPageContent() {
       ? `${stage.templateSendDelayHours ?? 0}h ${stage.templateSendDelayMinutes ?? 0}m after assignment`
       : "Directly";
     const enabledButtonActionCount = (stage.templateButtonActions ?? []).filter((action) => action.sendQuickReplyEnabled || action.moveToStageEnabled).length;
+    const hasTemplateAutomation = stage.templateAutomationEnabled && stage.templateId;
+    const automationLabelClassName = "inline-flex items-center rounded-md border border-slate-500/40 bg-slate-500/10 px-2 py-0.5 text-xs font-medium text-slate-300";
 
     return (
       <div
@@ -984,16 +986,23 @@ function AdvancedSettingsPageContent() {
               {stage.isStart ? <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Start</span> : null}
               {stage.isTerminal ? <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-300">End</span> : null}
               {stage.requiresApproval ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300"><Sparkles className="h-3 w-3" />Approval</span> : null}
+              {hasTemplateAutomation ? (
+                <>
+                  <span className={automationLabelClassName}>
+                    Template: {templateNameById(stage.templateId) ?? "Deleted template"}
+                  </span>
+                  <span className={automationLabelClassName}>
+                    Added button actions: {enabledButtonActionCount}
+                  </span>
+                  <span className={automationLabelClassName}>
+                    Send time after assignment: {delayLabel}
+                  </span>
+                </>
+              ) : null}
             </div>
 
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
               <span>{stage.description}</span>
-              {stage.templateAutomationEnabled && stage.templateId ? (
-                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
-                  Template: {templateNameById(stage.templateId) ?? "Deleted template"} · {delayLabel}
-                  {enabledButtonActionCount > 0 ? ` · ${enabledButtonActionCount} button action(s)` : ""}
-                </span>
-              ) : null}
             </div>
           </div>
         </div>
