@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
@@ -175,6 +175,14 @@ function StageModal({
   onSubmit: (values: StageFormValues) => void;
 }) {
   const [values, setValues] = useState<StageFormValues>(initialValues);
+  const clampHours = (hours: number) => Math.max(0, hours);
+  const clampMinutes = (minutes: number) => Math.min(59, Math.max(0, minutes));
+  const setDelayField = (field: "templateSendDelayHours" | "templateSendDelayMinutes", nextValue: number) => {
+    setValues((prev) => ({
+      ...prev,
+      [field]: field === "templateSendDelayHours" ? clampHours(nextValue) : clampMinutes(nextValue)
+    }));
+  };
 
   const selectedTemplate = templates.find((template) => template.id === values.templateId);
 
@@ -195,8 +203,8 @@ function StageModal({
   }, [values]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#02050d]/80 px-4 py-6 backdrop-blur-sm sm:items-center sm:py-8">
+      <div className="max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[calc(100vh-4rem)]">
         <div className="flex items-center justify-between px-6 py-5">
           <h2 className="text-2xl font-semibold">{title}</h2>
           <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close stage dialog">
@@ -316,7 +324,9 @@ function StageModal({
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <div className="text-sm font-semibold text-slate-800">Moment of sending</div>
-                        <div className="mt-1 text-sm text-slate-500">By default this is direct. Switch to custom to delay after stage assignment.</div>
+                        <div className="mt-1 text-sm text-slate-500">
+                          The template message will be triggered immediately by default after the repair is moved to this stage.
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -333,44 +343,73 @@ function StageModal({
                       </button>
                     </div>
 
-                    <div className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                      {values.templateSendDelayEnabled ? "Custom delay" : "Directly"}
-                    </div>
+                    <div className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">{values.templateSendDelayEnabled ? "Custom delay" : "Directly"}</div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {values.templateSendDelayEnabled
+                        ? `Template message will be triggered ${values.templateSendDelayHours} hour(s) and ${values.templateSendDelayMinutes} minute(s) after the repair is set to this stage.`
+                        : "Template message will be triggered directly after the repair is set to this stage."}
+                    </p>
 
                     {values.templateSendDelayEnabled ? (
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div>
-                          <label htmlFor="template-delay-hours" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Hours</label>
-                          <input
-                            id="template-delay-hours"
-                            type="number"
-                            min={0}
-                            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
-                            value={values.templateSendDelayHours}
-                            onChange={(event) =>
-                              setValues((prev) => ({
-                                ...prev,
-                                templateSendDelayHours: Math.max(0, Number(event.target.value) || 0)
-                              }))
-                            }
-                          />
+                          <label htmlFor="template-delay-hours" className="mb-2 block text-sm font-medium text-slate-700">Delay in hours</label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-600 hover:bg-slate-100"
+                              aria-label="Decrease delay hours"
+                              onClick={() => setDelayField("templateSendDelayHours", values.templateSendDelayHours - 1)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <input
+                              id="template-delay-hours"
+                              type="number"
+                              min={0}
+                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                              value={values.templateSendDelayHours}
+                              onChange={(event) => setDelayField("templateSendDelayHours", Number(event.target.value) || 0)}
+                            />
+                            <button
+                              type="button"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-600 hover:bg-slate-100"
+                              aria-label="Increase delay hours"
+                              onClick={() => setDelayField("templateSendDelayHours", values.templateSendDelayHours + 1)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <div>
-                          <label htmlFor="template-delay-minutes" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Minutes</label>
-                          <input
-                            id="template-delay-minutes"
-                            type="number"
-                            min={0}
-                            max={59}
-                            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
-                            value={values.templateSendDelayMinutes}
-                            onChange={(event) =>
-                              setValues((prev) => ({
-                                ...prev,
-                                templateSendDelayMinutes: Math.min(59, Math.max(0, Number(event.target.value) || 0))
-                              }))
-                            }
-                          />
+                          <label htmlFor="template-delay-minutes" className="mb-2 block text-sm font-medium text-slate-700">Delay in minutes</label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-600 hover:bg-slate-100"
+                              aria-label="Decrease delay minutes"
+                              onClick={() => setDelayField("templateSendDelayMinutes", values.templateSendDelayMinutes - 1)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <input
+                              id="template-delay-minutes"
+                              type="number"
+                              min={0}
+                              max={59}
+                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                              value={values.templateSendDelayMinutes}
+                              onChange={(event) => setDelayField("templateSendDelayMinutes", Number(event.target.value) || 0)}
+                            />
+                            <button
+                              type="button"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-600 hover:bg-slate-100"
+                              aria-label="Increase delay minutes"
+                              onClick={() => setDelayField("templateSendDelayMinutes", values.templateSendDelayMinutes + 1)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : null}
