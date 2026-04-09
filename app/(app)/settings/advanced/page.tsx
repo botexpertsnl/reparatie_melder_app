@@ -660,49 +660,51 @@ export default function AdvancedSettingsPage() {
           </div>
         </div>
 
-        <div className="relative flex items-center pr-2">
-          <button
-            type="button"
-            data-action-menu="true"
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
-            aria-label={`Open actions for ${stage.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              setOpenStageMenuId((prev) => (prev === stage.id ? null : stage.id));
-            }}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
+        {!isFixedStage ? (
+          <div className="relative flex items-center pr-2">
+            <button
+              type="button"
+              data-action-menu="true"
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
+              aria-label={`Open actions for ${stage.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setOpenStageMenuId((prev) => (prev === stage.id ? null : stage.id));
+              }}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
 
-          {openStageMenuId === stage.id ? (
-            <div data-action-menu="true" className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setEditingStageId(stage.id);
-                  setOpenStageMenuId(null);
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-                Edit
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setDeletingStageId(stage.id);
-                  setOpenStageMenuId(null);
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </button>
-            </div>
-          ) : null}
-        </div>
+            {openStageMenuId === stage.id ? (
+              <div data-action-menu="true" className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setEditingStageId(stage.id);
+                    setOpenStageMenuId(null);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setDeletingStageId(stage.id);
+                    setOpenStageMenuId(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   };
