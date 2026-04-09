@@ -1154,7 +1154,7 @@ export default function TemplatesPage() {
             const linkedStages = workflowStages.filter((stage) => stage.templateAutomationEnabled && stage.templateId === template.id);
 
             return (
-              <article
+            <article
               key={template.id}
               role="button"
               tabIndex={0}
@@ -1165,7 +1165,7 @@ export default function TemplatesPage() {
                   setEditingTemplateId(template.id);
                 }
               }}
-              className="relative cursor-pointer rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5 transition-colors hover:bg-[#1a2538]"
+              className="relative cursor-pointer rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
             >
               <div className="flex items-start justify-between">
                 <h2 className="text-lg font-semibold text-white">{template.name}</h2>
@@ -1234,7 +1234,7 @@ export default function TemplatesPage() {
                 )}
               </div>
 
-              <div className="mt-3 rounded-lg border border-[#2d3950] bg-[#1b2432] p-3">
+              <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3">
                 <div className="text-sm leading-6 text-slate-300">{renderPreviewTokens(template.body, template.variables)}</div>
                 {renderPreviewButtons(template.buttons)}
               </div>
@@ -1255,14 +1255,29 @@ export default function TemplatesPage() {
               );
 
               return (
-                <article key={reply.id} className="relative rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5">
+                <article
+                  key={reply.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setEditingQuickReplyId(reply.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setEditingQuickReplyId(reply.id);
+                    }
+                  }}
+                  className="relative cursor-pointer rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+                >
                   <div className="flex items-start justify-between">
                     <h3 className="text-lg font-semibold text-white">{reply.name}</h3>
                     <button
                       data-action-menu="true"
                       className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
                       aria-label={`Open actions for ${reply.name}`}
-                      onClick={() => setOpenMenuId((prev) => (prev === reply.id ? null : reply.id))}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenMenuId((prev) => (prev === reply.id ? null : reply.id));
+                      }}
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
@@ -1272,7 +1287,8 @@ export default function TemplatesPage() {
                       <button
                         type="button"
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setEditingQuickReplyId(reply.id);
                           setOpenMenuId(null);
                         }}
@@ -1283,7 +1299,8 @@ export default function TemplatesPage() {
                       <button
                         type="button"
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setDeletingQuickReplyId(reply.id);
                           setOpenMenuId(null);
                         }}
@@ -1301,6 +1318,7 @@ export default function TemplatesPage() {
                         <Link
                           key={stage.id}
                           href={{ pathname: "/settings/advanced", query: { stageId: stage.id } }}
+                          onClick={(event) => event.stopPropagation()}
                           style={{
                             color: stage.color,
                             borderColor: stage.color,
