@@ -26,10 +26,16 @@ import {
   writeStoredRepairs,
   type StoredRepair,
 } from "@/lib/repair-store";
+import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 type LinkModalState = { open: boolean; threadId: string | null };
+const fallbackQuickReplies = [
+  "Thanks for your message! We will check this right away.",
+  "Can you share your serial number?",
+  "Your repair is ready for pickup. Please visit us during opening hours."
+];
 
 function LinkRepairModal({
   repairs,
@@ -113,20 +119,41 @@ function LinkRepairModal({
 function TemplatePickerModal({
   onClose,
   onSelect,
+  templates,
+  quickReplyOptions,
+  linkedRepair,
+  selectedThread,
 }: {
   onClose: () => void;
   onSelect: (value: string) => void;
+  templates: StoredTemplate[];
+  quickReplyOptions: string[];
+  linkedRepair: StoredRepair | null;
+  selectedThread: StoredConversation | null;
 }) {
-  const templateOptions = [
-    "Device Received",
-    "Repair Update",
-    "Ready for Pickup",
-  ];
-  const quickReplyOptions = [
-    "Thanks, we'll check this now.",
-    "Can you share your serial number?",
-    "Your device is ready to collect.",
-  ];
+  const resolveRepairField = (field?: string) => {
+    if (!linkedRepair && !selectedThread) return "";
+    if (field === "customerName") return linkedRepair?.customerName ?? selectedThread?.customerName ?? "";
+    if (field === "customerPhone") return linkedRepair?.customerPhone ?? selectedThread?.customerPhone ?? "";
+    if (!linkedRepair) return "";
+    if (field === "assetName") return linkedRepair.assetName;
+    if (field === "title") return linkedRepair.title;
+    if (field === "description") return linkedRepair.description;
+    if (field === "stage") return linkedRepair.stage;
+    if (field === "priority") return linkedRepair.priority;
+    return "";
+  };
+
+  const fillTemplateBody = (template: StoredTemplate) => {
+    const values = (template.variables ?? []).map((variable) =>
+      variable.mode === "repair_field" ? resolveRepairField(variable.repairField) : variable.manualValue ?? ""
+    );
+
+    return template.body.replace(/\{\{\s*(\d+)\s*\}\}/g, (match, rawIndex) => {
+      const value = values[Number(rawIndex) - 1];
+      return value && value.trim().length > 0 ? value : match;
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
@@ -149,14 +176,15 @@ function TemplatePickerModal({
               Templates
             </h3>
             <div className="mt-2 space-y-2">
-              {templateOptions.map((item) => (
+              {templates.map((item) => (
                 <button
-                  key={item}
+                  key={item.id}
                   type="button"
-                  onClick={() => onSelect(item)}
+                  onClick={() => onSelect(fillTemplateBody(item))}
                   className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  {item}
+                  <div className="font-semibold">{item.name}</div>
+                  <div className="mt-1 text-xs text-slate-500 line-clamp-2">{fillTemplateBody(item)}</div>
                 </button>
               ))}
             </div>
@@ -166,9 +194,9 @@ function TemplatePickerModal({
               Quick replies
             </h3>
             <div className="mt-2 space-y-2">
-              {quickReplyOptions.map((item) => (
+              {quickReplyOptions.map((item, index) => (
                 <button
-                  key={item}
+                  key={`${item}-${index}`}
                   type="button"
                   onClick={() => onSelect(item)}
                   className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -198,6 +226,22 @@ function ConversationsPageContent() {
     () => readStoredConversations(defaultConversations)[0]?.id ?? ""
   );
   const [message, setMessage] = useState("");
+  const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultStoredTemplates).filter((template) => template.active));
+  const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>(() => {
+    if (typeof window === "undefined") {
+      return fallbackQuickReplies;
+    }
+    try {
+      const raw = window.localStorage.getItem("statusflow.quick-replies");
+      if (!raw) return fallbackQuickReplies;
+      const parsed = JSON.parse(raw) as { body?: string }[];
+      if (!Array.isArray(parsed)) return fallbackQuickReplies;
+      const replies = parsed.map((item) => item.body ?? "").filter((item) => item.trim().length > 0);
+      return replies.length > 0 ? replies : fallbackQuickReplies;
+    } catch {
+      return fallbackQuickReplies;
+    }
+  });
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [listCollapsed, setListCollapsed] = useState(false);
@@ -257,6 +301,27 @@ function ConversationsPageContent() {
         "conversations:nav-click",
         handleConversationNavClick
       );
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshTemplates = () => {
+      setTemplateOptions(readStoredTemplates(defaultStoredTemplates).filter((template) => template.active));
+      try {
+        const raw = window.localStorage.getItem("statusflow.quick-replies");
+        const parsed = raw ? (JSON.parse(raw) as { body?: string }[]) : [];
+        const replies = Array.isArray(parsed) ? parsed.map((item) => item.body ?? "").filter((item) => item.trim().length > 0) : [];
+        setQuickReplyOptions(replies.length > 0 ? replies : fallbackQuickReplies);
+      } catch {
+        setQuickReplyOptions(fallbackQuickReplies);
+      }
+    };
+    refreshTemplates();
+    window.addEventListener("templates:changed", refreshTemplates);
+    window.addEventListener("storage", refreshTemplates);
+    return () => {
+      window.removeEventListener("templates:changed", refreshTemplates);
+      window.removeEventListener("storage", refreshTemplates);
     };
   }, []);
 
@@ -729,6 +794,10 @@ function ConversationsPageContent() {
       {showTemplatePicker ? (
         <TemplatePickerModal
           onClose={() => setShowTemplatePicker(false)}
+          templates={templateOptions}
+          quickReplyOptions={quickReplyOptions}
+          linkedRepair={linkedRepair}
+          selectedThread={selectedThread}
           onSelect={(value) => {
             setMessage(value);
             setShowTemplatePicker(false);
