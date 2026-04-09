@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { sendOutboundText } from "./messaging-service";
 
 export async function transitionWorkItemStage(params: {
   tenantId: string;
@@ -47,6 +48,40 @@ export async function transitionWorkItemStage(params: {
     await prisma.approvalRequest.create({
       data: { tenantId: params.tenantId, workItemId: workItem.id, stageId: stage.id, status: "PENDING" }
     });
+  }
+
+  if (stage.defaultTemplateId) {
+    const template = await prisma.messageTemplate.findFirst({
+      where: { id: stage.defaultTemplateId, tenantId: params.tenantId, isActive: true }
+    });
+
+    if (template) {
+      const linkedThread = await prisma.conversationThread.findFirst({
+        where: { tenantId: params.tenantId, workItemId: workItem.id },
+        orderBy: { updatedAt: "desc" }
+      });
+
+      if (linkedThread) {
+        await sendOutboundText({
+          tenantId: params.tenantId,
+          threadId: linkedThread.id,
+          phoneNumber: linkedThread.phoneNumber,
+          body: template.bodyPreview,
+          workItemId: workItem.id
+        });
+
+        await prisma.auditLog.create({
+          data: {
+            tenantId: params.tenantId,
+            userId: params.actorUserId,
+            action: "WORK_ITEM_STAGE_TEMPLATE_SENT",
+            entityType: "WorkItem",
+            entityId: workItem.id,
+            metadata: { stageId: stage.id, templateId: template.id, threadId: linkedThread.id }
+          }
+        });
+      }
+    }
   }
 
   return updated;
