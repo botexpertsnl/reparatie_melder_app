@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Send,
@@ -184,6 +185,7 @@ function TemplatePickerModal({
 }
 
 export default function ConversationsPage() {
+  const searchParams = useSearchParams();
   const repairLabel = useTenantRepairLabel();
   const [threads, setThreads] = useState<StoredConversation[]>(() =>
     readStoredConversations(defaultConversations)
@@ -205,6 +207,7 @@ export default function ConversationsPage() {
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const threadIdParam = searchParams.get("threadId");
 
   useEffect(() => {
     const storedRepairs = readStoredRepairs(defaultRepairs);
@@ -230,6 +233,14 @@ export default function ConversationsPage() {
   useEffect(() => {
     writeStoredConversations(threads);
   }, [threads]);
+
+  useEffect(() => {
+    if (!threadIdParam) return;
+    if (threads.some((thread) => thread.id === threadIdParam)) {
+      setSelectedThreadId(threadIdParam);
+      setShowRepairPanel(true);
+    }
+  }, [threadIdParam, threads]);
 
   useEffect(() => {
     const handleConversationNavClick = () => {

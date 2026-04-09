@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
+import { useRouter } from "next/navigation";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 type RepairItem = StoredRepair;
@@ -118,6 +120,7 @@ function AddRepairModal({
 }
 
 export default function WorkItemsPage() {
+  const router = useRouter();
   const repairLabel = useTenantRepairLabel();
   const repairLabelPlural = pluralizeLabel(repairLabel);
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() => readStoredWorkflowStages(defaultWorkflowStages));
@@ -175,6 +178,13 @@ export default function WorkItemsPage() {
   const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
   const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
   const selectedRepair = useMemo(() => repairs.find((repair) => repair.id === selectedRepairId) ?? null, [repairs, selectedRepairId]);
+  const selectedRepairConversation = useMemo(
+    () =>
+      selectedRepair
+        ? readStoredConversations(defaultConversations).find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null
+        : null,
+    [selectedRepair]
+  );
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
     const newRepair = { id: `repair_${Date.now()}`, title: payload.repairTitle, description: payload.description, customerName: payload.customerName, customerPhone: payload.customerPhone, assetName: payload.assetName, stage: payload.repairStage, priority: "Medium" as const, status: "Open" as const };
@@ -204,14 +214,14 @@ export default function WorkItemsPage() {
           </div>
 
           <section className="min-h-0 flex-1 overflow-hidden">
-            <div className={`h-full min-h-0 min-w-0 overflow-auto border border-[#253149] bg-[#121b2b]/65 ${selectedRepair ? "border-r-0" : ""}`}>
+            <div className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border border-[#253149] bg-[#121b2b]/65 ${selectedRepair ? "border-r-0" : ""}`}>
             <table className="w-full table-fixed">
               <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[25%] px-5 py-4">Stage</th><th className="w-[5%] px-5 py-4" /></tr></thead>
               <tbody>
                 {repairs.map((repair) => (
                   <tr key={repair.id} onClick={() => setSelectedRepairId(repair.id)} className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-[#182236]/60 shadow-[inset_3px_0_0_#25d3c4]" : ""}`}>
-                    <td className="px-5 py-4 align-middle"><button type="button" className="text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
-                    <td className="px-5 py-4 align-middle text-lg font-semibold text-white">{repair.customerName}</td>
+                    <td className="px-5 py-4 align-middle"><button type="button" className="min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-lg font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
+                    <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">{repair.customerName}</td>
                     <td className="px-5 py-4 align-middle"><StageBadge stage={repair.stage} /></td>
                     <td className="relative px-5 py-4 align-middle text-center text-slate-400">
                       <button data-action-menu="true" className="rounded-md p-1 hover:bg-slate-800/70" onClick={(event) => { event.stopPropagation(); setOpenMenuId((prev) => (prev === repair.id ? null : repair.id)); }}><MoreHorizontal className="h-5 w-5" /></button>
@@ -230,7 +240,20 @@ export default function WorkItemsPage() {
           </section>
         </div>
 
-        {selectedRepair ? <RepairDetailsPanel repair={selectedRepair} itemLabel={repairLabel} onClose={() => setSelectedRepairId(null)} className="h-full border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5" /> : null}
+        {selectedRepair ? (
+          <RepairDetailsPanel
+            repair={selectedRepair}
+            itemLabel={repairLabel}
+            onClose={() => setSelectedRepairId(null)}
+            onLinkChange={
+              selectedRepairConversation
+                ? () => router.push(`/conversations?threadId=${selectedRepairConversation.id}`)
+                : undefined
+            }
+            onLinkAriaLabel="Open linked conversation"
+            className="h-full border-l border-[#253149] bg-[#0b1221] pl-6 pr-5 py-5"
+          />
+        ) : null}
       </div>
 
       {isAddRepairOpen ? <AddRepairModal mode="create" initialValues={{ ...initialFormValues, repairStage: initialStage }} stageOptions={stageOptions} repairLabel={repairLabel} onClose={() => setIsAddRepairOpen(false)} onSubmit={handleCreateRepair} /> : null}
