@@ -362,6 +362,9 @@ export default function AdvancedSettingsPage() {
 
   const editingStage = stages.find((stage) => stage.id === editingStageId) ?? null;
   const deletingStage = stages.find((stage) => stage.id === deletingStageId) ?? null;
+  const startStage = stages.find((stage) => stage.key === START_STAGE_KEY) ?? null;
+  const finalStages = stages.filter((stage) => FINAL_STAGE_KEY_SET.has(stage.key));
+  const middleStages = stages.filter((stage) => stage.key !== START_STAGE_KEY && !FINAL_STAGE_KEY_SET.has(stage.key));
 
   const templateNameById = (templateId?: string) => templateOptions.find((template) => template.id === templateId)?.name;
 
@@ -428,6 +431,113 @@ export default function AdvancedSettingsPage() {
     setDeletingStageId(null);
   };
 
+  const renderStageRow = (stage: Stage) => {
+    const index = stages.findIndex((candidate) => candidate.id === stage.id);
+    const isFixedStage = stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key);
+    const previousStage = index > 0 ? stages[index - 1] : null;
+    const nextStage = index < stages.length - 1 ? stages[index + 1] : null;
+    const canMoveUp = Boolean(
+      !isFixedStage &&
+      previousStage &&
+      previousStage.key !== START_STAGE_KEY &&
+      !FINAL_STAGE_KEY_SET.has(previousStage.key)
+    );
+    const canMoveDown = Boolean(
+      !isFixedStage &&
+      nextStage &&
+      nextStage.key !== START_STAGE_KEY &&
+      !FINAL_STAGE_KEY_SET.has(nextStage.key)
+    );
+
+    return (
+      <div key={stage.id} className="flex items-center justify-between gap-4 border-b border-[#253149] px-4 py-4 last:border-b-0">
+        <div className="flex items-start gap-4">
+          <div className="mt-0.5 flex min-h-9 w-5 shrink-0 flex-col items-center text-slate-500">
+            {canMoveUp ? (
+              <button type="button" onClick={() => moveStage(index, "up")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} up`}>
+                <ChevronUp className="h-4 w-4" />
+              </button>
+            ) : (
+              <span className="h-5 w-5" aria-hidden="true" />
+            )}
+            {canMoveDown ? (
+              <button type="button" onClick={() => moveStage(index, "down")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} down`}>
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            ) : (
+              <span className="h-5 w-5" aria-hidden="true" />
+            )}
+          </div>
+
+          <span className="mt-2 h-3.5 w-3.5 rounded-full" style={{ backgroundColor: stage.color }} />
+
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingStageId(stage.id)}
+                className="text-left text-lg font-semibold text-white underline-offset-4 hover:text-cyan-300 hover:underline"
+              >
+                {stage.name}
+              </button>
+              {stage.isStart ? <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Start</span> : null}
+              {stage.isTerminal ? <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-300">Terminal</span> : null}
+              {stage.requiresApproval ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300"><Sparkles className="h-3 w-3" />Approval</span> : null}
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+              <span>{stage.description}</span>
+              {stage.templateAutomationEnabled && stage.templateId ? (
+                <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
+                  Template: {templateNameById(stage.templateId) ?? "Deleted template"}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="relative flex items-center pr-2">
+          <button
+            type="button"
+            data-action-menu="true"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
+            aria-label={`Open actions for ${stage.name}`}
+            onClick={() => setOpenStageMenuId((prev) => (prev === stage.id ? null : stage.id))}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+
+          {openStageMenuId === stage.id ? (
+            <div data-action-menu="true" className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
+                onClick={() => {
+                  setEditingStageId(stage.id);
+                  setOpenStageMenuId(null);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+                onClick={() => {
+                  setDeletingStageId(stage.id);
+                  setOpenStageMenuId(null);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -442,112 +552,23 @@ export default function AdvancedSettingsPage() {
           </button>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
-          {stages.map((stage, index) => {
-            const isFixedStage = stage.key === START_STAGE_KEY || FINAL_STAGE_KEY_SET.has(stage.key);
-            const previousStage = index > 0 ? stages[index - 1] : null;
-            const nextStage = index < stages.length - 1 ? stages[index + 1] : null;
-            const canMoveUp = Boolean(
-              !isFixedStage &&
-              previousStage &&
-              previousStage.key !== START_STAGE_KEY &&
-              !FINAL_STAGE_KEY_SET.has(previousStage.key)
-            );
-            const canMoveDown = Boolean(
-              !isFixedStage &&
-              nextStage &&
-              nextStage.key !== START_STAGE_KEY &&
-              !FINAL_STAGE_KEY_SET.has(nextStage.key)
-            );
-            const rowClassName = clsx(
-              "flex items-center justify-between gap-4 border-b border-[#253149] px-4 py-4 last:border-b-0",
-              stage.key === START_STAGE_KEY && "mb-3",
-              stage.key === "completed" && "mt-3"
-            );
+        {startStage ? (
+          <section className="mb-3 overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
+            {renderStageRow(startStage)}
+          </section>
+        ) : null}
 
-            return (
-            <div key={stage.id} className={rowClassName}>
-              <div className="flex items-start gap-4">
-                <div className="mt-0.5 flex min-h-9 flex-col items-center text-slate-500">
-                  {canMoveUp ? (
-                    <button type="button" onClick={() => moveStage(index, "up")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} up`}>
-                      <ChevronUp className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <span className="h-5" aria-hidden="true" />
-                  )}
-                  {canMoveDown ? (
-                    <button type="button" onClick={() => moveStage(index, "down")} className="p-0.5 hover:text-slate-300" aria-label={`Move ${stage.name} down`}>
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <span className="h-5" aria-hidden="true" />
-                  )}
-                </div>
+        {middleStages.length > 0 ? (
+          <section className="overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
+            {middleStages.map(renderStageRow)}
+          </section>
+        ) : null}
 
-                <span className="mt-2 h-3.5 w-3.5 rounded-full" style={{ backgroundColor: stage.color }} />
-
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-lg font-semibold text-white">{stage.name}</div>
-                    {stage.isStart ? <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Start</span> : null}
-                    {stage.isTerminal ? <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-300">Terminal</span> : null}
-                    {stage.requiresApproval ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300"><Sparkles className="h-3 w-3" />Approval</span> : null}
-                  </div>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
-                    <span>{stage.description}</span>
-                    {stage.templateAutomationEnabled && stage.templateId ? (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
-                        Template: {templateNameById(stage.templateId) ?? "Deleted template"}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative flex items-center pr-2">
-                <button
-                  type="button"
-                  data-action-menu="true"
-                  className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
-                  aria-label={`Open actions for ${stage.name}`}
-                  onClick={() => setOpenStageMenuId((prev) => (prev === stage.id ? null : stage.id))}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-
-                {openStageMenuId === stage.id ? (
-                  <div data-action-menu="true" className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
-                      onClick={() => {
-                        setEditingStageId(stage.id);
-                        setOpenStageMenuId(null);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
-                      onClick={() => {
-                        setDeletingStageId(stage.id);
-                        setOpenStageMenuId(null);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            );
-          })}
-        </section>
+        {finalStages.length > 0 ? (
+          <section className="mt-3 overflow-hidden rounded-2xl border border-[#253149] bg-[#121b2b]/65">
+            {finalStages.map(renderStageRow)}
+          </section>
+        ) : null}
       </div>
 
       {isAddModalOpen ? (
