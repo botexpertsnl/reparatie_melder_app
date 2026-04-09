@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
+import { defaultRepairs, readStoredRepairs } from "@/lib/repair-store";
 import { getImpersonatingTenant, isSuperAdmin, stopImpersonation } from "@/lib/impersonation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
@@ -101,6 +102,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const resolveConversationHref = () => {
+    const selectedRepairId = window.localStorage.getItem("statusflow.selected-repair-id");
+    if (!selectedRepairId) return "/conversations";
+    const linkedConversation = readStoredConversations(defaultConversations).find(
+      (thread) => thread.linkedRepairId === selectedRepairId
+    );
+    if (!linkedConversation) return "/conversations";
+    return `/conversations?threadId=${linkedConversation.id}`;
+  };
+
+  const resolveRepairHref = () => {
+    const selectedThreadId = window.localStorage.getItem("statusflow.selected-thread-id");
+    if (!selectedThreadId) return "/work-items";
+    const selectedConversation = readStoredConversations(defaultConversations).find(
+      (thread) => thread.id === selectedThreadId
+    );
+    if (!selectedConversation?.linkedRepairId) return "/work-items";
+    const linkedRepairExists = readStoredRepairs(defaultRepairs).some(
+      (repair) => repair.id === selectedConversation.linkedRepairId
+    );
+    if (!linkedRepairExists) return "/work-items";
+    return `/work-items?repairId=${selectedConversation.linkedRepairId}`;
+  };
+
   return (
     <div className={clsx("min-h-screen md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")} style={{ background: "var(--bg)", color: "var(--text-primary)" }}>
       <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
@@ -130,9 +155,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <li key={item.href}>
                         <Link
                           href={item.href}
-                          onClick={() => {
+                          onClick={(event) => {
                             if (item.href === "/conversations") {
                               window.dispatchEvent(new Event("conversations:nav-click"));
+                              event.preventDefault();
+                              router.push(resolveConversationHref());
+                            }
+
+                            if (item.href === "/work-items") {
+                              event.preventDefault();
+                              router.push(resolveRepairHref());
                             }
                           }}
                           className={clsx(

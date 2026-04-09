@@ -34,6 +34,7 @@ const fallbackQuickReplies = [
   "Can you share your serial number?",
   "Your repair is ready for pickup. Please visit us during opening hours."
 ];
+const SELECTED_THREAD_STORAGE_KEY = "statusflow.selected-thread-id";
 
 function LinkRepairModal({
   repairs,
@@ -221,7 +222,14 @@ function ConversationsPageContent() {
     readStoredRepairs(defaultRepairs)
   );
   const [selectedThreadId, setSelectedThreadId] = useState<string>(
-    () => readStoredConversations(defaultConversations)[0]?.id ?? ""
+    () => {
+      if (typeof window === "undefined") return readStoredConversations(defaultConversations)[0]?.id ?? "";
+      return (
+        window.localStorage.getItem(SELECTED_THREAD_STORAGE_KEY) ??
+        readStoredConversations(defaultConversations)[0]?.id ??
+        ""
+      );
+    }
   );
   const [message, setMessage] = useState("");
   const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultStoredTemplates).filter((template) => template.active));
@@ -285,6 +293,15 @@ function ConversationsPageContent() {
       setShowRepairPanel(true);
     }
   }, [threadIdParam, threads]);
+
+  useEffect(() => {
+    if (!selectedThreadId) {
+      window.localStorage.removeItem(SELECTED_THREAD_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(SELECTED_THREAD_STORAGE_KEY, selectedThreadId);
+  }, [selectedThreadId]);
 
   useEffect(() => {
     const handleConversationNavClick = () => {
