@@ -1120,9 +1120,12 @@ function AdvancedSettingsPageContent() {
     );
   };
 
-  const startStage = stages.find((stage) => stage.key === START_STAGE_KEY) ?? null;
-  const middleStages = stages.filter((stage) => stage.key !== START_STAGE_KEY && !FINAL_STAGE_KEY_SET.has(stage.key));
-  const finalStages = FINAL_STAGE_KEYS.map((key) => stages.find((stage) => stage.key === key)).filter((stage): stage is Stage => Boolean(stage));
+  const orderedStages = useMemo(() => {
+    const startStage = stages.find((stage) => stage.key === START_STAGE_KEY);
+    const middleStages = stages.filter((stage) => stage.key !== START_STAGE_KEY && !FINAL_STAGE_KEY_SET.has(stage.key));
+    const finalStages = FINAL_STAGE_KEYS.map((key) => stages.find((stage) => stage.key === key)).filter((stage): stage is Stage => Boolean(stage));
+    return [...(startStage ? [startStage] : []), ...middleStages, ...finalStages];
+  }, [stages]);
   const addModalTemplateUsageById = stages.reduce<Record<string, string>>((acc, stage) => {
     if (stage.templateAutomationEnabled && stage.templateId) {
       acc[stage.templateId] = stage.name;
@@ -1152,72 +1155,26 @@ function AdvancedSettingsPageContent() {
           </button>
         </div>
 
-        <section className="space-y-0.5">
-          {startStage ? (
-            <div className="rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-4">
-              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
-                <span className="inline-flex h-2 w-2 rounded-full bg-slate-300" />
-                Starting stage
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingStageId(startStage.id)}
-                className="flex w-full items-start gap-3 rounded-xl border border-[#34445f] bg-[#0f1726]/80 px-3 py-3 text-left hover:border-[#4a5d80]"
-              >
-                <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: startStage.color }} />
-                <div>
-                  <div className="text-sm font-semibold text-white">{startStage.name}</div>
-                  <div className="text-xs text-slate-400">{startStage.description}</div>
-                </div>
-              </button>
-            </div>
-          ) : null}
+        <section className="space-y-0">
+          {orderedStages.map((stage, index) => {
+            const nextStage = orderedStages[index + 1];
+            const stageIsTerminal = FINAL_STAGE_KEY_SET.has(stage.key);
+            const nextStageIsTerminal = nextStage ? FINAL_STAGE_KEY_SET.has(nextStage.key) : false;
+            const showConnector = index < orderedStages.length - 1 && !(stageIsTerminal && nextStageIsTerminal);
 
-          {startStage && (middleStages.length > 0 || finalStages.length > 0) ? (
-            <div aria-hidden="true" className="flex flex-col items-center py-2">
-              <span className="h-2 border-l border-dashed border-slate-300/70" />
-              <ChevronDown className="h-3 w-3 text-slate-300/80" />
-              <span className="h-2 border-l border-dashed border-slate-300/70" />
-            </div>
-          ) : null}
-
-          {middleStages.map((stage, index) => (
-            <div key={stage.id}>
-              {renderStageRow(stage)}
-              {index < middleStages.length - 1 || finalStages.length > 0 ? (
-                <div aria-hidden="true" className="flex flex-col items-center py-2">
-                  <span className="h-2 border-l border-dashed border-slate-300/70" />
-                  <ChevronDown className="h-3 w-3 text-slate-300/80" />
-                  <span className="h-2 border-l border-dashed border-slate-300/70" />
-                </div>
-              ) : null}
-            </div>
-          ))}
-
-          {finalStages.length > 0 ? (
-            <div className="rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-4">
-              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
-                <span className="inline-flex h-2 w-2 rounded-full bg-slate-300" />
-                Ending stages
+            return (
+              <div key={stage.id}>
+                {renderStageRow(stage)}
+                {showConnector ? (
+                  <div aria-hidden="true" className="flex flex-col items-center py-2">
+                    <span className="h-2 border-l border-dashed border-slate-300/70" />
+                    <ChevronDown className="h-3 w-3 text-slate-300/80" />
+                    <span className="h-2 border-l border-dashed border-slate-300/70" />
+                  </div>
+                ) : null}
               </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                {finalStages.map((stage) => (
-                  <button
-                    key={stage.id}
-                    type="button"
-                    onClick={() => setEditingStageId(stage.id)}
-                    className="flex items-start gap-3 rounded-xl border border-[#34445f] bg-[#0f1726]/80 px-3 py-3 text-left hover:border-[#4a5d80]"
-                  >
-                    <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} />
-                    <div>
-                      <div className="text-sm font-semibold text-white">{stage.name}</div>
-                      <div className="text-xs text-slate-400">{stage.description}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+            );
+          })}
         </section>
       </div>
 

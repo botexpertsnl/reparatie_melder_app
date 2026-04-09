@@ -326,9 +326,15 @@ export default function WorkItemsPage() {
 
   return (
     <>
-      <div className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] bg-[#0b1221] transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}>
+      <div
+        className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] transition-[grid-template-columns] duration-300 ${selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"}`}
+        style={{ background: "var(--bg)" }}
+      >
         <div className="flex min-h-0 flex-col py-8">
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-4 px-10">
+          <div
+            className="mb-7 flex flex-wrap items-start justify-between gap-4 border-y px-10 py-5"
+            style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+          >
             <div><h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1><p className="mt-1 text-sm text-slate-400">Manage ongoing {repairLabelPlural.toLowerCase()}</p></div>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <button className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border px-4 text-sm text-slate-400" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>All<ChevronDown className="ml-4 h-5 w-5" /></button>
@@ -338,12 +344,19 @@ export default function WorkItemsPage() {
           </div>
 
           <section className="min-h-0 flex-1 overflow-hidden">
-            <div className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border border-[#253149] bg-[#121b2b]/65 ${selectedRepair ? "border-r-0" : ""}`}>
+            <div
+              className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${selectedRepair ? "border-r-0" : ""}`}
+              style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+            >
             <table className="w-full table-fixed">
               <thead className="border-b border-[#253149] text-left text-sm text-slate-400"><tr><th className="w-[42%] px-5 py-4">Title</th><th className="w-[28%] px-5 py-4">Customer</th><th className="w-[24%] px-5 py-4">Stage</th><th className="w-[6%] px-5 py-4 pr-2" /></tr></thead>
               <tbody>
                 {repairs.map((repair) => (
-                  <tr key={repair.id} onClick={() => setSelectedRepairId(repair.id)} className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-[#182236]/60 shadow-[inset_3px_0_0_#25d3c4]" : ""}`}>
+                  <tr
+                    key={repair.id}
+                    onClick={() => setSelectedRepairId(repair.id)}
+                    className={`border-b border-[#253149] last:border-b-0 ${selectedRepairId === repair.id ? "bg-white/10" : ""}`}
+                  >
                     <td className="px-5 py-4 align-middle"><button type="button" className="w-full min-w-0 text-left" onClick={() => setSelectedRepairId(repair.id)}><div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">{repair.title}</div><div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div></button></td>
                     <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">{repair.customerName}</td>
                     <td className="px-5 py-4 align-middle">
@@ -377,7 +390,10 @@ export default function WorkItemsPage() {
         </div>
 
         {selectedRepair ? (
-          <div className="relative h-full border-l border-[#253149] bg-[#0b1221]">
+          <div
+            className="relative h-full border-l"
+            style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+          >
             <RepairDetailsPanel
               repair={selectedRepair}
               itemLabel={repairLabel}

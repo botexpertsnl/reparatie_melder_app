@@ -1126,7 +1126,7 @@ export default function TemplatesPage() {
                   setEditingTemplateId(template.id);
                 }
               }}
-              className="relative cursor-pointer rounded-2xl border border-[var(--border-strong)] bg-[var(--surface-muted)] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105"
+              className="relative cursor-pointer rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105"
             >
               <div className="flex items-start justify-between">
                 <h2 className="text-lg font-semibold text-white">{template.name}</h2>
@@ -1227,7 +1227,7 @@ export default function TemplatesPage() {
                       setEditingQuickReplyId(reply.id);
                     }
                   }}
-                  className="relative cursor-pointer rounded-2xl border border-[var(--border-strong)] bg-[var(--surface-muted)] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105"
+                  className="relative cursor-pointer rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105"
                 >
                   <div className="flex items-start justify-between">
                     <h3 className="text-lg font-semibold text-white">{reply.name}</h3>
