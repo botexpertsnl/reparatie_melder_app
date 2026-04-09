@@ -8,6 +8,7 @@ type RepairDetailsPanelProps = {
   onLinkChange?: () => void;
   onLinkAriaLabel?: string;
   isLinkActive?: boolean;
+  linkedConversationHref?: string;
   className?: string;
 };
 
@@ -18,6 +19,7 @@ export function RepairDetailsPanel({
   onLinkChange,
   onLinkAriaLabel = "Change linked repair",
   isLinkActive = true,
+  linkedConversationHref,
   className,
 }: RepairDetailsPanelProps) {
   return (
@@ -49,15 +51,27 @@ export function RepairDetailsPanel({
           </button>
         ))}
       </div>
-      {onLinkChange ? (
-        <button
-          type="button"
-          onClick={onLinkChange}
-          className={`absolute bottom-5 right-5 ${isLinkActive ? "text-[#69f0df] hover:text-[#25d3c4]" : "text-slate-500 hover:text-slate-300"}`}
-          aria-label={onLinkAriaLabel}
-        >
-          <LinkIcon className="h-5 w-5" />
-        </button>
+      {onLinkChange || linkedConversationHref ? (
+        <div className="absolute bottom-5 right-5 flex items-center gap-2">
+          {linkedConversationHref ? (
+            <a
+              href={linkedConversationHref}
+              className="rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
+            >
+              Open conversation
+            </a>
+          ) : null}
+          {onLinkChange ? (
+            <button
+              type="button"
+              onClick={onLinkChange}
+              className={`${isLinkActive ? "text-[#69f0df] hover:text-[#25d3c4]" : "text-slate-500 hover:text-slate-300"}`}
+              aria-label={onLinkAriaLabel}
+            >
+              <LinkIcon className="h-5 w-5" />
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </aside>
   );
