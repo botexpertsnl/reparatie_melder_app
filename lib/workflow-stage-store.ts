@@ -22,7 +22,8 @@ export const defaultWorkflowStages: StoredWorkflowStage[] = [
   { id: "stage_not_approved", name: "Not Approved", key: "not_approved", description: "Customer did not approve the requested work", color: "#ef4444", visibleToCustomer: true },
   { id: "stage_approved", name: "Approved", key: "approved", description: "Customer approved and work can continue", color: "#22c55e", visibleToCustomer: true },
   { id: "stage_pickup", name: "Ready for Pickup", key: "ready_pickup", description: "Car is ready to be collected", color: "#22c1dc", visibleToCustomer: true },
-  { id: "stage_completed", name: "Completed", key: "completed", description: "Repair completed", color: "#10b981", visibleToCustomer: true, isTerminal: true }
+  { id: "stage_completed", name: "Completed", key: "completed", description: "Repair completed", color: "#10b981", visibleToCustomer: true, isTerminal: true },
+  { id: "stage_cancelled", name: "Cancelled", key: "cancelled", description: "Repair cancelled", color: "#ef4444", visibleToCustomer: true, isTerminal: true }
 ];
 
 export function readStoredWorkflowStages(fallback: StoredWorkflowStage[]): StoredWorkflowStage[] {
