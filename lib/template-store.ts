@@ -4,11 +4,15 @@ export type StoredTemplate = {
   category: string;
   language: string;
   body: string;
-  spotlerId: string;
+  spotlerId?: string;
   active: boolean;
   variables?: {
     id: string;
-    name: string;
+    key?: string;
+    label?: string;
+    index?: number;
+    source?: string;
+    name?: string;
     mode: "manual" | "repair_field";
     manualValue?: string;
     repairField?: "customerName" | "customerPhone" | "assetName" | "title" | "description" | "stage" | "priority";

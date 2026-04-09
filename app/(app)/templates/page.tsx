@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Plus, MoreHorizontal, X, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
 
@@ -8,7 +8,10 @@ import { defaultStoredTemplates, readStoredTemplates, writeStoredTemplates } fro
 
 type TemplateVariable = {
   id: string;
-  name: string;
+  key: string;
+  label: string;
+  index: number;
+  source?: string;
   mode: "manual" | "repair_field";
   manualValue: string;
   repairField: "customerName" | "customerPhone" | "assetName" | "title" | "description" | "stage" | "priority";
@@ -27,7 +30,6 @@ type Template = {
   category: string;
   language: string;
   body: string;
-  spotlerId: string;
   active: boolean;
   variables: TemplateVariable[];
   buttons: TemplateButton[];
@@ -38,7 +40,6 @@ type TemplateFormValues = {
   category: string;
   language: string;
   body: string;
-  spotlerId: string;
   active: boolean;
   variables: TemplateVariable[];
   buttons: TemplateButton[];
@@ -55,7 +56,6 @@ const emptyTemplateForm: TemplateFormValues = {
   category: "General",
   language: "Dutch",
   body: "",
-  spotlerId: "",
   active: true,
   variables: [],
   buttons: []
@@ -110,17 +110,146 @@ function templateToFormValues(template: Template): TemplateFormValues {
     category: template.category,
     language: languageMap[template.language] ?? "Dutch",
     body: template.body,
-    spotlerId: template.spotlerId,
     active: template.active,
-    variables: (template.variables ?? []).map((variable) => ({
-      id: variable.id,
-      name: variable.name,
-      mode: variable.mode,
-      manualValue: variable.manualValue ?? "",
-      repairField: variable.repairField ?? "customerName"
-    })),
+    variables: (template.variables ?? []).map((variable, index) => {
+      const normalizedIndex = typeof variable.index === "number" && Number.isFinite(variable.index) ? Math.max(1, variable.index) : index + 1;
+      const fallbackLabel = (variable as { label?: string; name?: string }).label ?? (variable as { name?: string }).name;
+
+      return {
+        id: variable.id,
+        key: variable.key ?? `{{${normalizedIndex}}}`,
+        label: fallbackLabel?.trim() || `Variable ${normalizedIndex}`,
+        index: normalizedIndex,
+        source: variable.source,
+        mode: variable.mode,
+        manualValue: variable.manualValue ?? "",
+        repairField: variable.repairField ?? "customerName"
+      };
+    }),
     buttons: (template.buttons ?? []).map((button) => ({ ...button }))
   };
+}
+
+const placeholderRegex = /{{(\d+)}}/g;
+const strictPlaceholderRegex = /^{{\d+}}$/;
+
+type NormalizedTemplateDraft = {
+  body: string;
+  variables: TemplateVariable[];
+};
+
+function toPlaceholder(index: number) {
+  return `{{${index}}}`;
+}
+
+function createVariable(index: number): TemplateVariable {
+  return {
+    id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    key: toPlaceholder(index),
+    label: `Variable ${index}`,
+    index,
+    source: "manual",
+    mode: "manual",
+    manualValue: "",
+    repairField: "customerName"
+  };
+}
+
+function getUsedPlaceholderIndexes(body: string): number[] {
+  const found = [...body.matchAll(placeholderRegex)].map((match) => Number(match[1])).filter((value) => Number.isInteger(value) && value > 0);
+  return [...new Set(found)];
+}
+
+function syncVariablesMetadata(variables: TemplateVariable[]) {
+  return [...variables]
+    .sort((a, b) => a.index - b.index)
+    .map((variable, position) => {
+      const nextIndex = position + 1;
+      const label = variable.label.trim() || `Variable ${nextIndex}`;
+      return {
+        ...variable,
+        index: nextIndex,
+        key: toPlaceholder(nextIndex),
+        label,
+        source: variable.mode === "repair_field" ? `repair.${variable.repairField}` : variable.source ?? "manual"
+      };
+    });
+}
+
+function normalizeBodyAndVariables(body: string, variables: TemplateVariable[]): NormalizedTemplateDraft {
+  const usedIndexes = getUsedPlaceholderIndexes(body);
+  const sortedUsed = [...usedIndexes].sort((a, b) => a - b);
+  const indexMap = new Map<number, number>(sortedUsed.map((oldIndex, position) => [oldIndex, position + 1]));
+
+  const normalizedBody = body.replace(placeholderRegex, (token, value) => {
+    const mapped = indexMap.get(Number(value));
+    return mapped ? toPlaceholder(mapped) : token;
+  });
+
+  const byIndex = new Map(variables.map((variable) => [variable.index, variable]));
+  const normalizedVariables = sortedUsed.map((oldIndex, position) => {
+    const nextIndex = position + 1;
+    const existing = byIndex.get(oldIndex);
+    if (!existing) {
+      return createVariable(nextIndex);
+    }
+
+    return {
+      ...existing,
+      index: nextIndex,
+      key: toPlaceholder(nextIndex),
+      label: existing.label.trim() || `Variable ${nextIndex}`,
+      source: existing.mode === "repair_field" ? `repair.${existing.repairField}` : existing.source ?? "manual"
+    };
+  });
+
+  return {
+    body: normalizedBody,
+    variables: normalizedVariables
+  };
+}
+
+function renderPreviewTokens(body: string, variables: TemplateVariable[]) {
+  const variableByIndex = new Map(variables.map((variable) => [variable.index, variable]));
+  const parts: Array<{ type: "text"; value: string } | { type: "token"; index: number; label: string }> = [];
+  let cursor = 0;
+
+  body.replace(placeholderRegex, (match, value, offset) => {
+    if (offset > cursor) {
+      parts.push({ type: "text", value: body.slice(cursor, offset) });
+    }
+
+    const index = Number(value);
+    const variable = variableByIndex.get(index);
+    parts.push({
+      type: "token",
+      index,
+      label: variable?.label?.trim() || `Variable ${index}`
+    });
+
+    cursor = offset + match.length;
+    return match;
+  });
+
+  if (cursor < body.length) {
+    parts.push({ type: "text", value: body.slice(cursor) });
+  }
+
+  if (parts.length === 0) {
+    return <span className="text-slate-400">Message preview will appear here.</span>;
+  }
+
+  return parts.map((part, index) => {
+    if (part.type === "text") {
+      return <span key={`text_${index}`}>{part.value}</span>;
+    }
+
+    return (
+      <span key={`token_${index}`} className="mx-0.5 inline-flex items-center rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-700">
+        {part.label}
+      </span>
+    );
+  });
 }
 
 function TemplateModal({
@@ -134,8 +263,14 @@ function TemplateModal({
   onClose: () => void;
   onSubmit: (values: TemplateFormValues) => void;
 }) {
-  const [values, setValues] = useState<TemplateFormValues>(initialValues);
+  const [values, setValues] = useState<TemplateFormValues>({
+    ...initialValues,
+    variables: syncVariablesMetadata(initialValues.variables)
+  });
   const [showAddButtonMenu, setShowAddButtonMenu] = useState(false);
+  const [showVariablePicker, setShowVariablePicker] = useState(false);
+  const [bodySelection, setBodySelection] = useState({ start: 0, end: 0 });
+  const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const hasCtaButton = values.buttons.some((button) => button.type === "url" || button.type === "phone");
   const quickReplyCount = values.buttons.filter((button) => button.type === "quick_reply").length;
@@ -154,15 +289,35 @@ function TemplateModal({
       .filter((index) => index >= 0)
   );
 
+  const usedPlaceholderIndexes = useMemo(() => getUsedPlaceholderIndexes(values.body), [values.body]);
+  const sortedUsedIndexes = useMemo(() => [...usedPlaceholderIndexes].sort((a, b) => a - b), [usedPlaceholderIndexes]);
+  const variableIndexes = new Set(values.variables.map((variable) => variable.index));
+  const missingVariableIndexes = sortedUsedIndexes.filter((index) => !variableIndexes.has(index));
+  const orphanVariableIndexes = values.variables.filter((variable) => !usedPlaceholderIndexes.includes(variable.index)).map((variable) => variable.index);
+
+  const invalidPlaceholderFragments = useMemo(() => {
+    const braces = values.body.match(/{{[^}]*}}/g) ?? [];
+    return braces.filter((fragment) => !strictPlaceholderRegex.test(fragment));
+  }, [values.body]);
+
+  const hasSequentialGap = sortedUsedIndexes.some((placeholderIndex, position) => placeholderIndex !== position + 1);
   const hasButtonValidationError =
     duplicateButtonIndexes.size > 0 || emptyButtonIndexes.size > 0 || tooLongButtonIndexes.size > 0 || ctaNeedsValueIndexes.size > 0;
-  const isValid = values.name.trim().length > 0 && values.body.trim().length > 0 && !hasButtonValidationError;
+
+  const isBodyPresent = values.body.trim().length > 0;
+  const isValid =
+    values.name.trim().length > 0 &&
+    isBodyPresent &&
+    missingVariableIndexes.length === 0 &&
+    invalidPlaceholderFragments.length === 0 &&
+    !hasButtonValidationError;
+
   const quickReplySlotsLeft = Math.max(0, 3 - quickReplyCount);
 
   const updateVariable = (variableId: string, updater: (variable: TemplateVariable) => TemplateVariable) => {
     setValues((prev) => ({
       ...prev,
-      variables: prev.variables.map((variable) => (variable.id === variableId ? updater(variable) : variable))
+      variables: syncVariablesMetadata(prev.variables.map((variable) => (variable.id === variableId ? updater(variable) : variable)))
     }));
   };
 
@@ -173,371 +328,428 @@ function TemplateModal({
     }));
   };
 
+  const addVariableDefinition = () => {
+    setValues((prev) => {
+      const nextIndex = prev.variables.length + 1;
+      return {
+        ...prev,
+        variables: [...syncVariablesMetadata(prev.variables), createVariable(nextIndex)]
+      };
+    });
+  };
+
+  const insertVariableToken = (variable: TemplateVariable) => {
+    const textarea = bodyTextareaRef.current;
+    const fallbackPosition = values.body.length;
+    const selectionStart = textarea?.selectionStart ?? bodySelection.start ?? fallbackPosition;
+    const selectionEnd = textarea?.selectionEnd ?? bodySelection.end ?? selectionStart;
+    const nextBody = `${values.body.slice(0, selectionStart)}${variable.key}${values.body.slice(selectionEnd)}`;
+    const nextCursorPosition = selectionStart + variable.key.length;
+
+    setValues((prev) => ({ ...prev, body: nextBody }));
+    setBodySelection({ start: nextCursorPosition, end: nextCursorPosition });
+    setShowVariablePicker(false);
+
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(nextCursorPosition, nextCursorPosition);
+    });
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isValid) return;
+
+    const normalized = normalizeBodyAndVariables(values.body.trim(), syncVariablesMetadata(values.variables));
+
+    onSubmit({
+      ...values,
+      name: values.name.trim(),
+      body: normalized.body,
+      variables: normalized.variables.map((variable) => ({
+        ...variable,
+        label: variable.label.trim(),
+        manualValue: variable.manualValue.trim()
+      })),
+      buttons: values.buttons.map((button) => ({
+        ...button,
+        text: button.text.trim(),
+        value: button.value?.trim()
+      }))
+    });
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between px-6 py-5">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#02050d]/80 px-4 py-6 backdrop-blur-sm sm:items-center sm:py-8">
+      <div className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
           <h2 className="text-2xl font-semibold">{mode === "create" ? "Create Template" : "Edit Template"}</h2>
           <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close template modal">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form
-          className="space-y-5 px-6 pb-6"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!isValid) return;
-            onSubmit({
-              ...values,
-              name: values.name.trim(),
-              body: values.body.trim(),
-              spotlerId: values.spotlerId.trim(),
-              variables: values.variables.map((variable) => ({
-                ...variable,
-                name: variable.name.trim(),
-                manualValue: variable.manualValue.trim()
-              })),
-              buttons: values.buttons.map((button) => ({
-                ...button,
-                text: button.text.trim(),
-                value: button.value?.trim()
-              }))
-            });
-          }}
-        >
-          <div>
-            <label htmlFor="template-name" className="mb-2 block text-sm font-medium text-slate-700">
-              Name *
-            </label>
-            <input
-              id="template-name"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
-              value={values.name}
-              onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+          <div className="subtle-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
             <div>
-              <label htmlFor="template-category" className="mb-2 block text-sm font-medium text-slate-700">
-                Category
+              <label htmlFor="template-name" className="mb-2 block text-sm font-medium text-slate-700">
+                Name *
               </label>
-              <div className="relative">
-                <select
-                  id="template-category"
-                  className="w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                  value={values.category}
-                  onChange={(event) => setValues((prev) => ({ ...prev, category: event.target.value }))}
-                >
-                  <option>General</option>
-                  <option>Update</option>
-                  <option>Pickup</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
-              </div>
+              <input
+                id="template-name"
+                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                value={values.name}
+                onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
+              />
             </div>
 
-            <div>
-              <label htmlFor="template-language" className="mb-2 block text-sm font-medium text-slate-700">
-                Language
-              </label>
-              <div className="relative">
-                <select
-                  id="template-language"
-                  className="w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                  value={values.language}
-                  onChange={(event) => setValues((prev) => ({ ...prev, language: event.target.value }))}
-                >
-                  <option>Dutch</option>
-                  <option>English</option>
-                  <option>German</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="body-preview" className="mb-2 block text-sm font-medium text-slate-700">
-              Body Preview *
-            </label>
-            <textarea
-              id="body-preview"
-              className="min-h-28 w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-700"
-              placeholder="Hello {{1}}, your {{2}} is now ready."
-              value={values.body}
-              onChange={(event) => setValues((prev) => ({ ...prev, body: event.target.value }))}
-            />
-            <p className="mt-2 text-xs text-slate-500">{"Use {{1}}, {{2}} for variables"}</p>
-          </div>
-
-          <div>
-            <label htmlFor="spotler-id" className="mb-2 block text-sm font-medium text-slate-700">
-              Spotler External Template ID
-            </label>
-            <input
-              id="spotler-id"
-              className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-              placeholder="Leave blank to configure later"
-              value={values.spotlerId}
-              onChange={(event) => setValues((prev) => ({ ...prev, spotlerId: event.target.value }))}
-            />
-          </div>
-
-          <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800">Variables</h3>
-                <p className="text-xs text-slate-500">Use placeholders like {"{{1}}"} and map them to manual values or repair fields.</p>
+                <label htmlFor="template-category" className="mb-2 block text-sm font-medium text-slate-700">
+                  Category
+                </label>
+                <div className="relative">
+                  <select
+                    id="template-category"
+                    className="w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                    value={values.category}
+                    onChange={(event) => setValues((prev) => ({ ...prev, category: event.target.value }))}
+                  >
+                    <option>General</option>
+                    <option>Update</option>
+                    <option>Pickup</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
+                </div>
               </div>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20"
-                onClick={() =>
-                  setValues((prev) => ({
-                    ...prev,
-                    variables: [
-                      ...prev.variables,
-                      { id: `var_${Date.now()}`, name: `Variable ${prev.variables.length + 1}`, mode: "manual", manualValue: "", repairField: "customerName" }
-                    ]
-                  }))
-                }
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add variable
-              </button>
+
+              <div>
+                <label htmlFor="template-language" className="mb-2 block text-sm font-medium text-slate-700">
+                  Language
+                </label>
+                <div className="relative">
+                  <select
+                    id="template-language"
+                    className="w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                    value={values.language}
+                    onChange={(event) => setValues((prev) => ({ ...prev, language: event.target.value }))}
+                  >
+                    <option>Dutch</option>
+                    <option>English</option>
+                    <option>German</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
+                </div>
+              </div>
             </div>
-            {values.variables.length > 0 ? (
-              <div className="space-y-3">
-                {values.variables.map((variable, index) => (
-                  <div key={variable.id} className="rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="text-xs font-semibold text-slate-500">Placeholder {"{{"}{index + 1}{"}}"}</div>
+
+            <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">Body</h3>
+                  <p className="text-xs text-slate-500">Raw body stores WhatsApp placeholders like {"{{1}}"}. Preview below shows human-friendly labels.</p>
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20"
+                    onClick={() => setShowVariablePicker((prev) => !prev)}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Variable
+                  </button>
+                  {showVariablePicker ? (
+                    <div className="absolute right-0 top-9 z-20 w-72 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
+                      {values.variables.length > 0 ? values.variables.map((variable) => (
+                        <button
+                          key={variable.id}
+                          type="button"
+                          className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-slate-100"
+                          onClick={() => insertVariableToken(variable)}
+                        >
+                          <span className="text-sm font-medium text-slate-700">{variable.label} <span className="text-xs text-slate-500">({variable.key})</span></span>
+                          <span className="text-xs text-slate-500">{variable.mode === "repair_field" ? `Source: repair.${variable.repairField}` : "Source: manual"}</span>
+                        </button>
+                      )) : <p className="px-3 py-2 text-xs text-slate-500">No variables available yet.</p>}
                       <button
                         type="button"
-                        className="text-xs font-semibold text-red-500 hover:text-red-600"
-                        onClick={() =>
-                          setValues((prev) => ({
-                            ...prev,
-                            variables: prev.variables.filter((item) => item.id !== variable.id)
-                          }))
-                        }
+                        className="mt-1 flex w-full items-center rounded-md border border-dashed border-[#bfc9d8] px-3 py-2 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        onClick={() => {
+                          const nextIndex = values.variables.length + 1;
+                          const variable = createVariable(nextIndex);
+                          setValues((prev) => ({ ...prev, variables: [...syncVariablesMetadata(prev.variables), variable] }));
+                          insertVariableToken(variable);
+                        }}
                       >
-                        Remove
+                        + Create and insert new variable
                       </button>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <input
-                        className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                        placeholder="Variable name"
-                        value={variable.name}
-                        onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, name: event.target.value }))}
-                      />
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                          value={variable.mode}
-                          onChange={(event) =>
-                            updateVariable(variable.id, (current) => ({
-                              ...current,
-                              mode: event.target.value as TemplateVariable["mode"],
-                              repairField: current.repairField || "customerName"
-                            }))
-                          }
-                        >
-                          <option value="manual">Manual</option>
-                          <option value="repair_field">Connect to repair</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
-                      </div>
-                    </div>
-                    {variable.mode === "manual" ? (
-                      <input
-                        className="mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                        placeholder="Manual default value"
-                        value={variable.manualValue}
-                        onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, manualValue: event.target.value }))}
-                      />
-                    ) : (
-                      <div className="relative mt-3">
-                        <select
-                          className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                          value={variable.repairField}
-                          onChange={(event) =>
-                            updateVariable(variable.id, (current) => ({
-                              ...current,
-                              repairField: event.target.value as TemplateVariable["repairField"]
-                            }))
-                          }
-                        >
-                          <option value="customerName">Customer name</option>
-                          <option value="customerPhone">Customer phone</option>
-                          <option value="assetName">Device name</option>
-                          <option value="title">Repair title</option>
-                          <option value="description">Repair description</option>
-                          <option value="stage">Repair stage</option>
-                          <option value="priority">Repair priority</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ) : null}
+                </div>
               </div>
-            ) : (
-              <p className="text-xs text-slate-500">No variables yet. Click “Add variable”.</p>
-            )}
-          </div>
 
-          <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-800">Buttons</h3>
-                <p className="text-xs text-slate-500">
-                  {quickReplyCount > 0 ? `${quickReplyCount}/3 quick replies used` : "Add quick replies or one CTA button."}
-                </p>
+              <textarea
+                id="body-preview"
+                ref={bodyTextareaRef}
+                className="min-h-28 w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
+                placeholder="Hello {{1}}, your repair is {{2}}."
+                value={values.body}
+                onClick={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
+                onKeyUp={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
+                onSelect={(event) => setBodySelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
+                onChange={(event) => {
+                  setValues((prev) => ({ ...prev, body: event.target.value }));
+                  setBodySelection({ start: event.target.selectionStart, end: event.target.selectionEnd });
+                }}
+              />
+
+              <div className="mt-3 rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Live preview</div>
+                <div className="text-sm leading-6 text-slate-700">{renderPreviewTokens(values.body, values.variables)}</div>
               </div>
-              <div className="relative">
+
+              {!isBodyPresent ? <p className="mt-2 text-xs text-red-500">Body cannot be empty.</p> : null}
+              {invalidPlaceholderFragments.length > 0 ? <p className="mt-2 text-xs text-red-500">Invalid placeholder format found. Use only values like {"{{1}}"}.</p> : null}
+              {missingVariableIndexes.length > 0 ? <p className="mt-2 text-xs text-red-500">Missing variable definitions for: {missingVariableIndexes.map((index) => toPlaceholder(index)).join(", ")}.</p> : null}
+              {hasSequentialGap ? <p className="mt-2 text-xs text-amber-600">Placeholders will be normalized to sequential order on save for API compatibility.</p> : null}
+            </div>
+
+            <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">Variables</h3>
+                  <p className="text-xs text-slate-500">Each variable stores index/key/label metadata for backend mapping.</p>
+                </div>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20 disabled:cursor-not-allowed disabled:opacity-40"
-                  onClick={() => setShowAddButtonMenu((prev) => !prev)}
-                  disabled={hasCtaButton || quickReplyCount >= 3}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20"
+                  onClick={addVariableDefinition}
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Add Button
+                  Add variable
                 </button>
-                {showAddButtonMenu ? (
-                  <div className="absolute right-0 top-9 z-10 w-44 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
-                    <button
-                      type="button"
-                      disabled={hasCtaButton || quickReplyCount >= 3}
-                      className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                      onClick={() => {
-                        setValues((prev) => ({
-                          ...prev,
-                          buttons: [...prev.buttons, { id: `btn_${Date.now()}`, type: "quick_reply", text: "" }]
-                        }));
-                        setShowAddButtonMenu(false);
-                      }}
-                    >
-                      Quick Reply
-                    </button>
-                    <button
-                      type="button"
-                      disabled={hasCtaButton || quickReplyCount > 0}
-                      className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                      onClick={() => {
-                        setValues((prev) => ({
-                          ...prev,
-                          buttons: [...prev.buttons, { id: `btn_${Date.now()}`, type: "url", text: "", value: "" }]
-                        }));
-                        setShowAddButtonMenu(false);
-                      }}
-                    >
-                      Call To Action
-                    </button>
-                  </div>
-                ) : null}
               </div>
-            </div>
 
-            {values.buttons.length > 0 ? (
-              <div className="space-y-3">
-                {values.buttons.map((button, index) => (
-                  <div key={button.id} className="rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="text-xs font-semibold text-slate-500">{button.type === "quick_reply" ? "Quick Reply" : "CTA"}</div>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-red-500 hover:text-red-600"
-                        onClick={() =>
-                          setValues((prev) => ({
-                            ...prev,
-                            buttons: prev.buttons.filter((item) => item.id !== button.id)
-                          }))
-                        }
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    {(button.type === "url" || button.type === "phone") ? (
-                      <div className="relative mb-3">
-                        <select
-                          className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                          value={button.type}
-                          onChange={(event) => updateButton(button.id, (current) => ({ ...current, type: event.target.value as "url" | "phone" }))}
+              {values.variables.length > 0 ? (
+                <div className="space-y-3">
+                  {values.variables.map((variable) => (
+                    <div key={variable.id} className="rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="text-xs font-semibold text-slate-500">Placeholder {variable.key}</div>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-red-500 hover:text-red-600"
+                          onClick={() => setValues((prev) => ({ ...prev, variables: syncVariablesMetadata(prev.variables.filter((item) => item.id !== variable.id)) }))}
                         >
-                          <option value="url">CTA: URL</option>
-                          <option value="phone">CTA: Phone</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
+                          Remove
+                        </button>
                       </div>
-                    ) : null}
-                    <input
-                      className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                      placeholder="Button text (max 20 chars)"
-                      value={button.text}
-                      maxLength={40}
-                      onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))}
-                    />
-                    <div className="mt-1 text-xs text-slate-500">{button.text.trim().length}/20</div>
-                    {emptyButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot be empty.</p> : null}
-                    {tooLongButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot exceed 20 characters.</p> : null}
-                    {duplicateButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Duplicate button label is not allowed.</p> : null}
-                    {(button.type === "url" || button.type === "phone") ? (
-                      <>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <input
+                          className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                          placeholder="Variable label"
+                          value={variable.label}
+                          onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, label: event.target.value }))}
+                        />
+                        <div className="relative">
+                          <select
+                            className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                            value={variable.mode}
+                            onChange={(event) =>
+                              updateVariable(variable.id, (current) => ({
+                                ...current,
+                                mode: event.target.value as TemplateVariable["mode"],
+                                source: event.target.value === "repair_field" ? `repair.${current.repairField}` : "manual"
+                              }))
+                            }
+                          >
+                            <option value="manual">Manual</option>
+                            <option value="repair_field">Connect to repair</option>
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
+                        </div>
+                      </div>
+
+                      {variable.mode === "manual" ? (
                         <input
                           className="mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
-                          placeholder={button.type === "url" ? "https://example.com" : "+31123456789"}
-                          value={button.value ?? ""}
-                          onChange={(event) => updateButton(button.id, (current) => ({ ...current, value: event.target.value }))}
+                          placeholder="Manual default value"
+                          value={variable.manualValue}
+                          onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, manualValue: event.target.value, source: "manual" }))}
                         />
-                        {ctaNeedsValueIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">CTA requires a URL or phone number.</p> : null}
-                      </>
-                    ) : null}
-                  </div>
-                ))}
-                {quickReplyCount >= 3 ? <p className="text-xs text-amber-600">Maximum of 3 quick replies reached.</p> : null}
-                {hasCtaButton ? <p className="text-xs text-amber-600">CTA is exclusive and cannot be combined with other button types.</p> : null}
-                {!hasCtaButton && quickReplyCount > 0 ? <p className="text-xs text-slate-500">{quickReplySlotsLeft} quick reply slot(s) remaining.</p> : null}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500">No buttons yet. Click “Add Button”.</p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              type="button"
-              className={clsx(
-                "relative inline-flex h-7 w-12 items-center rounded-full transition",
-                values.active ? "bg-[#2fb2a3]" : "bg-slate-300"
+                      ) : (
+                        <div className="relative mt-3">
+                          <select
+                            className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                            value={variable.repairField}
+                            onChange={(event) =>
+                              updateVariable(variable.id, (current) => ({
+                                ...current,
+                                repairField: event.target.value as TemplateVariable["repairField"],
+                                source: `repair.${event.target.value}`
+                              }))
+                            }
+                          >
+                            <option value="customerName">Customer name</option>
+                            <option value="customerPhone">Customer phone</option>
+                            <option value="assetName">Device name</option>
+                            <option value="title">Repair title</option>
+                            <option value="description">Repair description</option>
+                            <option value="stage">Repair stage</option>
+                            <option value="priority">Repair priority</option>
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">No variables yet. Click “Add variable”.</p>
               )}
-              onClick={() => setValues((prev) => ({ ...prev, active: !prev.active }))}
-              aria-label="Toggle active"
-            >
-              <span
-                className={clsx(
-                  "inline-block h-5 w-5 transform rounded-full bg-white transition",
-                  values.active ? "translate-x-6" : "translate-x-1"
-                )}
-              />
-            </button>
-            <span className="text-sm text-slate-700">Active</span>
+              {orphanVariableIndexes.length > 0 ? (
+                <p className="mt-3 text-xs text-amber-600">Unused variables detected ({orphanVariableIndexes.map((index) => toPlaceholder(index)).join(", ")}); they will be removed during save normalization.</p>
+              ) : null}
+            </div>
+
+            <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">Buttons</h3>
+                  <p className="text-xs text-slate-500">
+                    {quickReplyCount > 0 ? `${quickReplyCount}/3 quick replies used` : "Add quick replies or one CTA button."}
+                  </p>
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-lg border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1.5 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => setShowAddButtonMenu((prev) => !prev)}
+                    disabled={hasCtaButton || quickReplyCount >= 3}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Button
+                  </button>
+                  {showAddButtonMenu ? (
+                    <div className="absolute right-0 top-9 z-10 w-44 rounded-lg border border-[#d7dce3] bg-white p-1 shadow-lg">
+                      <button
+                        type="button"
+                        disabled={hasCtaButton || quickReplyCount >= 3}
+                        className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        onClick={() => {
+                          setValues((prev) => ({
+                            ...prev,
+                            buttons: [...prev.buttons, { id: `btn_${Date.now()}`, type: "quick_reply", text: "" }]
+                          }));
+                          setShowAddButtonMenu(false);
+                        }}
+                      >
+                        Quick Reply
+                      </button>
+                      <button
+                        type="button"
+                        disabled={hasCtaButton || quickReplyCount > 0}
+                        className="flex w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        onClick={() => {
+                          setValues((prev) => ({
+                            ...prev,
+                            buttons: [...prev.buttons, { id: `btn_${Date.now()}`, type: "url", text: "", value: "" }]
+                          }));
+                          setShowAddButtonMenu(false);
+                        }}
+                      >
+                        Call To Action
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {values.buttons.length > 0 ? (
+                <div className="space-y-3">
+                  {values.buttons.map((button, index) => (
+                    <div key={button.id} className="rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="text-xs font-semibold text-slate-500">{button.type === "quick_reply" ? "Quick Reply" : "CTA"}</div>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-red-500 hover:text-red-600"
+                          onClick={() =>
+                            setValues((prev) => ({
+                              ...prev,
+                              buttons: prev.buttons.filter((item) => item.id !== button.id)
+                            }))
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      {button.type === "url" || button.type === "phone" ? (
+                        <div className="relative mb-3">
+                          <select
+                            className="w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                            value={button.type}
+                            onChange={(event) => updateButton(button.id, (current) => ({ ...current, type: event.target.value as "url" | "phone" }))}
+                          >
+                            <option value="url">CTA: URL</option>
+                            <option value="phone">CTA: Phone</option>
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-500" />
+                        </div>
+                      ) : null}
+                      <input
+                        className="w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                        placeholder="Button text (max 20 chars)"
+                        value={button.text}
+                        maxLength={40}
+                        onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))}
+                      />
+                      <div className="mt-1 text-xs text-slate-500">{button.text.trim().length}/20</div>
+                      {emptyButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot be empty.</p> : null}
+                      {tooLongButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot exceed 20 characters.</p> : null}
+                      {duplicateButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Duplicate button label is not allowed.</p> : null}
+                      {button.type === "url" || button.type === "phone" ? (
+                        <>
+                          <input
+                            className="mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm"
+                            placeholder={button.type === "url" ? "https://example.com" : "+31123456789"}
+                            value={button.value ?? ""}
+                            onChange={(event) => updateButton(button.id, (current) => ({ ...current, value: event.target.value }))}
+                          />
+                          {ctaNeedsValueIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">CTA requires a URL or phone number.</p> : null}
+                        </>
+                      ) : null}
+                    </div>
+                  ))}
+                  {quickReplyCount >= 3 ? <p className="text-xs text-amber-600">Maximum of 3 quick replies reached.</p> : null}
+                  {hasCtaButton ? <p className="text-xs text-amber-600">CTA is exclusive and cannot be combined with other button types.</p> : null}
+                  {!hasCtaButton && quickReplyCount > 0 ? <p className="text-xs text-slate-500">{quickReplySlotsLeft} quick reply slot(s) remaining.</p> : null}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">No buttons yet. Click “Add Button”.</p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                className={clsx("relative inline-flex h-7 w-12 items-center rounded-full transition", values.active ? "bg-[#2fb2a3]" : "bg-slate-300")}
+                onClick={() => setValues((prev) => ({ ...prev, active: !prev.active }))}
+                aria-label="Toggle active"
+              >
+                <span className={clsx("inline-block h-5 w-5 transform rounded-full bg-white transition", values.active ? "translate-x-6" : "translate-x-1")} />
+              </button>
+              <span className="text-sm text-slate-700">Active</span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-3 border-t border-[#e2e8f0] bg-[#f4f6fa] px-6 py-4">
             <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
               Cancel
             </button>
             <button
               type="submit"
-              className={clsx(
-                "rounded-xl px-5 py-2 text-sm font-semibold text-white",
-                isValid ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
-              )}
+              className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", isValid ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")}
               disabled={!isValid}
             >
               {mode === "create" ? "Create" : "Save"}
@@ -641,13 +853,21 @@ function DeleteQuickReplyModal({ quickReplyName, onCancel, onConfirm }: { quickR
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>(() => readStoredTemplates(defaultStoredTemplates).map((template) => ({
     ...template,
-    variables: (template.variables ?? []).map((variable) => ({
-      id: variable.id,
-      name: variable.name,
-      mode: variable.mode,
-      manualValue: variable.manualValue ?? "",
-      repairField: variable.repairField ?? "customerName"
-    })),
+    variables: (template.variables ?? []).map((variable, index) => {
+      const legacyVariable = variable as TemplateVariable & { name?: string };
+      const normalizedIndex = typeof variable.index === "number" && Number.isFinite(variable.index) ? Math.max(1, variable.index) : index + 1;
+
+      return {
+        id: variable.id,
+        key: variable.key ?? `{{${normalizedIndex}}}`,
+        label: variable.label ?? legacyVariable.name ?? `Variable ${normalizedIndex}`,
+        index: normalizedIndex,
+        source: variable.source,
+        mode: variable.mode,
+        manualValue: variable.manualValue ?? "",
+        repairField: variable.repairField ?? "customerName"
+      };
+    }),
     buttons: (template.buttons ?? []).map((button) => ({ ...button }))
   })));
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>(() => readStoredQuickReplies(initialQuickReplies));
@@ -697,7 +917,6 @@ export default function TemplatesPage() {
       category: values.category,
       language: toStoredLanguage(values.language),
       body: values.body.trim(),
-      spotlerId: values.spotlerId.trim(),
       active: values.active,
       variables: values.variables,
       buttons: values.buttons
@@ -718,7 +937,6 @@ export default function TemplatesPage() {
           category: values.category,
           language: toStoredLanguage(values.language),
           body: values.body.trim(),
-          spotlerId: values.spotlerId.trim(),
           active: values.active,
           variables: values.variables,
           buttons: values.buttons
