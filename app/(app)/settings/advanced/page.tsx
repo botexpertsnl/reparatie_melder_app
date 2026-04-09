@@ -297,6 +297,7 @@ function StageModal({
   confirmLabel,
   initialValues,
   templates,
+  templateUsageById,
   quickReplies,
   stageOptions,
   currentStageId,
@@ -307,6 +308,7 @@ function StageModal({
   confirmLabel: string;
   initialValues: StageFormValues;
   templates: StoredTemplate[];
+  templateUsageById: Record<string, string>;
   quickReplies: QuickReply[];
   stageOptions: Stage[];
   currentStageId?: string;
@@ -325,6 +327,9 @@ function StageModal({
 
   const selectedTemplate = templates.find((template) => template.id === values.templateId);
   const actionableButtons = selectedTemplate?.buttons ?? [];
+  const duplicateTemplateStageName = values.templateAutomationEnabled && values.templateId
+    ? templateUsageById[values.templateId]
+    : undefined;
 
   useEffect(() => {
     if (!values.templateId) return;
@@ -344,6 +349,10 @@ function StageModal({
       return false;
     }
 
+    if (duplicateTemplateStageName) {
+      return false;
+    }
+
     if (values.templateSendDelayHours < 0 || values.templateSendDelayMinutes < 0 || values.templateSendDelayMinutes > 59) {
       return false;
     }
@@ -358,16 +367,17 @@ function StageModal({
     }
 
     return true;
-  }, [values]);
+  }, [duplicateTemplateStageName, values]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#02050d]/80 px-4 py-6 backdrop-blur-sm sm:items-center sm:py-8">
-      <div className="subtle-scrollbar max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[calc(100vh-4rem)]">
+      <div className="subtle-scrollbar relative max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[calc(100vh-4rem)]">
+        <button type="button" onClick={onClose} className="absolute right-4 top-4 rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close stage dialog">
+          <X className="h-5 w-5" />
+        </button>
+
         <div className="flex items-center justify-between px-6 py-5">
           <h2 className="text-2xl font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close stage dialog">
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         <form
@@ -474,8 +484,13 @@ function StageModal({
                       <option key={template.id} value={template.id}>
                         {template.name}
                       </option>
-                    ))}
-                  </select>
+                      ))}
+                    </select>
+                  {duplicateTemplateStageName ? (
+                    <p className="mt-2 text-sm font-medium text-red-600">
+                      This template is already used in {duplicateTemplateStageName} and can&apos;t be used again.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
@@ -1107,6 +1122,20 @@ function AdvancedSettingsPageContent() {
 
   const finalStages = FINAL_STAGE_KEYS.map((key) => stages.find((stage) => stage.key === key)).filter((stage): stage is Stage => Boolean(stage));
   const middleAndStartStages = stages.filter((stage) => !FINAL_STAGE_KEY_SET.has(stage.key));
+  const addModalTemplateUsageById = stages.reduce<Record<string, string>>((acc, stage) => {
+    if (stage.templateAutomationEnabled && stage.templateId) {
+      acc[stage.templateId] = stage.name;
+    }
+    return acc;
+  }, {});
+  const editModalTemplateUsageById = editingStage
+    ? stages.reduce<Record<string, string>>((acc, stage) => {
+        if (stage.id !== editingStage.id && stage.templateAutomationEnabled && stage.templateId) {
+          acc[stage.templateId] = stage.name;
+        }
+        return acc;
+      }, {})
+    : {};
 
   return (
     <>
@@ -1169,6 +1198,7 @@ function AdvancedSettingsPageContent() {
           confirmLabel="Create"
           initialValues={emptyFormValues}
           templates={templateOptions}
+          templateUsageById={addModalTemplateUsageById}
           quickReplies={quickReplyOptions}
           stageOptions={stages}
           onClose={() => setIsAddModalOpen(false)}
@@ -1182,6 +1212,7 @@ function AdvancedSettingsPageContent() {
           confirmLabel="Save"
           initialValues={stageToFormValues(editingStage)}
           templates={templateOptions}
+          templateUsageById={editModalTemplateUsageById}
           quickReplies={quickReplyOptions}
           stageOptions={stages}
           currentStageId={editingStage.id}
