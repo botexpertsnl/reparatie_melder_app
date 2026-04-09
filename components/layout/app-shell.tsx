@@ -157,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={toggleTheme}
             className={clsx(
               "absolute bottom-4 inline-flex h-9 w-9 items-center justify-center rounded-xl border",
-              collapsed ? "right-1/2 translate-x-1/2" : "right-4"
+              collapsed ? "left-1/2 -translate-x-1/2" : "left-4"
             )}
             style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
             aria-label="Toggle theme"
@@ -174,9 +174,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen flex-col">
-        <header className="flex h-[69px] items-center justify-end gap-3 border-b px-8" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+        <header className="flex h-[69px] items-center justify-end gap-3 border-b px-6 pr-8" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
           <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
-            <span className="text-xs uppercase tracking-[0.08em] text-slate-400">Open</span>
+            <span className="text-xs tracking-[0.08em] text-slate-400">Open conversations</span>
             <button
               type="button"
               onClick={() => {
@@ -188,6 +188,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               {openConversationCount}
             </button>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
             {superAdmin ? (
               <button
                 type="button"
