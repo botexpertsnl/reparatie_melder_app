@@ -1150,8 +1150,11 @@ export default function TemplatesPage() {
         </div>
 
         <section className="grid gap-4 md:grid-cols-2">
-          {templates.map((template) => (
-            <article
+          {templates.map((template) => {
+            const linkedStages = workflowStages.filter((stage) => stage.templateAutomationEnabled && stage.templateId === template.id);
+
+            return (
+              <article
               key={template.id}
               role="button"
               tabIndex={0}
@@ -1208,27 +1211,36 @@ export default function TemplatesPage() {
                 </div>
               ) : null}
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {workflowStages
-                  .filter((stage) => stage.templateAutomationEnabled && stage.templateId === template.id)
-                  .map((stage) => (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-semibold text-slate-300">Workflow stage:</span>
+                {linkedStages.length > 0 ? (
+                  linkedStages.map((stage) => (
                     <Link
                       key={stage.id}
                       href={{ pathname: "/settings/advanced", query: { stageId: stage.id } }}
                       onClick={(event) => event.stopPropagation()}
-                      className="inline-flex items-center rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/20"
+                      style={{
+                        color: stage.color,
+                        borderColor: stage.color,
+                        backgroundColor: `${stage.color}1a`
+                      }}
+                      className="inline-flex items-center rounded-full border px-2.5 py-1 font-semibold hover:brightness-110"
                     >
                       {stage.name}
                     </Link>
-                  ))}
+                  ))
+                ) : (
+                  <span className="font-medium text-slate-400">None</span>
+                )}
               </div>
 
-              <div className="mt-3 rounded-lg border border-[#253149] bg-[#0f1727] p-3">
+              <div className="mt-3 rounded-lg border border-[#2d3950] bg-[#1b2432] p-3">
                 <div className="text-sm leading-6 text-slate-300">{renderPreviewTokens(template.body, template.variables)}</div>
                 {renderPreviewButtons(template.buttons)}
               </div>
             </article>
-          ))}
+            );
+          })}
         </section>
 
         <section className="space-y-3">
