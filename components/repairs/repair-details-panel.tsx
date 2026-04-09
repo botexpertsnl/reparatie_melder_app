@@ -49,7 +49,10 @@ export function RepairDetailsPanel({
   );
 
   return (
-    <aside className={`relative flex h-full max-h-full min-h-0 flex-col border-l border-[#253149] bg-[#0b1221] px-5 py-5 ${className ?? ""}`}>
+    <aside
+      className={`relative flex h-full max-h-full min-h-0 flex-col border-l px-5 py-5 ${className ?? ""}`}
+      style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+    >
       <div className="mb-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-xl font-semibold text-white">
           <Wrench className="h-5 w-5 text-[#25d3c4]" />
@@ -103,7 +106,7 @@ export function RepairDetailsPanel({
           return (
             <div
               key={stage.id}
-              className="flex w-full cursor-default items-center gap-2.5 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-3 py-2.5 text-left text-xs font-medium transition-all duration-200"
+              className="flex w-full cursor-default items-center gap-2.5 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-3 py-2.5 text-left text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
               style={isPrevious
                 ? {
                   opacity: 0.55
