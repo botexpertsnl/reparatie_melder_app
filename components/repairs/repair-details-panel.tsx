@@ -117,6 +117,7 @@ export function RepairDetailsPanel({
   const templatePreview = templateConfirmation
     ? fillTemplateBody(templateConfirmation.template, templateConfirmation.variableValues)
     : "";
+  const templateButtons = templateConfirmation?.template.buttons ?? [];
 
   return (
     <>
@@ -220,7 +221,7 @@ export function RepairDetailsPanel({
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-700">
               Moving to <span className="font-semibold">{templateConfirmation.stage.name}</span> will send template{" "}
               <span className="font-semibold">{templateConfirmation.template.name}</span>{" "}
               {templateConfirmation.stage.templateSendDelayEnabled
@@ -256,8 +257,24 @@ export function RepairDetailsPanel({
 
             <div className="mt-4">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Template preview</h3>
-              <div className="mt-2 rounded-xl border border-[#cdd5e2] bg-white p-3 text-sm text-slate-700">
-                {templatePreview}
+              <div className="mt-2 rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                <div className="text-sm leading-6 text-slate-700">{templatePreview}</div>
+                {templateButtons.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-[#d7dce3] pt-3">
+                    {templateButtons.map((button) => {
+                      const normalizedType = button.type.toUpperCase();
+                      const isQuickReply = normalizedType === "QUICK_REPLY";
+                      return (
+                        <span
+                          key={button.id}
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${isQuickReply ? "border-[#b8d8ff] bg-[#eef6ff] text-[#285b9b]" : "border-[#b8e8e2] bg-[#ecfbf8] text-[#16786b]"}`}
+                        >
+                          {button.text.trim() || "Button"}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             </div>
 
