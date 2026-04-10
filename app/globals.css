@@ -25,11 +25,12 @@
   --surface-2: #f3f4f6;
   --surface-3: #ffffff;
   --surface-muted: #eceff3;
+  --surface-hover: #e3e8ef;
   --border: rgba(15, 23, 42, 0.08);
   --border-strong: rgba(15, 23, 42, 0.12);
   --text-primary: rgba(15, 23, 42, 0.92);
   --text-secondary: rgba(15, 23, 42, 0.62);
-  --text-muted: rgba(15, 23, 42, 0.42);
+  --text-muted: rgba(15, 23, 42, 0.58);
   --accent: #1f2937;
   --accent-soft: #e5e7eb;
 }
@@ -143,8 +144,32 @@ body::-webkit-scrollbar {
   color: var(--text-muted) !important;
 }
 
+[class*="text-slate-300"] {
+  color: var(--text-secondary) !important;
+}
+
 [class*="text-white"] {
   color: var(--text-primary) !important;
+}
+
+:root.theme-light label {
+  background: #e9edf3;
+  color: #1f2937 !important;
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.5rem;
+}
+
+:root.theme-light [class*="hover:bg-slate-900/70"]:hover,
+:root.theme-light [class*="hover:bg-slate-800/70"]:hover,
+:root.theme-light [class*="hover:bg-[#182236]"]:hover,
+:root.theme-light [class*="hover:bg-[#152036]"]:hover,
+:root.theme-light [class*="hover:bg-white/5"]:hover,
+:root.theme-light [class*="hover:bg-white/10"]:hover {
+  background: var(--surface-hover) !important;
+}
+
+:root.theme-light [class*="hover:bg-red-50"]:hover {
+  background: #fee2e2 !important;
 }
 
 .subtle-scrollbar {
