@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   MessageSquareText,
   Camera,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   defaultConversations,
@@ -198,6 +199,9 @@ function ConversationsPageContent() {
   });
   const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"open" | "closed">("open");
+  const [sortDirection, setSortDirection] = useState<"newest" | "oldest">("newest");
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const [listCollapsed, setListCollapsed] = useState(false);
   const [mobileActivePane, setMobileActivePane] = useState<"list" | "chat">(
@@ -315,9 +319,16 @@ function ConversationsPageContent() {
     ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null
     : null;
 
-  const sortedThreads = useMemo(
+  const visibleThreads = useMemo(
     () =>
-      [...threads].sort((a, b) => {
+      [...threads]
+        .filter((thread) => thread.open === (statusFilter === "open"))
+        .filter((thread) =>
+          `${thread.customerName} ${thread.customerPhone} ${thread.preview}`
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => {
         const aTimestamp = Number(
           a.messages[a.messages.length - 1]?.id.replace("m_", "") ?? 0
         );
@@ -325,13 +336,28 @@ function ConversationsPageContent() {
           b.messages[b.messages.length - 1]?.id.replace("m_", "") ?? 0
         );
 
-        if (aTimestamp !== bTimestamp) return bTimestamp - aTimestamp;
-        if (a.updatedAt === "Now" && b.updatedAt !== "Now") return -1;
-        if (b.updatedAt === "Now" && a.updatedAt !== "Now") return 1;
-        return b.updatedAt.localeCompare(a.updatedAt);
-      }),
-    [threads]
+          if (aTimestamp !== bTimestamp) {
+            return sortDirection === "newest"
+              ? bTimestamp - aTimestamp
+              : aTimestamp - bTimestamp;
+          }
+          if (a.updatedAt === "Now" && b.updatedAt !== "Now") {
+            return sortDirection === "newest" ? -1 : 1;
+          }
+          if (b.updatedAt === "Now" && a.updatedAt !== "Now") {
+            return sortDirection === "newest" ? 1 : -1;
+          }
+          return sortDirection === "newest"
+            ? b.updatedAt.localeCompare(a.updatedAt)
+            : a.updatedAt.localeCompare(b.updatedAt);
+        }),
+    [searchQuery, sortDirection, statusFilter, threads]
   );
+
+  useEffect(() => {
+    if (visibleThreads.some((thread) => thread.id === selectedThreadId)) return;
+    setSelectedThreadId(visibleThreads[0]?.id ?? "");
+  }, [selectedThreadId, visibleThreads]);
 
   useEffect(() => {
     if (!messageWindowRef.current) return;
@@ -514,23 +540,72 @@ function ConversationsPageContent() {
         >
           <div className="p-4">
             <h1 className="text-2xl font-semibold text-white">Conversations</h1>
-            <label
-              className="mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-slate-400"
-              style={{
-                borderColor: "var(--border)",
-                background: "var(--surface-1)",
-              }}
-            >
-              <Search className="h-4 w-4" />
-              <input
-                className="w-full bg-transparent text-sm outline-none"
-                placeholder="Search..."
-              />
-            </label>
+            <div className="mt-3 flex items-center gap-2">
+              <label
+                className="flex flex-1 items-center gap-2 rounded-xl border px-3 py-1.5 text-slate-400"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-1)",
+                }}
+              >
+                <Search className="h-4 w-4" />
+                <input
+                  className="w-full bg-transparent text-xs outline-none"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() =>
+                  setSortDirection((prev) => (prev === "newest" ? "oldest" : "newest"))
+                }
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border text-slate-300 hover:bg-white/5"
+                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+                aria-label={
+                  sortDirection === "newest"
+                    ? "Sort by oldest first"
+                    : "Sort by newest first"
+                }
+              >
+                <ArrowUpDown className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("open")}
+                className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                  statusFilter === "open" ? "text-white" : "text-slate-300"
+                }`}
+                style={
+                  statusFilter === "open"
+                    ? { borderColor: "var(--border-strong)", background: "var(--surface-3)" }
+                    : { borderColor: "var(--border)", background: "var(--surface-1)" }
+                }
+              >
+                Open
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("closed")}
+                className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                  statusFilter === "closed" ? "text-white" : "text-slate-300"
+                }`}
+                style={
+                  statusFilter === "closed"
+                    ? { borderColor: "var(--border-strong)", background: "var(--surface-3)" }
+                    : { borderColor: "var(--border)", background: "var(--surface-1)" }
+                }
+              >
+                Closed
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1 px-3 pb-3">
-            {sortedThreads.map((thread) => (
+            {visibleThreads.map((thread) => (
               <button
                 key={thread.id}
                 type="button"
@@ -570,6 +645,11 @@ function ConversationsPageContent() {
                 </p>
               </button>
             ))}
+            {visibleThreads.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-4 text-sm text-slate-400">
+                No {statusFilter} conversations found.
+              </p>
+            ) : null}
           </div>
         </div>
 
