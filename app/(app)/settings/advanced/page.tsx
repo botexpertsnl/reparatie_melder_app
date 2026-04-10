@@ -798,12 +798,12 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
 function HiddenStageModal({ stageName, onCancel, onConfirm }: { stageName: string; onCancel: () => void; onConfirm: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+      <div className="relative w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <button type="button" onClick={onCancel} className="absolute right-4 top-4 rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close hidden stage dialog">
+          <X className="h-5 w-5" />
+        </button>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Hidden stage</h2>
-          <button type="button" onClick={onCancel} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close hidden stage dialog">
-            <X className="h-5 w-5" />
-          </button>
         </div>
         <p className="mt-2 text-sm text-slate-600">
           <span className="font-semibold">{stageName}</span> is currently hidden. Do you want to make this workflow stage visible again?
@@ -811,7 +811,7 @@ function HiddenStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
 
         <div className="mt-6 flex items-center justify-end gap-3">
           <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">No</button>
-          <button type="button" onClick={onConfirm} className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-semibold text-white hover:bg-cyan-600">Yes, make visible</button>
+          <button type="button" onClick={onConfirm} className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91]">Yes, make visible</button>
         </div>
       </div>
     </div>
