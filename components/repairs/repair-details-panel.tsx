@@ -15,7 +15,10 @@ type RepairDetailsPanelProps = {
   isLinkActive?: boolean;
   linkedConversationHref?: string;
   className?: string;
-  onStageChange?: (stageName: string) => void;
+  onStageChange?: (
+    stageName: string,
+    options?: { sentTemplateMessage?: string }
+  ) => void;
 };
 
 export function RepairDetailsPanel({
@@ -122,6 +125,21 @@ export function RepairDetailsPanel({
   const hasEmptyVariableValues = templateConfirmation
     ? (templateConfirmation.template.variables ?? []).some((_, index) => !(templateConfirmation.variableValues[index] ?? "").trim())
     : false;
+  const buildTemplateMessageWithButtons = (
+    body: string,
+    buttons: StoredTemplate["buttons"] = []
+  ) => {
+    const formattedButtons = (buttons ?? [])
+      .map((button, index) => {
+        const text = button.text.trim() || `Button ${index + 1}`;
+        return `• ${text}`;
+      })
+      .join("\n");
+
+    return formattedButtons.length > 0
+      ? `${body}\n\nButtons:\n${formattedButtons}`
+      : body;
+  };
 
   return (
     <>
@@ -297,7 +315,12 @@ export function RepairDetailsPanel({
                 type="button"
                 onClick={() => {
                   if (hasEmptyVariableValues) return;
-                  onStageChange?.(templateConfirmation.stage.name);
+                  onStageChange?.(templateConfirmation.stage.name, {
+                    sentTemplateMessage: buildTemplateMessageWithButtons(
+                      templatePreview,
+                      templateButtons
+                    ),
+                  });
                   setTemplateConfirmation(null);
                 }}
                 disabled={hasEmptyVariableValues}
