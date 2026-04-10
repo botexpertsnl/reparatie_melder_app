@@ -255,19 +255,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen flex-col overflow-x-hidden">
-        <header className="sticky top-0 z-40 flex h-[69px] items-center justify-between gap-3 border-b px-4 min-[769px]:hidden" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-          <button
-            type="button"
-            aria-label="Open menu"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border"
-            style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
-          >
-            <Menu className={clsx("h-5 w-5 transition-transform duration-200", isMenuOpen ? "rotate-90 scale-90" : "rotate-0 scale-100")} />
-          </button>
-          <div className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-            {impersonatingTenant ?? "AutoGarage De Vries"}
+        <header
+          className="sticky top-0 z-40 flex h-[69px] items-center justify-between gap-3 border-b px-4 min-[769px]:hidden"
+          style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+            >
+              <Menu className={clsx("h-5 w-5 transition-transform duration-200", isMenuOpen ? "rotate-90 scale-90" : "rotate-0 scale-100")} />
+            </button>
+            <div className="truncate text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+              {impersonatingTenant ?? "AutoGarage De Vries"}
+            </div>
           </div>
+          {openConversationCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new Event("conversations:nav-click"));
+                router.push(resolveConversationHref());
+              }}
+              className="inline-flex items-center gap-1.5 self-start rounded-full border px-2 py-1 text-[11px] font-semibold"
+              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+              aria-label="View open conversations"
+            >
+              <span>Open</span>
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/20 px-1 text-[10px] font-bold text-amber-300">
+                {openConversationCount}
+              </span>
+            </button>
+          ) : null}
         </header>
 
         <header className="hidden h-[69px] items-center justify-end gap-3 border-b px-6 pr-8 min-[769px]:flex" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
