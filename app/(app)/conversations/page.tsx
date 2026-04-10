@@ -209,6 +209,7 @@ function ConversationsPageContent() {
   });
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const threadIdParam = searchParams.get("threadId");
 
@@ -294,6 +295,17 @@ function ConversationsPageContent() {
     };
   }, []);
 
+  useEffect(() => {
+    const inputElement = messageInputRef.current;
+    if (!inputElement) return;
+
+    const baseHeight = 44;
+    const expandedHeight = 88;
+    inputElement.style.height = `${baseHeight}px`;
+    const nextHeight = inputElement.scrollHeight > baseHeight ? expandedHeight : baseHeight;
+    inputElement.style.height = `${nextHeight}px`;
+  }, [message]);
+
   const selectedThread = useMemo(
     () => threads.find((thread) => thread.id === selectedThreadId) ?? null,
     [threads, selectedThreadId]
@@ -326,7 +338,7 @@ function ConversationsPageContent() {
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
 
-  const sendMessage = () => {
+  const sendMessage = ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
     if (!selectedThread || !message.trim()) return;
 
     setThreads((prev) =>
@@ -336,7 +348,7 @@ function ConversationsPageContent() {
               ...thread,
               preview: message.trim(),
               updatedAt: "Now",
-              open: true,
+              open: closeConversation ? false : true,
               messages: [
                 ...thread.messages,
                 {
@@ -465,6 +477,19 @@ function ConversationsPageContent() {
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
   const showMobileRepairDrawer = Boolean(selectedThread && linkedRepair);
+
+  useEffect(() => {
+    setThreads((prev) => {
+      let hasChanges = false;
+      const updated = prev.map((thread) => {
+        const latestMessage = thread.messages[thread.messages.length - 1];
+        if (latestMessage?.role !== "customer" || thread.open) return thread;
+        hasChanges = true;
+        return { ...thread, open: true };
+      });
+      return hasChanges ? updated : prev;
+    });
+  }, [threads]);
 
   return (
     <div
@@ -685,11 +710,14 @@ function ConversationsPageContent() {
                 style={{ borderColor: "var(--border)" }}
               >
                 <div className="flex items-center gap-2">
-                  <input
-                    className="input chat-input"
+                  <textarea
+                    ref={messageInputRef}
+                    className="input chat-input resize-none"
                     placeholder="Type a message..."
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
+                    rows={1}
+                    style={{ minHeight: "44px", maxHeight: "88px" }}
                   />
                   <button
                     type="button"
@@ -709,10 +737,17 @@ function ConversationsPageContent() {
                   </button>
                   <button
                     type="button"
-                    onClick={sendMessage}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#25d3c4] text-[#022a36]"
+                    onClick={() => sendMessage()}
+                    className="inline-flex h-11 w-14 items-center justify-center rounded-xl bg-[#25d3c4] text-[#022a36]"
                   >
                     <Send className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => sendMessage({ closeConversation: true })}
+                    className="inline-flex h-11 w-32 items-center justify-center rounded-xl bg-[#16bfae] px-3 text-xs font-semibold text-[#022a36]"
+                  >
+                    Send & Close
                   </button>
                 </div>
                 <input
