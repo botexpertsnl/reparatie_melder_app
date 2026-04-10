@@ -199,6 +199,9 @@ function ConversationsPageContent() {
   const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [listCollapsed, setListCollapsed] = useState(false);
+  const [mobileActivePane, setMobileActivePane] = useState<"list" | "chat">(
+    "list"
+  );
   const [linkModal, setLinkModal] = useState<LinkModalState>({
     open: false,
     threadId: null,
@@ -239,6 +242,7 @@ function ConversationsPageContent() {
     if (threads.some((thread) => thread.id === threadIdParam)) {
       setSelectedThreadId(threadIdParam);
       setShowRepairPanel(true);
+      setMobileActivePane("chat");
     }
   }, [threadIdParam, threads]);
 
@@ -254,6 +258,7 @@ function ConversationsPageContent() {
   useEffect(() => {
     const handleConversationNavClick = () => {
       setListCollapsed(false);
+      setMobileActivePane("list");
     };
 
     window.addEventListener("conversations:nav-click", handleConversationNavClick);
@@ -459,13 +464,15 @@ function ConversationsPageContent() {
 
   return (
     <div
-      className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] gap-0 overflow-hidden transition-[grid-template-columns] duration-300 ${
+      className={`-mx-10 -my-8 h-[calc(100vh-69px)] overflow-hidden md:grid md:gap-0 md:transition-[grid-template-columns] md:duration-300 ${
         listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"
       }`}
       style={{ background: "var(--bg)" }}
     >
       <aside
-        className="flex min-h-0 flex-col border-r"
+        className={`${
+          mobileActivePane === "chat" ? "hidden md:flex" : "flex"
+        } min-h-0 h-full flex-col border-r`}
         style={{
           borderColor: "var(--border)",
           background: "var(--surface-2)",
@@ -498,7 +505,10 @@ function ConversationsPageContent() {
               <button
                 key={thread.id}
                 type="button"
-                onClick={() => setSelectedThreadId(thread.id)}
+                onClick={() => {
+                  setSelectedThreadId(thread.id);
+                  setMobileActivePane("chat");
+                }}
                 className={`w-full rounded-xl border p-3 text-left ${
                   selectedThreadId === thread.id
                     ? ""
@@ -533,7 +543,7 @@ function ConversationsPageContent() {
           </div>
         </div>
 
-        <div className="border-t border-[#1a2436] p-4">
+        <div className="hidden border-t border-[#1a2436] p-4 md:block">
           <button
             type="button"
             onClick={toggleConversationList}
@@ -554,8 +564,12 @@ function ConversationsPageContent() {
       </aside>
 
       <section
-        className={`relative grid min-h-0 min-w-0 overflow-hidden ${
-          showRepairColumn ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
+        className={`${
+          mobileActivePane === "list" ? "hidden md:grid" : "grid"
+        } relative min-h-0 h-full min-w-0 overflow-hidden ${
+          showRepairColumn
+            ? "grid-cols-[1fr] md:grid-cols-[1fr_380px]"
+            : "grid-cols-[1fr]"
         }`}
         style={{ background: "var(--surface-1)" }}
       >
@@ -566,13 +580,23 @@ function ConversationsPageContent() {
                 className="flex items-center justify-between border-b px-5 py-3"
                 style={{ borderColor: "var(--border)" }}
               >
-                <div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileActivePane("list")}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-slate-900/70 md:hidden"
+                    aria-label="Back to conversations"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <div>
                   <div className="font-semibold text-slate-200">
                     {selectedThread.customerName || selectedThread.customerPhone}
                   </div>
                   <div className="text-sm text-slate-500">
                     {selectedThread.customerPhone}
                   </div>
+                </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedThread.linkedRepairId ? (
@@ -682,7 +706,7 @@ function ConversationsPageContent() {
 
         {showRepairColumn && linkedRepair ? (
           <div
-            className="relative h-full min-h-0 overflow-hidden border-l"
+            className="relative hidden h-full min-h-0 overflow-hidden border-l md:block"
             style={{
               borderColor: "var(--border)",
               background: "var(--surface-1)",
