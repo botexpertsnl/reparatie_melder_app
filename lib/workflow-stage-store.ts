@@ -4,6 +4,7 @@ export type StoredWorkflowStage = {
   key: string;
   description: string;
   color: string;
+  isHidden?: boolean;
   visibleToCustomer: boolean;
   isStart?: boolean;
   isTerminal?: boolean;
@@ -64,4 +65,8 @@ export function writeStoredWorkflowStages(stages: StoredWorkflowStage[]) {
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stages));
   window.dispatchEvent(new Event("workflow-stages:changed"));
+}
+
+export function filterVisibleWorkflowStages(stages: StoredWorkflowStage[]): StoredWorkflowStage[] {
+  return stages.filter((stage) => !stage.isHidden);
 }

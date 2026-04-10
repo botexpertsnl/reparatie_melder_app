@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link as LinkIcon, MessageSquare, Wrench, X } from "lucide-react";
 import type { StoredRepair } from "@/lib/repair-store";
-import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 
 type RepairDetailsPanelProps = {
@@ -38,6 +38,7 @@ export function RepairDetailsPanel({
     template: StoredTemplate;
     variableValues: string[];
   } | null>(null);
+  const visibleWorkflowStages = useMemo(() => filterVisibleWorkflowStages(workflowStages), [workflowStages]);
 
   useEffect(() => {
     const refreshWorkflowStages = () => {
@@ -68,8 +69,8 @@ export function RepairDetailsPanel({
   }, []);
 
   const currentStageIndex = useMemo(
-    () => workflowStages.findIndex((stage) => stage.name === repair.stage),
-    [repair.stage, workflowStages]
+    () => visibleWorkflowStages.findIndex((stage) => stage.name === repair.stage),
+    [repair.stage, visibleWorkflowStages]
   );
 
   const resolveRepairField = (field?: string) => {
@@ -170,7 +171,7 @@ export function RepairDetailsPanel({
         ) : null}
         <div className="mt-4 border-t border-[#253149] pt-4 text-sm text-slate-300">{repair.description}</div>
         <div className="mt-5 space-y-2">
-          {workflowStages.map((stage, index) => {
+          {visibleWorkflowStages.map((stage, index) => {
           const isCurrent = index === currentStageIndex;
           const isPrevious = currentStageIndex >= 0 && index < currentStageIndex;
           const isUpcoming = currentStageIndex < 0 || index > currentStageIndex;

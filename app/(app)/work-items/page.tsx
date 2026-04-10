@@ -5,7 +5,7 @@ import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2, Link2, Un
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
-import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
@@ -304,15 +304,16 @@ export default function WorkItemsPage() {
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
   );
+  const visibleWorkflowStages = useMemo(() => filterVisibleWorkflowStages(workflowStages), [workflowStages]);
   const stageNames = useMemo(() => new Set(workflowStages.map((stage) => stage.name)), [workflowStages]);
   const stageColorByName = useMemo(
     () => new Map(workflowStages.map((stage) => [stage.name, stage.color])),
     [workflowStages]
   );
-  const stageOptions = useMemo(() => workflowStages.map((stage) => stage.name), [workflowStages]);
+  const stageOptions = useMemo(() => visibleWorkflowStages.map((stage) => stage.name), [visibleWorkflowStages]);
   const initialStage = useMemo(
-    () => workflowStages.find((stage) => stage.isStart)?.name ?? workflowStages[0]?.name ?? UNKNOWN_STAGE,
-    [workflowStages]
+    () => visibleWorkflowStages.find((stage) => stage.isStart)?.name ?? visibleWorkflowStages[0]?.name ?? UNKNOWN_STAGE,
+    [visibleWorkflowStages]
   );
 
   const [repairs, setRepairs] = useState<RepairItem[]>(() => {
