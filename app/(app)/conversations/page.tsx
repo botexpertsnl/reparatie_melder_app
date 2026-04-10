@@ -486,7 +486,11 @@ function ConversationsPageContent() {
     });
   };
 
-  const updateRepairStage = (repairId: string, stageName: string) => {
+  const updateRepairStage = (
+    repairId: string,
+    stageName: string,
+    options?: { sentTemplateMessage?: string }
+  ) => {
     setRepairs((prev) => {
       const updated = prev.map((repair) =>
         repair.id === repairId
@@ -499,6 +503,31 @@ function ConversationsPageContent() {
       writeStoredRepairs(updated);
       return updated;
     });
+
+    if (options?.sentTemplateMessage?.trim()) {
+      const templateMessageText = options.sentTemplateMessage.trim();
+      setThreads((prev) =>
+        prev.map((thread) => {
+          if (thread.linkedRepairId !== repairId) return thread;
+
+          return {
+            ...thread,
+            preview: templateMessageText,
+            updatedAt: "Now",
+            open: true,
+            messages: [
+              ...thread.messages,
+              {
+                id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                role: "agent",
+                text: templateMessageText,
+                at: "Now",
+              },
+            ],
+          };
+        })
+      );
+    }
   };
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
@@ -858,7 +887,9 @@ function ConversationsPageContent() {
               repair={linkedRepair}
               itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
-              onStageChange={(stageName) => updateRepairStage(linkedRepair.id, stageName)}
+              onStageChange={(stageName, options) =>
+                updateRepairStage(linkedRepair.id, stageName, options)
+              }
               className="relative h-full min-h-0 pl-6 pr-5 py-5"
             />
           </div>
@@ -887,7 +918,9 @@ function ConversationsPageContent() {
               repair={linkedRepair}
               itemLabel={repairLabel}
               onClose={() => setIsMobileRepairDrawerOpen(false)}
-              onStageChange={(stageName) => updateRepairStage(linkedRepair.id, stageName)}
+              onStageChange={(stageName, options) =>
+                updateRepairStage(linkedRepair.id, stageName, options)
+              }
               className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
             />
           </div>
