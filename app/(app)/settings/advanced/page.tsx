@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal, Link2 } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal, Link2, EyeOff } from "lucide-react";
 import clsx from "clsx";
 import { useSearchParams } from "next/navigation";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
@@ -955,6 +955,13 @@ function AdvancedSettingsPageContent() {
     setDeletingStageId(null);
   };
 
+  const handleToggleStageHidden = (stageId: string) => {
+    setStages((prev) =>
+      normalizeStages(prev.map((stage) => (stage.id === stageId ? { ...stage, isHidden: !stage.isHidden } : stage)))
+    );
+    setOpenStageMenuId(null);
+  };
+
   const renderStageRow = (stage: Stage) => {
     const index = stages.findIndex((candidate) => candidate.id === stage.id);
     const fixedStage = isFixedStage(stage);
@@ -1011,7 +1018,10 @@ function AdvancedSettingsPageContent() {
             setEditingStageId(stage.id);
           }
         }}
-        className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
+        className={clsx(
+          "flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[#253149] bg-[#121b2b]/65 px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.12)]",
+          stage.isHidden && "opacity-60"
+        )}
       >
         <div className="flex items-start gap-4">
           <div className="mt-0.5 flex min-h-9 w-5 shrink-0 flex-col items-center text-slate-500">
@@ -1076,51 +1086,66 @@ function AdvancedSettingsPageContent() {
           </div>
         </div>
 
-        {!fixedStage ? (
-          <div className="relative flex items-center pr-2">
-            <button
-              type="button"
-              data-action-menu="true"
-              className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
-              aria-label={`Open actions for ${stage.name}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                setOpenStageMenuId((prev) => (prev === stage.id ? null : stage.id));
-              }}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+        <div className="relative flex items-center gap-2 pr-2">
+          {stage.isHidden ? <EyeOff className="h-4 w-4 text-slate-400" aria-label={`${stage.name} is hidden`} /> : null}
+          <button
+            type="button"
+            data-action-menu="true"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
+            aria-label={`Open actions for ${stage.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpenStageMenuId((prev) => (prev === stage.id ? null : stage.id));
+            }}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
 
-            {openStageMenuId === stage.id ? (
-              <div data-action-menu="true" className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setEditingStageId(stage.id);
-                    setOpenStageMenuId(null);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setDeletingStageId(stage.id);
-                    setOpenStageMenuId(null);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+          {openStageMenuId === stage.id ? (
+            <div data-action-menu="true" className="absolute right-0 top-9 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 shadow-xl">
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setEditingStageId(stage.id);
+                  setOpenStageMenuId(null);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-200"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleToggleStageHidden(stage.id);
+                }}
+              >
+                <EyeOff className="h-4 w-4" />
+                {stage.isHidden ? "Unhide" : "Hide"}
+              </button>
+              <button
+                type="button"
+                disabled={fixedStage}
+                className={clsx(
+                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",
+                  fixedStage ? "cursor-not-allowed text-slate-400" : "text-red-500 hover:bg-red-50"
+                )}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (fixedStage) return;
+                  setDeletingStageId(stage.id);
+                  setOpenStageMenuId(null);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   };
@@ -1131,6 +1156,7 @@ function AdvancedSettingsPageContent() {
     const finalStages = FINAL_STAGE_KEYS.map((key) => stages.find((stage) => stage.key === key)).filter((stage): stage is Stage => Boolean(stage));
     return [...(startStage ? [startStage] : []), ...middleStages, ...finalStages];
   }, [stages]);
+  const visibleStageOptions = useMemo(() => stages.filter((stage) => !stage.isHidden), [stages]);
   const addModalTemplateUsageById = stages.reduce<Record<string, string>>((acc, stage) => {
     if (stage.templateAutomationEnabled && stage.templateId) {
       acc[stage.templateId] = stage.name;
@@ -1191,7 +1217,7 @@ function AdvancedSettingsPageContent() {
           templates={templateOptions}
           templateUsageById={addModalTemplateUsageById}
           quickReplies={quickReplyOptions}
-          stageOptions={stages}
+          stageOptions={visibleStageOptions}
           onClose={() => setIsAddModalOpen(false)}
           onSubmit={handleAddStage}
         />
@@ -1205,7 +1231,7 @@ function AdvancedSettingsPageContent() {
           templates={templateOptions}
           templateUsageById={editModalTemplateUsageById}
           quickReplies={quickReplyOptions}
-          stageOptions={stages}
+          stageOptions={visibleStageOptions}
           currentStageId={editingStage.id}
           onClose={() => setEditingStageId(null)}
           onSubmit={(values) => handleEditStage(editingStage.id, values)}

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import Link from "next/link";
 
-import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
 type QuickReply = {
   id: string;
@@ -150,6 +150,7 @@ export default function QuickRepliesPage() {
 
   const editingQuickReply = quickReplies.find((reply) => reply.id === editingQuickReplyId) ?? null;
   const deletingQuickReply = quickReplies.find((reply) => reply.id === deletingQuickReplyId) ?? null;
+  const visibleWorkflowStages = useMemo(() => filterVisibleWorkflowStages(workflowStages), [workflowStages]);
 
   return (
     <>
@@ -174,7 +175,7 @@ export default function QuickRepliesPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           {quickReplies.map((reply) => {
-            const linkedStages = workflowStages.filter((stage) =>
+            const linkedStages = visibleWorkflowStages.filter((stage) =>
               (stage.templateButtonActions ?? []).some((action) => action.sendQuickReplyEnabled && action.quickReplyId === reply.id)
             );
 

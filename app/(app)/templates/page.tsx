@@ -6,7 +6,7 @@ import clsx from "clsx";
 import Link from "next/link";
 
 import { defaultStoredTemplates, readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
-import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
 type TemplateVariable = {
   id: string;
@@ -929,6 +929,7 @@ export default function TemplatesPage() {
   }, []);
 
   const deletingTemplate = templates.find((template) => template.id === deletingTemplateId) ?? null;
+  const visibleWorkflowStages = useMemo(() => filterVisibleWorkflowStages(workflowStages), [workflowStages]);
   const toStoredLanguage = (language: string) => {
     if (language === "Dutch") return "nl";
     if (language === "English") return "en";
@@ -1000,7 +1001,7 @@ export default function TemplatesPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           {templates.map((template) => {
-            const linkedStages = workflowStages.filter((stage) => stage.templateAutomationEnabled && stage.templateId === template.id);
+            const linkedStages = visibleWorkflowStages.filter((stage) => stage.templateAutomationEnabled && stage.templateId === template.id);
 
             return (
             <article
