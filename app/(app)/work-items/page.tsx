@@ -561,8 +561,8 @@ export default function WorkItemsPage() {
                   <tr>
                     <th className="w-[42%] px-5 py-4">Title</th>
                     <th className="w-[28%] px-5 py-4">Customer</th>
-                    <th className="w-[24%] px-5 py-4">Stage</th>
-                    <th className="w-[6%] px-5 py-4 pr-2" />
+                    <th className="w-[24%] px-5 py-4 pr-3">Stage</th>
+                    <th className="w-[6%] py-4 pl-2 pr-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -591,12 +591,12 @@ export default function WorkItemsPage() {
                       <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">
                         {repair.customerName}
                       </td>
-                      <td className="px-5 py-4 align-middle">
+                      <td className="px-5 py-4 pr-3 align-middle">
                         <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
                       </td>
                       <td
-                        className={`relative px-5 py-4 align-middle text-right text-slate-400 ${
-                          selectedRepair ? "pr-4" : "pr-2"
+                        className={`relative py-4 pl-2 align-middle text-right text-slate-400 ${
+                          selectedRepair ? "pr-6" : "pr-3"
                         }`}
                       >
                         <button
