@@ -464,7 +464,7 @@ function ConversationsPageContent() {
 
   return (
     <div
-      className={`-mx-10 -my-8 h-[calc(100vh-69px)] overflow-hidden md:grid md:gap-0 md:transition-[grid-template-columns] md:duration-300 ${
+      className={`-mx-5 -my-6 h-[calc(100dvh-69px)] overflow-hidden md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] md:grid md:gap-0 md:transition-[grid-template-columns] md:duration-300 ${
         listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"
       }`}
       style={{ background: "var(--bg)" }}
@@ -577,7 +577,7 @@ function ConversationsPageContent() {
           {selectedThread ? (
             <>
               <header
-                className="flex items-center justify-between border-b px-5 py-3"
+                className="sticky top-0 z-20 flex items-center justify-between border-b px-4 py-3 md:px-5"
                 style={{ borderColor: "var(--border)" }}
               >
                 <div className="flex items-center gap-3">
@@ -625,10 +625,7 @@ function ConversationsPageContent() {
                 </div>
               </header>
 
-              <div
-                ref={messageWindowRef}
-                className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto p-4"
-              >
+              <div ref={messageWindowRef} className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto px-3 py-4 md:p-4">
                 {selectedThread.messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -654,7 +651,7 @@ function ConversationsPageContent() {
               </div>
 
               <div
-                className="border-t p-3"
+                className="sticky bottom-0 z-20 border-t bg-[var(--surface-1)] p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
                 style={{ borderColor: "var(--border)" }}
               >
                 <div className="flex items-center gap-2">
@@ -750,7 +747,7 @@ function ConversationsPageContent() {
 function ConversationsPageFallback() {
   return (
     <div
-      className="-mx-10 -my-8 flex h-[calc(100vh-69px)] items-center justify-center"
+      className="-mx-5 -my-6 flex h-[calc(100dvh-69px)] items-center justify-center md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)]"
       style={{ background: "var(--bg)" }}
     >
       <div className="text-sm text-slate-400">Loading conversations...</div>
