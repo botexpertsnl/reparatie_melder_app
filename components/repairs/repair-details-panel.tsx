@@ -119,6 +119,9 @@ export function RepairDetailsPanel({
     ? fillTemplateBody(templateConfirmation.template, templateConfirmation.variableValues)
     : "";
   const templateButtons = templateConfirmation?.template.buttons ?? [];
+  const hasEmptyVariableValues = templateConfirmation
+    ? (templateConfirmation.template.variables ?? []).some((_, index) => !(templateConfirmation.variableValues[index] ?? "").trim())
+    : false;
 
   return (
     <>
@@ -232,10 +235,10 @@ export function RepairDetailsPanel({
 
             {(templateConfirmation.template.variables ?? []).length > 0 ? (
               <div className="mt-4 space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Variables</h3>
+                <h3 className="text-base font-semibold text-slate-800">Variables</h3>
                 {(templateConfirmation.template.variables ?? []).map((variable, index) => (
                   <div key={variable.id} className="space-y-1">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <label className="block text-sm font-medium text-slate-700">
                       {variable.name || variable.label || variable.key || `Variable ${index + 1}`}
                     </label>
                     <input
@@ -253,6 +256,9 @@ export function RepairDetailsPanel({
                     />
                   </div>
                 ))}
+                {hasEmptyVariableValues ? (
+                  <p className="text-sm font-medium text-amber-700">Fill in all variables before sending this template.</p>
+                ) : null}
               </div>
             ) : null}
 
@@ -290,12 +296,14 @@ export function RepairDetailsPanel({
               <button
                 type="button"
                 onClick={() => {
+                  if (hasEmptyVariableValues) return;
                   onStageChange?.(templateConfirmation.stage.name);
                   setTemplateConfirmation(null);
                 }}
-                className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91]"
+                disabled={hasEmptyVariableValues}
+                className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91] disabled:cursor-not-allowed disabled:bg-[#9fd8d2] disabled:text-white/90"
               >
-                Confirm and move stage
+                Send template
               </button>
             </div>
           </div>
