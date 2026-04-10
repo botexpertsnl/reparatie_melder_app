@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, ChevronDown, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
@@ -325,6 +325,8 @@ export default function WorkItemsPage() {
     }));
   });
   const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStageFilters, setSelectedStageFilters] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [deletingRepairId, setDeletingRepairId] = useState<string | null>(null);
@@ -423,6 +425,38 @@ export default function WorkItemsPage() {
       selectedRepair ? conversations.find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null : null,
     [conversations, selectedRepair]
   );
+  const stageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const repair of repairs) {
+      counts.set(repair.stage, (counts.get(repair.stage) ?? 0) + 1);
+    }
+    return counts;
+  }, [repairs]);
+  const filterStages = useMemo(() => {
+    const stageNamesFromRepairs = Array.from(stageCounts.keys()).filter(
+      (stageName) => !visibleWorkflowStages.some((stage) => stage.name === stageName)
+    );
+    return [...visibleWorkflowStages.map((stage) => stage.name), ...stageNamesFromRepairs];
+  }, [stageCounts, visibleWorkflowStages]);
+  const filteredRepairs = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    return repairs.filter((repair) => {
+      const matchesSearch =
+        normalizedQuery.length === 0 ||
+        `${repair.title} ${repair.description} ${repair.customerName} ${repair.customerPhone} ${repair.assetName} ${repair.stage}`
+          .toLowerCase()
+          .includes(normalizedQuery);
+      const matchesStageFilter =
+        selectedStageFilters.length === 0 || selectedStageFilters.includes(repair.stage);
+      return matchesSearch && matchesStageFilter;
+    });
+  }, [repairs, searchQuery, selectedStageFilters]);
+
+  const toggleStageFilter = (stageName: string) => {
+    setSelectedStageFilters((prev) =>
+      prev.includes(stageName) ? prev.filter((selected) => selected !== stageName) : [...prev, stageName]
+    );
+  };
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
     const newRepair = {
@@ -518,35 +552,70 @@ export default function WorkItemsPage() {
       >
         <div className="flex min-h-0 flex-col py-6 md:py-8">
           <div
-            className="mb-5 flex flex-wrap items-start justify-between gap-4 border-y px-4 py-4 md:mb-7 md:px-10 md:py-5"
+            className="mb-5 space-y-4 border-y px-4 py-4 md:mb-7 md:px-10 md:py-5"
             style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
           >
-            <div>
-              <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
-              <p className="mt-1 text-sm text-slate-400">Manage ongoing {repairLabelPlural.toLowerCase()}</p>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Overview</p>
+                <h1 className="mt-1 text-2xl font-semibold text-white">{repairLabelPlural}</h1>
+                <p className="mt-1 text-sm text-slate-400">
+                  {filteredRepairs.length} of {repairs.length} {repairLabelPlural.toLowerCase()} shown
+                </p>
+              </div>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+                <label
+                  className="flex h-11 w-full items-center gap-3 rounded-xl border px-4 text-sm text-slate-300 sm:min-w-80"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+                >
+                  <Search className="h-5 w-5 text-slate-500" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                    placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
+                    aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
+                  />
+                </label>
+                <button
+                  onClick={() => setIsAddRepairOpen(true)}
+                  className="inline-flex h-11 items-center justify-center gap-3 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
+                >
+                  <Plus className="h-5 w-5" />
+                  New {repairLabel}
+                </button>
+              </div>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-3">
-              <button
-                className="inline-flex h-11 min-w-36 items-center justify-between rounded-xl border px-4 text-sm text-slate-400 md:min-w-40"
-                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-              >
-                All
-                <ChevronDown className="ml-4 h-5 w-5" />
-              </button>
-              <label
-                className="flex h-11 w-full min-w-0 items-center gap-3 rounded-xl border px-4 text-sm text-slate-400 md:min-w-72"
-                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-              >
-                <Search className="h-5 w-5" />
-                <span className="text-sm">Search...</span>
-              </label>
-              <button
-                onClick={() => setIsAddRepairOpen(true)}
-                className="inline-flex h-11 items-center gap-3 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
-              >
-                <Plus className="h-5 w-5" />
-                New {repairLabel}
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {filterStages.map((stageName) => {
+                const isActive = selectedStageFilters.includes(stageName);
+                return (
+                  <button
+                    key={stageName}
+                    type="button"
+                    onClick={() => toggleStageFilter(stageName)}
+                    className={clsx(
+                      "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                      isActive ? "text-white" : "text-slate-300"
+                    )}
+                    style={{
+                      borderColor: isActive ? (stageColorByName.get(stageName) ?? "var(--text-primary)") : "var(--border)",
+                      background: isActive ? `${stageColorByName.get(stageName) ?? "#30b5a5"}24` : "var(--surface-1)"
+                    }}
+                  >
+                    <span>{stageName}</span>
+                    <span
+                      className={clsx(
+                        "rounded-full px-2 py-0.5 text-[11px]",
+                        isActive ? "bg-white/20 text-white" : "bg-slate-700/70 text-slate-200"
+                      )}
+                    >
+                      {stageCounts.get(stageName) ?? 0}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -567,7 +636,7 @@ export default function WorkItemsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {repairs.map((repair) => (
+                  {filteredRepairs.map((repair) => (
                     <tr
                       key={repair.id}
                       onClick={() => setSelectedRepairId(repair.id)}
@@ -644,6 +713,13 @@ export default function WorkItemsPage() {
                       </td>
                     </tr>
                   ))}
+                  {filteredRepairs.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-5 py-10 text-center text-sm text-slate-400">
+                        No {repairLabelPlural.toLowerCase()} found for the current search and filters.
+                      </td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>
