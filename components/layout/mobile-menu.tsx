@@ -1,0 +1,93 @@
+"use client";
+
+import clsx from "clsx";
+import { MessageSquareText, type LucideIcon } from "lucide-react";
+
+export type NavSection = {
+  label: string;
+  items: Array<{
+    name: string;
+    href: string;
+    icon: LucideIcon;
+  }>;
+};
+
+type MobileMenuProps = {
+  isOpen: boolean;
+  sections: NavSection[];
+  pathname: string;
+  onClose: () => void;
+  onNavigate: (href: string) => void;
+};
+
+export function MobileMenu({ isOpen, sections, pathname, onClose, onNavigate }: MobileMenuProps) {
+  return (
+    <div
+      className={clsx(
+        "fixed inset-0 z-50 max-[768px]:block min-[769px]:hidden",
+        isOpen ? "pointer-events-auto" : "pointer-events-none"
+      )}
+      aria-hidden={!isOpen}
+    >
+      <button
+        type="button"
+        className={clsx(
+          "absolute inset-0 bg-black/45 transition-opacity duration-300",
+          isOpen ? "opacity-100" : "opacity-0"
+        )}
+        onClick={onClose}
+        aria-label="Close menu"
+      />
+
+      <aside
+        className={clsx(
+          "absolute left-0 top-0 h-full w-[84%] max-w-[320px] border-r px-5 py-6 shadow-2xl transition-transform duration-300",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+      >
+        <div className="mb-8 flex items-center gap-3">
+          <div className="rounded-xl bg-[#25d3c4] p-2.5 text-[#04243a]">
+            <MessageSquareText className="h-4 w-4" />
+          </div>
+          <div className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+            StatusFlow
+          </div>
+        </div>
+
+        <nav className="space-y-7">
+          {sections.map((section) => (
+            <div key={section.label}>
+              <h2 className="px-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{section.label}</h2>
+              <ul className="mt-3 space-y-1.5">
+                {section.items.map((item) => {
+                  const active = pathname === item.href;
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onNavigate(item.href);
+                          onClose();
+                        }}
+                        className={clsx(
+                          "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-base font-medium transition",
+                          active ? "bg-white/10" : "hover:bg-slate-900/70"
+                        )}
+                        style={{ color: active ? "#25d3c4" : "var(--text-secondary)" }}
+                      >
+                        <Icon className="h-5 w-5" style={{ color: active ? "#25d3c4" : "var(--text-muted)" }} />
+                        {item.name}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </aside>
+    </div>
+  );
+}

@@ -14,19 +14,22 @@ import {
   Shield,
   ChevronLeft,
   Moon,
-  Sun
+  Sun,
+  Menu
 } from "lucide-react";
 import clsx from "clsx";
 import { defaultConversations, readStoredConversations } from "@/lib/conversation-store";
 import { defaultRepairs, readStoredRepairs } from "@/lib/repair-store";
 import { getImpersonatingTenant, isSuperAdmin, stopImpersonation } from "@/lib/impersonation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
+import { MobileMenu, type NavSection } from "@/components/layout/mobile-menu";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const repairLabel = useTenantRepairLabel();
   const [collapsed, setCollapsed] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
   const [superAdmin, setSuperAdminState] = useState(false);
   const [impersonatingTenant, setImpersonatingTenant] = useState<string | null>(null);
@@ -51,6 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setSuperAdminState(isSuperAdmin());
     setImpersonatingTenant(getImpersonatingTenant());
+    setIsMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -60,7 +64,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("theme-light", initial === "light");
   }, []);
 
-  const navSections = [
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    };
+
+    const desktopQuery = window.matchMedia("(min-width: 769px)");
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    desktopQuery.addEventListener("change", closeOnDesktop);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      desktopQuery.removeEventListener("change", closeOnDesktop);
+    };
+  }, []);
+
+  const navSections: NavSection[] = [
     {
       label: "Main",
       items: [
@@ -127,9 +154,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return `/work-items?repairId=${selectedConversation.linkedRepairId}`;
   };
 
+  const handleNavLinkClick = (href: string) => {
+    if (href === "/conversations") {
+      window.dispatchEvent(new Event("conversations:nav-click"));
+      router.push(resolveConversationHref());
+      return;
+    }
+
+    if (href === "/work-items") {
+      router.push(resolveRepairHref());
+      return;
+    }
+
+    router.push(href);
+  };
+
   return (
-    <div className={clsx("min-h-screen md:grid md:transition-[grid-template-columns] md:duration-300", collapsed ? "md:grid-cols-[88px_1fr]" : "md:grid-cols-[316px_1fr]")} style={{ background: "var(--bg)", color: "var(--text-primary)" }}>
-      <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+    <div
+      className={clsx(
+        "min-h-screen min-[769px]:grid min-[769px]:transition-[grid-template-columns] min-[769px]:duration-300",
+        collapsed ? "min-[769px]:grid-cols-[88px_1fr]" : "min-[769px]:grid-cols-[316px_1fr]"
+      )}
+      style={{ background: "var(--bg)", color: "var(--text-primary)" }}
+    >
+      <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r min-[769px]:flex" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
         <div className="border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-4">
             <div className="rounded-xl bg-[#25d3c4] p-3 text-[#04243a]">
@@ -207,7 +255,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen flex-col">
-        <header className="flex h-[69px] items-center justify-end gap-3 border-b px-6 pr-8" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+        <header className="flex h-[69px] items-center justify-between gap-3 border-b px-4 min-[769px]:hidden" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+          <button
+            type="button"
+            aria-label="Open menu"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border"
+            style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+          >
+            <Menu className={clsx("h-5 w-5 transition-transform duration-200", isMenuOpen ? "rotate-90 scale-90" : "rotate-0 scale-100")} />
+          </button>
+          <div className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+            {impersonatingTenant ?? "AutoGarage De Vries"}
+          </div>
+        </header>
+
+        <header className="hidden h-[69px] items-center justify-end gap-3 border-b px-6 pr-8 min-[769px]:flex" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
           <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
             <span className="text-xs tracking-[0.08em] text-slate-400">Open conversations</span>
             <button
@@ -236,8 +299,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <main className="flex-1 px-10 py-8">{children}</main>
+        <main className="flex-1 px-4 py-6 min-[769px]:px-10 min-[769px]:py-8">{children}</main>
       </div>
+
+      <MobileMenu
+        isOpen={isMenuOpen}
+        sections={visibleSections}
+        pathname={pathname}
+        onClose={() => setIsMenuOpen(false)}
+        onNavigate={handleNavLinkClick}
+      />
     </div>
   );
 }
