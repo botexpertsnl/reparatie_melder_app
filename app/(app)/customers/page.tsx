@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cog, Clock3, Users } from "lucide-react";
+import { Cog, Clock3, Users, Plus, X } from "lucide-react";
 import { getImpersonatingTenant } from "@/lib/impersonation-store";
 import { defaultTenantSettings, readTenantSettings, writeTenantSettings, type TenantSettings } from "@/lib/tenant-settings-store";
 import { readTenantUsers, type TenantUser, writeTenantUsers } from "@/lib/tenant-users-store";
@@ -16,6 +16,7 @@ export default function CustomersPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
   useEffect(() => {
     const activeTenant = getImpersonatingTenant() ?? knownTenants[0];
@@ -36,6 +37,7 @@ export default function CustomersPage() {
     setEditingUserId(null);
     setUserName("");
     setUserEmail("");
+    setIsUserModalOpen(false);
   };
 
   const submitUser = () => {
@@ -52,10 +54,18 @@ export default function CustomersPage() {
     resetUserForm();
   };
 
+  const startAddUser = () => {
+    setEditingUserId(null);
+    setUserName("");
+    setUserEmail("");
+    setIsUserModalOpen(true);
+  };
+
   const startEditUser = (user: TenantUser) => {
     setEditingUserId(user.id);
     setUserName(user.name);
     setUserEmail(user.email);
+    setIsUserModalOpen(true);
   };
 
   return (
@@ -106,7 +116,13 @@ export default function CustomersPage() {
       </section>
 
       <section className="card">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="h-4 w-4" />Users</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="h-4 w-4" />Users</h2>
+          <button type="button" onClick={startAddUser} className="inline-flex items-center gap-1 rounded-xl bg-[#28d9c6] px-3 py-1.5 text-xs font-semibold text-[#022a36]">
+            <Plus className="h-3.5 w-3.5" />
+            Add User
+          </button>
+        </div>
         <p className="mt-1 text-xs text-slate-500">Current users for this tenant. Add users or edit their registered name and e-mail.</p>
 
         <div className="mt-4 space-y-2">
@@ -122,28 +138,42 @@ export default function CustomersPage() {
             </div>
           ))}
         </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Name</label>
-            <input className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200" value={userName} onChange={(event) => setUserName(event.target.value)} />
-          </div>
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">E-mail</label>
-            <input type="email" className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200" value={userEmail} onChange={(event) => setUserEmail(event.target.value)} />
-          </div>
-        </div>
-        <div className="mt-4 flex gap-2">
-          <button type="button" onClick={submitUser} disabled={!userName.trim() || !userEmail.trim()} className="rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36] disabled:cursor-not-allowed disabled:opacity-60">
-            {editingUserId ? "Save User" : "Add User"}
-          </button>
-          {editingUserId ? (
-            <button type="button" onClick={resetUserForm} className="rounded-xl border border-[#253149] px-4 py-2 text-sm font-semibold text-slate-200">
-              Cancel
-            </button>
-          ) : null}
-        </div>
       </section>
+
+      {isUserModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#02050d]/80 px-4 py-6 backdrop-blur-sm sm:items-center sm:py-8">
+          <div className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
+              <h2 className="text-2xl font-semibold">{editingUserId ? "Edit User" : "Add User"}</h2>
+              <button type="button" onClick={resetUserForm} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close user modal">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-5 overflow-y-auto px-6 py-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Name</label>
+                  <input className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-[#30b5a5]" value={userName} onChange={(event) => setUserName(event.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">E-mail</label>
+                  <input type="email" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-[#30b5a5]" value={userEmail} onChange={(event) => setUserEmail(event.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#e2e8f0] px-6 py-4">
+              <button type="button" onClick={resetUserForm} className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-semibold text-slate-700">
+                Cancel
+              </button>
+              <button type="button" onClick={submitUser} disabled={!userName.trim() || !userEmail.trim()} className="rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36] disabled:cursor-not-allowed disabled:opacity-60">
+                {editingUserId ? "Save User" : "Add User"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
