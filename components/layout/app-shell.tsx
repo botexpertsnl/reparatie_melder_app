@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const repairLabel = useTenantRepairLabel();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
   const [superAdmin, setSuperAdminState] = useState(false);
@@ -238,7 +238,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={toggleTheme}
             className={clsx(
               "absolute bottom-4 inline-flex h-9 w-9 items-center justify-center rounded-xl border",
-              collapsed ? "left-1/2 -translate-x-1/2" : "left-4"
+              collapsed ? "left-1/2 -translate-x-1/2" : "left-5"
             )}
             style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
             aria-label="Toggle theme"
