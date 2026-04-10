@@ -510,14 +510,14 @@ export default function WorkItemsPage() {
   return (
     <>
       <div
-        className={`-mx-10 -my-8 grid h-[calc(100vh-69px)] transition-[grid-template-columns] duration-300 ${
+        className={`-mx-5 -my-6 grid h-[calc(100dvh-69px)] md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] transition-[grid-template-columns] duration-300 ${
           selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
         }`}
         style={{ background: "var(--bg)" }}
       >
-        <div className="flex min-h-0 flex-col py-8">
+        <div className="flex min-h-0 flex-col py-6 md:py-8">
           <div
-            className="mb-7 flex flex-wrap items-start justify-between gap-4 border-y px-10 py-5"
+            className="mb-5 flex flex-wrap items-start justify-between gap-4 border-y px-4 py-4 md:mb-7 md:px-10 md:py-5"
             style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
           >
             <div>
@@ -526,14 +526,14 @@ export default function WorkItemsPage() {
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <button
-                className="inline-flex h-11 min-w-40 items-center justify-between rounded-xl border px-4 text-sm text-slate-400"
+                className="inline-flex h-11 min-w-36 items-center justify-between rounded-xl border px-4 text-sm text-slate-400 md:min-w-40"
                 style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
               >
                 All
                 <ChevronDown className="ml-4 h-5 w-5" />
               </button>
               <label
-                className="flex h-11 min-w-72 items-center gap-3 rounded-xl border px-4 text-sm text-slate-400"
+                className="flex h-11 w-full min-w-0 items-center gap-3 rounded-xl border px-4 text-sm text-slate-400 md:min-w-72"
                 style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
               >
                 <Search className="h-5 w-5" />

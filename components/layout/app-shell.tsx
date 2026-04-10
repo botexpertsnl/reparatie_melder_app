@@ -254,8 +254,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col">
-        <header className="flex h-[69px] items-center justify-between gap-3 border-b px-4 min-[769px]:hidden" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+      <div className="flex min-h-screen flex-col overflow-x-hidden">
+        <header className="sticky top-0 z-40 flex h-[69px] items-center justify-between gap-3 border-b px-4 min-[769px]:hidden" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
           <button
             type="button"
             aria-label="Open menu"
@@ -299,7 +299,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 min-[769px]:px-10 min-[769px]:py-8">{children}</main>
+        <main className="flex-1 px-5 py-6 min-[769px]:px-10 min-[769px]:py-8">{children}</main>
       </div>
 
       <MobileMenu
