@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
@@ -29,6 +29,7 @@ import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
 type LinkModalState = { open: boolean; threadId: string | null };
+type TouchGesture = { x: number; y: number };
 const fallbackQuickReplies = [
   "Thanks for your message! We will check this right away.",
   "Can you share your serial number?",
@@ -214,6 +215,7 @@ function ConversationsPageContent() {
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const touchStartRef = useRef<TouchGesture | null>(null);
 
   const threadIdParam = searchParams.get("threadId");
 
@@ -533,6 +535,43 @@ function ConversationsPageContent() {
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
   const showMobileRepairDrawer = Boolean(selectedThread && linkedRepair);
 
+  const handleChatTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const firstTouch = event.touches[0];
+    if (!firstTouch) return;
+    touchStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
+  };
+
+  const handleChatTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const touchStart = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!touchStart || mobileActivePane !== "chat") return;
+
+    const firstChangedTouch = event.changedTouches[0];
+    if (!firstChangedTouch) return;
+
+    const deltaX = firstChangedTouch.clientX - touchStart.x;
+    const deltaY = firstChangedTouch.clientY - touchStart.y;
+    const minHorizontalSwipe = 70;
+    const maxVerticalMovement = 50;
+
+    if (
+      Math.abs(deltaX) < minHorizontalSwipe ||
+      Math.abs(deltaY) > maxVerticalMovement
+    ) {
+      return;
+    }
+
+    if (deltaX > 0) {
+      setMobileActivePane("list");
+      setIsMobileRepairDrawerOpen(false);
+      return;
+    }
+
+    if (linkedRepair) {
+      setIsMobileRepairDrawerOpen(true);
+    }
+  };
+
   useEffect(() => {
     setThreads((prev) => {
       let hasChanges = false;
@@ -712,7 +751,11 @@ function ConversationsPageContent() {
         }`}
         style={{ background: "var(--surface-1)" }}
       >
-        <div className="flex min-h-0 min-w-0 flex-col">
+        <div
+          className="flex min-h-0 min-w-0 flex-col"
+          onTouchStart={handleChatTouchStart}
+          onTouchEnd={handleChatTouchEnd}
+        >
           {selectedThread ? (
             <>
               <header
