@@ -795,6 +795,29 @@ function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: strin
   );
 }
 
+function HiddenStageModal({ stageName, onCancel, onConfirm }: { stageName: string; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Hidden stage</h2>
+          <button type="button" onClick={onCancel} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close hidden stage dialog">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="mt-2 text-sm text-slate-600">
+          <span className="font-semibold">{stageName}</span> is currently hidden. Do you want to make this workflow stage visible again?
+        </p>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">No</button>
+          <button type="button" onClick={onConfirm} className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-semibold text-white hover:bg-cyan-600">Yes, make visible</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdvancedSettingsPageContent() {
   const searchParams = useSearchParams();
   const [stages, setStages] = useState<Stage[]>(() => normalizeStages(readStoredWorkflowStages(defaultWorkflowStages)));
@@ -804,6 +827,7 @@ function AdvancedSettingsPageContent() {
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [handledRequestedStageId, setHandledRequestedStageId] = useState<string | null>(null);
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
+  const [hiddenStagePromptId, setHiddenStagePromptId] = useState<string | null>(null);
   const [openStageMenuId, setOpenStageMenuId] = useState<string | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
 
@@ -962,6 +986,23 @@ function AdvancedSettingsPageContent() {
     setOpenStageMenuId(null);
   };
 
+  const handleStageRowClick = (stage: Stage) => {
+    if (stage.isHidden) {
+      setHiddenStagePromptId(stage.id);
+      return;
+    }
+
+    setEditingStageId(stage.id);
+  };
+
+  const handleShowHiddenStage = (stageId: string) => {
+    setStages((prev) =>
+      normalizeStages(prev.map((stage) => (stage.id === stageId ? { ...stage, isHidden: false } : stage)))
+    );
+    setHiddenStagePromptId(null);
+    setEditingStageId(stageId);
+  };
+
   const renderStageRow = (stage: Stage) => {
     const index = stages.findIndex((candidate) => candidate.id === stage.id);
     const fixedStage = isFixedStage(stage);
@@ -1011,11 +1052,11 @@ function AdvancedSettingsPageContent() {
           setDraggedStageId(null);
         }}
         onDragEnd={() => setDraggedStageId(null)}
-        onClick={() => setEditingStageId(stage.id)}
+        onClick={() => handleStageRowClick(stage)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            setEditingStageId(stage.id);
+            handleStageRowClick(stage);
           }
         }}
         className={clsx(
@@ -1064,6 +1105,7 @@ function AdvancedSettingsPageContent() {
               <span className="text-left text-lg font-semibold text-white transition-colors hover:text-cyan-300">{stage.name}</span>
               {stage.isStart ? <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Start</span> : null}
               {stage.isTerminal ? <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-300">End</span> : null}
+              {stage.isHidden ? <span className="rounded-md border border-slate-400/40 bg-slate-400/10 px-2 py-0.5 text-xs font-medium text-slate-400">Hidden</span> : null}
               {stage.requiresApproval ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300"><Sparkles className="h-3 w-3" />Approval</span> : null}
               {hasTemplateAutomation ? (
                 <>
@@ -1208,6 +1250,14 @@ function AdvancedSettingsPageContent() {
           })}
         </section>
       </div>
+
+      {hiddenStagePromptId ? (
+        <HiddenStageModal
+          stageName={stages.find((stage) => stage.id === hiddenStagePromptId)?.name ?? "This stage"}
+          onCancel={() => setHiddenStagePromptId(null)}
+          onConfirm={() => handleShowHiddenStage(hiddenStagePromptId)}
+        />
+      ) : null}
 
       {isAddModalOpen ? (
         <StageModal
