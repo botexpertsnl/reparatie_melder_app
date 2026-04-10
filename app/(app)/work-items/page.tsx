@@ -564,29 +564,12 @@ export default function WorkItemsPage() {
         }`}
         style={{ background: "var(--bg)" }}
       >
-        <div className="flex min-h-0 flex-col py-6 md:py-8">
+        <div className="flex min-h-0 flex-col pb-6 pt-0 md:pb-8 md:pt-0">
           <div
-            className="mb-5 space-y-4 border-y px-4 py-4 md:mb-7 md:px-10 md:py-5"
-            style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+            className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5"
           >
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
-                <label
-                  className="flex h-11 w-full max-w-56 items-center gap-3 rounded-xl border px-4 text-sm text-slate-300"
-                  style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-                >
-                  <Search className="h-5 w-5 text-slate-500" />
-                  <input
-                    type="search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
-                    placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
-                    aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
-                  />
-                </label>
-              </div>
+              <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
               <div className="flex w-full sm:w-auto">
                 <button
                   onClick={() => setIsAddRepairOpen(true)}
@@ -597,6 +580,20 @@ export default function WorkItemsPage() {
                 </button>
               </div>
             </div>
+            <label
+              className="flex h-11 w-full max-w-56 items-center gap-3 rounded-xl border px-4 text-sm text-slate-300"
+              style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+            >
+              <Search className="h-5 w-5 text-slate-500" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
+                aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
+              />
+            </label>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
