@@ -438,6 +438,14 @@ export default function WorkItemsPage() {
     );
     return [...visibleWorkflowStages.map((stage) => stage.name), ...stageNamesFromRepairs];
   }, [stageCounts, visibleWorkflowStages]);
+  const activeStageFilters = useMemo(
+    () =>
+      filterStages.filter((stageName) => {
+        const normalizedStage = stageName.trim().toLowerCase();
+        return normalizedStage !== "completed" && normalizedStage !== "cancelled" && normalizedStage !== "canceled";
+      }),
+    [filterStages]
+  );
   const filteredRepairs = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return repairs.filter((repair) => {
@@ -456,6 +464,12 @@ export default function WorkItemsPage() {
     setSelectedStageFilters((prev) =>
       prev.includes(stageName) ? prev.filter((selected) => selected !== stageName) : [...prev, stageName]
     );
+  };
+  const selectActiveTaskFilters = () => {
+    setSelectedStageFilters(activeStageFilters);
+  };
+  const clearAllStageFilters = () => {
+    setSelectedStageFilters([]);
   };
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
@@ -555,17 +569,11 @@ export default function WorkItemsPage() {
             className="mb-5 space-y-4 border-y px-4 py-4 md:mb-7 md:px-10 md:py-5"
             style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
           >
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Overview</p>
-                <h1 className="mt-1 text-2xl font-semibold text-white">{repairLabelPlural}</h1>
-                <p className="mt-1 text-sm text-slate-400">
-                  {filteredRepairs.length} of {repairs.length} {repairLabelPlural.toLowerCase()} shown
-                </p>
-              </div>
-              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
                 <label
-                  className="flex h-11 w-full items-center gap-3 rounded-xl border px-4 text-sm text-slate-300 sm:min-w-80"
+                  className="flex h-11 w-full max-w-56 items-center gap-3 rounded-xl border px-4 text-sm text-slate-300"
                   style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
                 >
                   <Search className="h-5 w-5 text-slate-500" />
@@ -578,9 +586,11 @@ export default function WorkItemsPage() {
                     aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
                   />
                 </label>
+              </div>
+              <div className="flex w-full sm:w-auto">
                 <button
                   onClick={() => setIsAddRepairOpen(true)}
-                  className="inline-flex h-11 items-center justify-center gap-3 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
+                  className="inline-flex h-11 items-center justify-center gap-3 whitespace-nowrap rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
                 >
                   <Plus className="h-5 w-5" />
                   New {repairLabel}
@@ -588,6 +598,20 @@ export default function WorkItemsPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={selectActiveTaskFilters}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
+              >
+                Active tasks
+              </button>
+              <button
+                type="button"
+                onClick={clearAllStageFilters}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
+              >
+                De-select all
+              </button>
               {filterStages.map((stageName) => {
                 const isActive = selectedStageFilters.includes(stageName);
                 return (
