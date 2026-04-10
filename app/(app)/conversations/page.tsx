@@ -198,6 +198,7 @@ function ConversationsPageContent() {
   });
   const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
+  const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const [listCollapsed, setListCollapsed] = useState(false);
   const [mobileActivePane, setMobileActivePane] = useState<"list" | "chat">(
     "list"
@@ -243,6 +244,7 @@ function ConversationsPageContent() {
       setSelectedThreadId(threadIdParam);
       setShowRepairPanel(true);
       setMobileActivePane("chat");
+      setIsMobileRepairDrawerOpen(false);
     }
   }, [threadIdParam, threads]);
 
@@ -259,6 +261,7 @@ function ConversationsPageContent() {
     const handleConversationNavClick = () => {
       setListCollapsed(false);
       setMobileActivePane("list");
+      setIsMobileRepairDrawerOpen(false);
     };
 
     window.addEventListener("conversations:nav-click", handleConversationNavClick);
@@ -461,6 +464,7 @@ function ConversationsPageContent() {
   };
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
+  const showMobileRepairDrawer = Boolean(selectedThread && linkedRepair);
 
   return (
     <div
@@ -508,6 +512,7 @@ function ConversationsPageContent() {
                 onClick={() => {
                   setSelectedThreadId(thread.id);
                   setMobileActivePane("chat");
+                  setIsMobileRepairDrawerOpen(false);
                 }}
                 className={`w-full rounded-xl border p-3 text-left ${
                   selectedThreadId === thread.id
@@ -599,29 +604,54 @@ function ConversationsPageContent() {
                 </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {selectedThread.linkedRepairId ? (
-                    showRepairPanel ? null : (
+                  <div className="md:hidden">
+                    {selectedThread.linkedRepairId ? (
                       <button
                         type="button"
-                        onClick={() => setShowRepairPanel((prev) => !prev)}
+                        onClick={() => setIsMobileRepairDrawerOpen(true)}
                         className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)]"
                       >
                         <Wrench className="h-4 w-4" />
-                        {repairLabel} Details
+                        {repairLabel} details
                       </button>
-                    )
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLinkModal({ open: true, threadId: selectedThread.id })
-                      }
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
-                    >
-                      <LinkIcon className="h-4 w-4" />
-                      Link {repairLabel}
-                    </button>
-                  )}
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLinkModal({ open: true, threadId: selectedThread.id })
+                        }
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
+                      >
+                        <LinkIcon className="h-4 w-4" />
+                        Link {repairLabel}
+                      </button>
+                    )}
+                  </div>
+                  <div className="hidden md:block">
+                    {selectedThread.linkedRepairId ? (
+                      showRepairPanel ? null : (
+                        <button
+                          type="button"
+                          onClick={() => setShowRepairPanel((prev) => !prev)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)]"
+                        >
+                          <Wrench className="h-4 w-4" />
+                          {repairLabel} Details
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLinkModal({ open: true, threadId: selectedThread.id })
+                        }
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
+                      >
+                        <LinkIcon className="h-4 w-4" />
+                        Link {repairLabel}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </header>
 
@@ -719,6 +749,35 @@ function ConversationsPageContent() {
           </div>
         ) : null}
       </section>
+
+      {showMobileRepairDrawer && linkedRepair ? (
+        <div
+          className={`fixed inset-0 z-40 bg-[#02050d]/55 transition-opacity duration-300 md:hidden ${
+            isMobileRepairDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={() => setIsMobileRepairDrawerOpen(false)}
+          aria-hidden="true"
+        >
+          <div
+            className={`absolute inset-y-0 right-0 w-full max-w-[min(100vw,28rem)] transform border-l shadow-[-16px_0_36px_rgba(0,0,0,0.36)] transition-transform duration-300 ease-out ${
+              isMobileRepairDrawerOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+            style={{
+              borderColor: "var(--border)",
+              background: "var(--surface-1)",
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <RepairDetailsPanel
+              repair={linkedRepair}
+              itemLabel={repairLabel}
+              onClose={() => setIsMobileRepairDrawerOpen(false)}
+              onStageChange={(stageName) => updateRepairStage(linkedRepair.id, stageName)}
+              className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
+            />
+          </div>
+        </div>
+      ) : null}
 
       {linkModal.open && linkModal.threadId ? (
         <LinkRepairModal
