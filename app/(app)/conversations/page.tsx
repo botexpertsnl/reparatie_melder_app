@@ -9,7 +9,7 @@ import {
   Wrench,
   X,
   ChevronLeft,
-  FileText,
+  MessageSquareText,
   Camera,
 } from "lucide-react";
 import {
@@ -24,7 +24,6 @@ import {
   writeStoredRepairs,
   type StoredRepair,
 } from "@/lib/repair-store";
-import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 
@@ -115,96 +114,46 @@ function LinkRepairModal({
   );
 }
 
-function TemplatePickerModal({
+function QuickReplyPickerModal({
   onClose,
   onSelect,
-  templates,
   quickReplyOptions,
-  linkedRepair,
-  selectedThread,
 }: {
   onClose: () => void;
   onSelect: (value: string) => void;
-  templates: StoredTemplate[];
   quickReplyOptions: string[];
-  linkedRepair: StoredRepair | null;
-  selectedThread: StoredConversation | null;
 }) {
-  const resolveRepairField = (field?: string) => {
-    if (!linkedRepair && !selectedThread) return "";
-    if (field === "customerName") return linkedRepair?.customerName ?? selectedThread?.customerName ?? "";
-    if (field === "customerPhone") return linkedRepair?.customerPhone ?? selectedThread?.customerPhone ?? "";
-    if (!linkedRepair) return "";
-    if (field === "assetName") return linkedRepair.assetName;
-    if (field === "title") return linkedRepair.title;
-    if (field === "description") return linkedRepair.description;
-    if (field === "stage") return linkedRepair.stage;
-    if (field === "priority") return linkedRepair.priority;
-    return "";
-  };
-
-  const fillTemplateBody = (template: StoredTemplate) => {
-    const values = (template.variables ?? []).map((variable) =>
-      variable.mode === "repair_field" ? resolveRepairField(variable.repairField) : variable.manualValue ?? ""
-    );
-
-    return template.body.replace(/\{\{\s*(\d+)\s*\}\}/g, (match, rawIndex) => {
-      const value = values[Number(rawIndex) - 1];
-      return value && value.trim().length > 0 ? value : match;
-    });
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">Templates & Quick Replies</h2>
+          <h2 className="text-2xl font-semibold">Quick replies</h2>
           <button
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
-            aria-label="Close template picker"
+            aria-label="Close quick reply picker"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="space-y-5">
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Templates
-            </h3>
-            <div className="mt-2 space-y-2">
-              {templates.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelect(fillTemplateBody(item))}
-                  className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <div className="font-semibold">{item.name}</div>
-                  <div className="mt-1 text-xs text-slate-500 line-clamp-2">{fillTemplateBody(item)}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Quick replies
-            </h3>
-            <div className="mt-2 space-y-2">
-              {quickReplyOptions.map((item, index) => (
-                <button
-                  key={`${item}-${index}`}
-                  type="button"
-                  onClick={() => onSelect(item)}
-                  className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="space-y-2">
+          {quickReplyOptions.map((item, index) => (
+            <button
+              key={`${item}-${index}`}
+              type="button"
+              onClick={() => onSelect(item)}
+              className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {item}
+            </button>
+          ))}
+          {quickReplyOptions.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[#cdd5e2] bg-white px-3 py-4 text-sm text-slate-500">
+              No quick replies available.
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -232,7 +181,6 @@ function ConversationsPageContent() {
     }
   );
   const [message, setMessage] = useState("");
-  const [templateOptions, setTemplateOptions] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultStoredTemplates).filter((template) => template.active));
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>(() => {
     if (typeof window === "undefined") {
       return fallbackQuickReplies;
@@ -248,7 +196,7 @@ function ConversationsPageContent() {
       return fallbackQuickReplies;
     }
   });
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [listCollapsed, setListCollapsed] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState>({
@@ -319,8 +267,7 @@ function ConversationsPageContent() {
   }, []);
 
   useEffect(() => {
-    const refreshTemplates = () => {
-      setTemplateOptions(readStoredTemplates(defaultStoredTemplates).filter((template) => template.active));
+    const refreshQuickReplies = () => {
       try {
         const raw = window.localStorage.getItem("statusflow.quick-replies");
         const parsed = raw ? (JSON.parse(raw) as { body?: string }[]) : [];
@@ -330,12 +277,12 @@ function ConversationsPageContent() {
         setQuickReplyOptions(fallbackQuickReplies);
       }
     };
-    refreshTemplates();
-    window.addEventListener("templates:changed", refreshTemplates);
-    window.addEventListener("storage", refreshTemplates);
+    refreshQuickReplies();
+    window.addEventListener("templates:changed", refreshQuickReplies);
+    window.addEventListener("storage", refreshQuickReplies);
     return () => {
-      window.removeEventListener("templates:changed", refreshTemplates);
-      window.removeEventListener("storage", refreshTemplates);
+      window.removeEventListener("templates:changed", refreshQuickReplies);
+      window.removeEventListener("storage", refreshQuickReplies);
     };
   }, []);
 
@@ -695,11 +642,11 @@ function ConversationsPageContent() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowTemplatePicker(true)}
+                    onClick={() => setShowQuickReplyPicker(true)}
                     className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
-                    aria-label="Select template or quick reply"
+                    aria-label="Select quick reply"
                   >
-                    <FileText className="h-4 w-4" />
+                    <MessageSquareText className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -762,16 +709,13 @@ function ConversationsPageContent() {
         />
       ) : null}
 
-      {showTemplatePicker ? (
-        <TemplatePickerModal
-          onClose={() => setShowTemplatePicker(false)}
-          templates={templateOptions}
+      {showQuickReplyPicker ? (
+        <QuickReplyPickerModal
+          onClose={() => setShowQuickReplyPicker(false)}
           quickReplyOptions={quickReplyOptions}
-          linkedRepair={linkedRepair}
-          selectedThread={selectedThread}
           onSelect={(value) => {
             setMessage(value);
-            setShowTemplatePicker(false);
+            setShowQuickReplyPicker(false);
           }}
         />
       ) : null}
