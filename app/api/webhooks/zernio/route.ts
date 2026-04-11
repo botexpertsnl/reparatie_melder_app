@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveTenantByWhatsappAccount } from "@/server/services/tenant-channel-service";
 import { normalizeToE164 } from "@/lib/phone/normalize";
 import { normalizeZernioWebhookEvent } from "@/lib/integrations/zernio/webhooks";
+import { mapZernioWebhookToInboundMessage } from "@/lib/integrations/zernio/webhook-mapper";
 
 export async function POST(request: NextRequest) {
   const payload = await request.json();
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
 
     const tenantId = channel.tenantId;
     const normalized = normalizeZernioWebhookEvent(payload, tenantId);
+    const inboundMessage = mapZernioWebhookToInboundMessage(normalized);
 
     if (normalized.messageId) {
       const existingMessage = await prisma.message.findFirst({
@@ -115,6 +117,17 @@ export async function POST(request: NextRequest) {
         receivedAt: new Date(normalized.timestamp),
         rawPayload: normalized
       }
+    });
+
+    console.info("[workflow-button-reply] Inbound message normalized for provider-agnostic matcher.", {
+      tenantId: inboundMessage.tenantId,
+      provider: inboundMessage.provider,
+      accountId: inboundMessage.accountId,
+      profileId: inboundMessage.profileId,
+      phoneNumberId: inboundMessage.phoneNumberId,
+      conversationId: inboundMessage.conversationId,
+      messageId: inboundMessage.messageId,
+      normalizedText: inboundMessage.messageTextNormalized
     });
 
     await prisma.webhookEvent.update({

@@ -4,6 +4,8 @@ export type NormalizedZernioWebhookEvent = {
   provider: "zernio";
   tenantId: string;
   accountId?: string;
+  profileId?: string;
+  phoneNumberId?: string;
   conversationId?: string;
   messageId?: string;
   sender?: string;
@@ -17,6 +19,8 @@ export type NormalizedZernioWebhookEvent = {
 type ZernioWebhookPayload = {
   type?: string;
   accountId?: string;
+  profileId?: string;
+  phoneNumberId?: string;
   conversationId?: string;
   sender?: string;
   messageId?: string;
@@ -38,6 +42,8 @@ export function normalizeZernioWebhookEvent(payload: ZernioWebhookPayload, tenan
     provider: "zernio",
     tenantId,
     accountId: payload?.accountId,
+    profileId: payload?.profileId,
+    phoneNumberId: payload?.phoneNumberId,
     conversationId: message?.conversationId ?? payload?.conversationId,
     messageId: message?.id ?? payload?.messageId,
     sender: message?.from ?? payload?.sender,

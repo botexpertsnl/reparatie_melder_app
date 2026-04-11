@@ -6,6 +6,9 @@ import clsx from "clsx";
 import { useSearchParams } from "next/navigation";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredTemplateButtonAction, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { normalizeButtonReplyText } from "@/lib/workflows/button-reply-normalizer";
+import { LocalWorkflowActionRepository, getLocalTenantId } from "@/lib/workflows/workflow-action-repository";
+import { detectButtonReplyConflicts, type ButtonReplyConflict } from "@/lib/workflows/button-reply-conflict-validator";
 
 type Stage = StoredWorkflowStage;
 
@@ -112,13 +115,20 @@ function syncTemplateButtonActions(
 
   return buttons.map((button) => {
     const existing = currentActions.find((action) => action.buttonId === button.id);
+    const buttonText = button.text?.trim() || "Button";
+    const nowIso = new Date().toISOString();
     return {
+      id: existing?.id ?? `map_${button.id}_${Date.now()}`,
       buttonId: button.id,
-      buttonText: button.text?.trim() || "Button",
+      buttonText,
+      buttonTextNormalized: normalizeButtonReplyText(buttonText),
       sendQuickReplyEnabled: Boolean(existing?.sendQuickReplyEnabled),
       quickReplyId: existing?.quickReplyId ?? "",
       moveToStageEnabled: Boolean(existing?.moveToStageEnabled),
-      moveToStageId: existing?.moveToStageId ?? ""
+      moveToStageId: existing?.moveToStageId ?? "",
+      isActive: existing?.isActive ?? true,
+      createdAt: existing?.createdAt ?? nowIso,
+      updatedAt: nowIso
     };
   });
 }
@@ -126,8 +136,10 @@ function syncTemplateButtonActions(
 function sanitizeTemplateButtonActions(actions: StoredTemplateButtonAction[]) {
   return actions.map((action) => ({
     ...action,
+    buttonTextNormalized: normalizeButtonReplyText(action.buttonText ?? ""),
     quickReplyId: action.sendQuickReplyEnabled ? action.quickReplyId ?? "" : "",
-    moveToStageId: action.moveToStageEnabled ? action.moveToStageId ?? "" : ""
+    moveToStageId: action.moveToStageEnabled ? action.moveToStageId ?? "" : "",
+    updatedAt: new Date().toISOString()
   }));
 }
 
@@ -298,6 +310,7 @@ function StageModal({
   initialValues,
   templates,
   templateUsageById,
+  getButtonTextConflicts,
   quickReplies,
   stageOptions,
   currentStageId,
@@ -309,6 +322,7 @@ function StageModal({
   initialValues: StageFormValues;
   templates: StoredTemplate[];
   templateUsageById: Record<string, string>;
+  getButtonTextConflicts: (values: StageFormValues) => ButtonReplyConflict[];
   quickReplies: QuickReply[];
   stageOptions: Stage[];
   currentStageId?: string;
@@ -330,6 +344,8 @@ function StageModal({
   const duplicateTemplateStageName = values.templateAutomationEnabled && values.templateId
     ? templateUsageById[values.templateId]
     : undefined;
+  const buttonTextConflicts = useMemo(() => getButtonTextConflicts(values), [getButtonTextConflicts, values]);
+  const conflictByNormalizedText = useMemo(() => new Map(buttonTextConflicts.map((item) => [item.normalizedText, item])), [buttonTextConflicts]);
 
   useEffect(() => {
     if (!values.templateId) return;
@@ -352,6 +368,9 @@ function StageModal({
     if (duplicateTemplateStageName) {
       return false;
     }
+    if (buttonTextConflicts.length > 0) {
+      return false;
+    }
 
     if (values.templateSendDelayHours < 0 || values.templateSendDelayMinutes < 0 || values.templateSendDelayMinutes > 59) {
       return false;
@@ -367,7 +386,7 @@ function StageModal({
     }
 
     return true;
-  }, [duplicateTemplateStageName, values]);
+  }, [buttonTextConflicts.length, duplicateTemplateStageName, values]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#02050d]/80 px-4 py-6 backdrop-blur-sm sm:items-center sm:py-8">
@@ -509,16 +528,30 @@ function StageModal({
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
                     <div className="text-sm font-semibold text-slate-800">Button actions after customer selection</div>
                     <p className="mt-1 text-sm text-slate-500">For each button, choose whether to send a quick reply, move to another stage, or both.</p>
+                    <p className="mt-1 text-xs text-slate-500">When this reply is received from the customer, the selected action will be triggered automatically.</p>
                     <div className="mt-3 space-y-3">
                       {values.templateButtonActions.map((action) => {
                         const nextStageOptions = stageOptions.filter((stage) => stage.id !== currentStageId);
                         const currentQuickReply = quickReplies.find((item) => item.id === action.quickReplyId);
                         const currentTargetStage = stageOptions.find((stage) => stage.id === action.moveToStageId);
+                        const conflict = conflictByNormalizedText.get(action.buttonTextNormalized ?? "");
+                        const actionSummary = [
+                          action.sendQuickReplyEnabled && currentQuickReply ? `Quick reply: ${currentQuickReply.name}` : null,
+                          action.moveToStageEnabled && currentTargetStage ? `Move stage: ${currentTargetStage.name}` : null
+                        ]
+                          .filter(Boolean)
+                          .join(" • ");
                         return (
                           <div key={action.buttonId} className="rounded-lg border border-[#d7dce3] bg-white p-3">
                             <div className="text-sm font-semibold text-slate-800">
                               Button: <span className="text-slate-700">{action.buttonText || "Button"}</span>
                             </div>
+                            {actionSummary ? <p className="mt-1 text-xs text-slate-500">{actionSummary}</p> : null}
+                            {conflict ? (
+                              <p className="mt-1 text-xs font-medium text-red-600">
+                                A button action for &lsquo;{action.buttonText}&rsquo; already exists in another workflow or template for this tenant. Only one automatic action can be linked to the same button reply text.
+                              </p>
+                            ) : null}
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                               <div className="rounded-md border border-[#dfe6f0] bg-[#fafcff] p-3">
                                 <div className="flex items-center justify-between gap-2">
@@ -921,8 +954,9 @@ function AdvancedSettingsPageContent() {
   };
 
   const handleAddStage = (values: StageFormValues) => {
+    const stageId = `stage_${Date.now()}`;
     const newStage: Stage = {
-      id: `stage_${Date.now()}`,
+      id: stageId,
       name: values.name.trim(),
       key: values.name.trim().toLowerCase().replace(/\s+/g, "_"),
       description: values.description.trim(),
@@ -933,7 +967,15 @@ function AdvancedSettingsPageContent() {
       templateSendDelayEnabled: values.templateAutomationEnabled ? values.templateSendDelayEnabled : false,
       templateSendDelayHours: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayHours : 0,
       templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0,
-      templateButtonActions: values.templateAutomationEnabled ? sanitizeTemplateButtonActions(values.templateButtonActions) : []
+      templateButtonActions: values.templateAutomationEnabled
+        ? sanitizeTemplateButtonActions(values.templateButtonActions).map((action) => ({
+            ...action,
+            tenantId,
+            workflowId: "workflow_default",
+            workflowStageId: stageId,
+            templateId: values.templateId
+          }))
+        : []
     };
 
     setStages((prev) => {
@@ -966,7 +1008,15 @@ function AdvancedSettingsPageContent() {
           templateSendDelayEnabled: values.templateAutomationEnabled ? values.templateSendDelayEnabled : false,
           templateSendDelayHours: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayHours : 0,
           templateSendDelayMinutes: values.templateAutomationEnabled && values.templateSendDelayEnabled ? values.templateSendDelayMinutes : 0,
-          templateButtonActions: values.templateAutomationEnabled ? sanitizeTemplateButtonActions(values.templateButtonActions) : []
+          templateButtonActions: values.templateAutomationEnabled
+            ? sanitizeTemplateButtonActions(values.templateButtonActions).map((action) => ({
+                ...action,
+                tenantId,
+                workflowId: "workflow_default",
+                workflowStageId: stageId,
+                templateId: values.templateId
+              }))
+            : []
         };
       }))
     );
@@ -1199,6 +1249,23 @@ function AdvancedSettingsPageContent() {
     return [...(startStage ? [startStage] : []), ...middleStages, ...finalStages];
   }, [stages]);
   const visibleStageOptions = useMemo(() => stages.filter((stage) => !stage.isHidden), [stages]);
+  const tenantId = getLocalTenantId();
+  const workflowRepository = useMemo(() => new LocalWorkflowActionRepository(stages), [stages]);
+  const getButtonConflictsForStage = (stageId?: string, values?: StageFormValues) => {
+    if (!values?.templateAutomationEnabled) return [];
+    const candidates = sanitizeTemplateButtonActions(values.templateButtonActions)
+      .filter((action) => (action.sendQuickReplyEnabled || action.moveToStageEnabled) && (action.buttonTextNormalized ?? "").trim())
+      .map((action) => ({ normalizedText: action.buttonTextNormalized ?? "" }));
+
+    if (candidates.length === 0) return [];
+
+    return detectButtonReplyConflicts({
+      repository: workflowRepository,
+      tenantId,
+      candidateMappings: candidates,
+      excludeWorkflowStageId: stageId
+    });
+  };
   const addModalTemplateUsageById = stages.reduce<Record<string, string>>((acc, stage) => {
     if (stage.templateAutomationEnabled && stage.templateId) {
       acc[stage.templateId] = stage.name;
@@ -1266,6 +1333,7 @@ function AdvancedSettingsPageContent() {
           initialValues={emptyFormValues}
           templates={templateOptions}
           templateUsageById={addModalTemplateUsageById}
+          getButtonTextConflicts={(values) => getButtonConflictsForStage(undefined, values)}
           quickReplies={quickReplyOptions}
           stageOptions={visibleStageOptions}
           onClose={() => setIsAddModalOpen(false)}
@@ -1280,6 +1348,7 @@ function AdvancedSettingsPageContent() {
           initialValues={stageToFormValues(editingStage)}
           templates={templateOptions}
           templateUsageById={editModalTemplateUsageById}
+          getButtonTextConflicts={(values) => getButtonConflictsForStage(editingStage.id, values)}
           quickReplies={quickReplyOptions}
           stageOptions={visibleStageOptions}
           currentStageId={editingStage.id}
