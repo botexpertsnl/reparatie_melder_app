@@ -31,22 +31,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
+  const [approvedConversationCount, setApprovedConversationCount] = useState(0);
+  const [notApprovedConversationCount, setNotApprovedConversationCount] = useState(0);
   const [superAdmin, setSuperAdminState] = useState(false);
   const [impersonatingTenant, setImpersonatingTenant] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     const refreshOpenCount = () => {
-      const count = readStoredConversations(defaultConversations).filter((thread) => thread.open).length;
-      setOpenConversationCount(count);
+      const conversations = readStoredConversations(defaultConversations);
+      const repairs = readStoredRepairs(defaultRepairs);
+      const repairStageById = new Map(
+        repairs.map((repair) => [repair.id, repair.stage.trim().toLowerCase()])
+      );
+      const openConversations = conversations.filter((thread) => thread.open);
+      const approvedCount = openConversations.filter(
+        (thread) =>
+          thread.linkedRepairId &&
+          repairStageById.get(thread.linkedRepairId) === "approved"
+      ).length;
+      const notApprovedCount = openConversations.filter(
+        (thread) =>
+          thread.linkedRepairId &&
+          repairStageById.get(thread.linkedRepairId) === "not approved"
+      ).length;
+
+      setOpenConversationCount(openConversations.length);
+      setApprovedConversationCount(approvedCount);
+      setNotApprovedConversationCount(notApprovedCount);
     };
 
     refreshOpenCount();
     window.addEventListener("conversations:changed", refreshOpenCount);
+    window.addEventListener("repairs:changed", refreshOpenCount);
     window.addEventListener("storage", refreshOpenCount);
 
     return () => {
       window.removeEventListener("conversations:changed", refreshOpenCount);
+      window.removeEventListener("repairs:changed", refreshOpenCount);
       window.removeEventListener("storage", refreshOpenCount);
     };
   }, []);
@@ -283,23 +305,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {impersonatingTenant ?? "AutoGarage De Vries"}
             </div>
           </div>
-          {openConversationCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                window.dispatchEvent(new Event("conversations:nav-click"));
-                router.push(resolveConversationHref());
-              }}
-              className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold"
-              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
-              aria-label="View open conversations"
-            >
-              <span>Open</span>
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/20 px-1 text-[10px] font-bold text-amber-300">
-                {openConversationCount}
+          <div className="flex items-center gap-1.5">
+            {openConversationCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new Event("conversations:nav-click"));
+                  router.push(resolveConversationHref());
+                }}
+                className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold"
+                style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+                aria-label="View open conversations"
+              >
+                <span>Open</span>
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/20 px-1 text-[10px] font-bold text-amber-300">
+                  {openConversationCount}
+                </span>
+              </button>
+            ) : null}
+            {approvedConversationCount > 0 ? (
+              <span className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+                <span>Approved</span>
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/20 px-1 text-[10px] font-bold text-emerald-300">
+                  {approvedConversationCount}
+                </span>
               </span>
-            </button>
-          ) : null}
+            ) : null}
+            {notApprovedConversationCount > 0 ? (
+              <span className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+                <span>Not Approved</span>
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500/20 px-1 text-[10px] font-bold text-red-300">
+                  {notApprovedConversationCount}
+                </span>
+              </span>
+            ) : null}
+          </div>
         </header>
 
         <header className="hidden h-[69px] items-center justify-end gap-3 border-b px-6 pr-8 min-[769px]:flex" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
@@ -318,6 +358,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {openConversationCount}
             </span>
           </button>
+          {approvedConversationCount > 0 ? (
+            <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+              <span className="text-xs tracking-[0.08em] text-slate-400">Approved</span>
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500/20 px-1.5 text-xs font-semibold text-emerald-300">
+                {approvedConversationCount}
+              </span>
+            </div>
+          ) : null}
+          {notApprovedConversationCount > 0 ? (
+            <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+              <span className="text-xs tracking-[0.08em] text-slate-400">Not Approved</span>
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/20 px-1.5 text-xs font-semibold text-red-300">
+                {notApprovedConversationCount}
+              </span>
+            </div>
+          ) : null}
           <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
             {superAdmin ? (
               <button
