@@ -380,40 +380,62 @@ function ConversationsPageContent() {
     ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null
     : null;
 
-  const visibleThreads = useMemo(
-    () =>
-      [...threads]
-        .filter((thread) => thread.open === (statusFilter === "open"))
-        .filter((thread) =>
-          `${thread.customerName} ${thread.customerPhone} ${thread.preview}`
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
-        )
-        .sort((a, b) => {
-        const aTimestamp = Number(
-          a.messages[a.messages.length - 1]?.id.replace("m_", "") ?? 0
-        );
-        const bTimestamp = Number(
-          b.messages[b.messages.length - 1]?.id.replace("m_", "") ?? 0
-        );
+  const visibleThreads = useMemo(() => {
+    const sortThreads = (left: StoredConversation, right: StoredConversation) => {
+      const leftTimestamp = Number(
+        left.messages[left.messages.length - 1]?.id.replace("m_", "") ?? 0
+      );
+      const rightTimestamp = Number(
+        right.messages[right.messages.length - 1]?.id.replace("m_", "") ?? 0
+      );
 
-          if (aTimestamp !== bTimestamp) {
-            return sortDirection === "newest"
-              ? bTimestamp - aTimestamp
-              : aTimestamp - bTimestamp;
-          }
-          if (a.updatedAt === "Now" && b.updatedAt !== "Now") {
-            return sortDirection === "newest" ? -1 : 1;
-          }
-          if (b.updatedAt === "Now" && a.updatedAt !== "Now") {
-            return sortDirection === "newest" ? 1 : -1;
-          }
-          return sortDirection === "newest"
-            ? b.updatedAt.localeCompare(a.updatedAt)
-            : a.updatedAt.localeCompare(b.updatedAt);
-        }),
-    [searchQuery, sortDirection, statusFilter, threads]
-  );
+      if (leftTimestamp !== rightTimestamp) {
+        return sortDirection === "newest"
+          ? rightTimestamp - leftTimestamp
+          : leftTimestamp - rightTimestamp;
+      }
+      if (left.updatedAt === "Now" && right.updatedAt !== "Now") {
+        return sortDirection === "newest" ? -1 : 1;
+      }
+      if (right.updatedAt === "Now" && left.updatedAt !== "Now") {
+        return sortDirection === "newest" ? 1 : -1;
+      }
+      return sortDirection === "newest"
+        ? right.updatedAt.localeCompare(left.updatedAt)
+        : left.updatedAt.localeCompare(right.updatedAt);
+    };
+
+    const matchesConversationFilters = (thread: StoredConversation) => {
+      const matchesStatusFilter = thread.open === (statusFilter === "open");
+      const matchesSearchQuery = `${thread.customerName} ${thread.customerPhone} ${thread.preview}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      return matchesStatusFilter && matchesSearchQuery;
+    };
+
+    const filteredThreads = threads
+      .filter((thread) => matchesConversationFilters(thread))
+      .sort(sortThreads);
+
+    if (!selectedThreadId) {
+      return filteredThreads;
+    }
+
+    const selectedThreadFromAll = threads.find((thread) => thread.id === selectedThreadId);
+    if (!selectedThreadFromAll) {
+      return filteredThreads;
+    }
+
+    const selectedThreadInFilteredResults = filteredThreads.some(
+      (thread) => thread.id === selectedThreadId
+    );
+
+    if (selectedThreadInFilteredResults) {
+      return filteredThreads;
+    }
+
+    return [selectedThreadFromAll, ...filteredThreads].sort(sortThreads);
+  }, [searchQuery, selectedThreadId, sortDirection, statusFilter, threads]);
 
   useEffect(() => {
     if (!selectedThreadId) {
