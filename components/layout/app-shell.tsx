@@ -201,6 +201,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push(href);
   };
 
+  const handleRepairStageShortcut = (stageKey: "approved" | "not_approved") => {
+    router.push(`/work-items?stage=${stageKey}`);
+  };
+
   return (
     <div
       className={clsx(
@@ -324,7 +328,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             ) : null}
             {approvedConversationCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => handleRepairStageShortcut("approved")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleRepairStageShortcut("approved");
+                  }
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold hover:bg-slate-700/60"
+                style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+                aria-label="View approved repairs"
+              >
                 <span>Approved</span>
                 <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/20 px-1 text-[10px] font-bold text-emerald-300">
                   {approvedConversationCount}
@@ -332,7 +349,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             ) : null}
             {notApprovedConversationCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => handleRepairStageShortcut("not_approved")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleRepairStageShortcut("not_approved");
+                  }
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold hover:bg-slate-700/60"
+                style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+                aria-label="View not approved repairs"
+              >
                 <span>Not Approved</span>
                 <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500/20 px-1 text-[10px] font-bold text-red-300">
                   {notApprovedConversationCount}
@@ -359,7 +389,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </button>
           {approvedConversationCount > 0 ? (
-            <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => handleRepairStageShortcut("approved")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleRepairStageShortcut("approved");
+                }
+              }}
+              className="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm hover:bg-slate-700/60"
+              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+              aria-label="View approved repairs"
+            >
               <span className="text-xs tracking-[0.08em] text-slate-400">Approved</span>
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500/20 px-1.5 text-xs font-semibold text-emerald-300">
                 {approvedConversationCount}
@@ -367,7 +410,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           ) : null}
           {notApprovedConversationCount > 0 ? (
-            <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => handleRepairStageShortcut("not_approved")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleRepairStageShortcut("not_approved");
+                }
+              }}
+              className="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm hover:bg-slate-700/60"
+              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+              aria-label="View not approved repairs"
+            >
               <span className="text-xs tracking-[0.08em] text-slate-400">Not Approved</span>
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/20 px-1.5 text-xs font-semibold text-red-300">
                 {notApprovedConversationCount}

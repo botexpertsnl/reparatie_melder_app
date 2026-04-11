@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Search, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -31,6 +32,35 @@ const initialFormValues: NewRepairFormValues = {
   description: "",
   repairStage: "New"
 };
+
+function normalizeStageToken(value: string) {
+  return value.trim().toLowerCase().replace(/[\s_-]+/g, "_");
+}
+
+function resolveStageFilterFromQuery(
+  stageQueryParam: string | null,
+  workflowStages: StoredWorkflowStage[],
+  filterStages: string[]
+) {
+  if (!stageQueryParam) return null;
+  const normalizedTarget = normalizeStageToken(stageQueryParam);
+  const stageByNormalizedName = new Map(
+    workflowStages.map((stage) => [normalizeStageToken(stage.name), stage.name])
+  );
+  const stageByNormalizedKey = new Map(
+    workflowStages.map((stage) => [normalizeStageToken(stage.key), stage.name])
+  );
+  const allFilterStagesByNormalizedName = new Map(
+    filterStages.map((stageName) => [normalizeStageToken(stageName), stageName])
+  );
+
+  return (
+    stageByNormalizedKey.get(normalizedTarget) ??
+    stageByNormalizedName.get(normalizedTarget) ??
+    allFilterStagesByNormalizedName.get(normalizedTarget) ??
+    null
+  );
+}
 
 function LinkConversationModal({
   conversations,
@@ -342,7 +372,9 @@ function AddRepairModal({
 export default function WorkItemsPage() {
   const repairLabel = useTenantRepairLabel();
   const repairLabelPlural = pluralizeLabel(repairLabel);
-  const [repairIdParam, setRepairIdParam] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const repairIdParam = searchParams.get("repairId");
+  const stageParam = searchParams.get("stage");
 
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
@@ -382,12 +414,6 @@ export default function WorkItemsPage() {
   );
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    setRepairIdParam(url.searchParams.get("repairId"));
-  }, []);
 
   useEffect(() => {
     writeStoredRepairs(repairs);
@@ -492,6 +518,11 @@ export default function WorkItemsPage() {
   useEffect(() => {
     setSelectedStageFilters((prev) => prev.filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0));
   }, [stageCounts]);
+  useEffect(() => {
+    if (!stageParam) return;
+    const resolvedStageName = resolveStageFilterFromQuery(stageParam, workflowStages, filterStages);
+    setSelectedStageFilters(resolvedStageName ? [resolvedStageName] : []);
+  }, [filterStages, stageParam, workflowStages]);
   const activeStageFilters = useMemo(
     () =>
       filterStages.filter((stageName) => {
