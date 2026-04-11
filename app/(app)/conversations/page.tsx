@@ -216,6 +216,7 @@ function ConversationsPageContent() {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const touchStartRef = useRef<TouchGesture | null>(null);
+  const repairDrawerTouchStartRef = useRef<TouchGesture | null>(null);
 
   const threadIdParam = searchParams.get("threadId");
 
@@ -572,6 +573,36 @@ function ConversationsPageContent() {
     }
   };
 
+  const handleRepairDrawerTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const firstTouch = event.touches[0];
+    if (!firstTouch) return;
+    repairDrawerTouchStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
+  };
+
+  const handleRepairDrawerTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const touchStart = repairDrawerTouchStartRef.current;
+    repairDrawerTouchStartRef.current = null;
+    if (!touchStart || !isMobileRepairDrawerOpen) return;
+
+    const firstChangedTouch = event.changedTouches[0];
+    if (!firstChangedTouch) return;
+
+    const deltaX = firstChangedTouch.clientX - touchStart.x;
+    const deltaY = firstChangedTouch.clientY - touchStart.y;
+    const minHorizontalSwipe = 70;
+    const maxVerticalMovement = 50;
+
+    if (
+      Math.abs(deltaX) < minHorizontalSwipe ||
+      Math.abs(deltaY) > maxVerticalMovement ||
+      deltaX < 0
+    ) {
+      return;
+    }
+
+    setIsMobileRepairDrawerOpen(false);
+  };
+
   useEffect(() => {
     setThreads((prev) => {
       let hasChanges = false;
@@ -858,7 +889,7 @@ function ConversationsPageContent() {
               </div>
 
               <div
-                className="sticky bottom-0 z-20 border-t bg-[var(--surface-1)] p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
+                className="sticky bottom-0 z-20 mt-auto shrink-0 border-t bg-[var(--surface-1)] p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
                 style={{ borderColor: "var(--border)" }}
               >
                 <div className="flex items-center gap-2">
@@ -956,6 +987,8 @@ function ConversationsPageContent() {
               background: "var(--surface-1)",
             }}
             onClick={(event) => event.stopPropagation()}
+            onTouchStart={handleRepairDrawerTouchStart}
+            onTouchEnd={handleRepairDrawerTouchEnd}
           >
             <RepairDetailsPanel
               repair={linkedRepair}
