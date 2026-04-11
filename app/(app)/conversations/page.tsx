@@ -790,8 +790,11 @@ function ConversationsPageContent() {
           {selectedThread ? (
             <>
               <header
-                className="sticky top-0 z-20 flex items-center justify-between border-b px-4 py-3 md:px-5"
-                style={{ borderColor: "var(--border)" }}
+                className="fixed left-0 right-0 top-[69px] z-30 flex items-center justify-between border-b px-4 py-3 md:sticky md:top-0 md:px-5"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-1)",
+                }}
               >
                 <div className="flex items-center gap-3">
                   <button
@@ -863,7 +866,10 @@ function ConversationsPageContent() {
                 </div>
               </header>
 
-              <div ref={messageWindowRef} className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto px-3 py-4 md:p-4">
+              <div
+                ref={messageWindowRef}
+                className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto px-3 pb-4 pt-[76px] md:p-4"
+              >
                 {selectedThread.messages.map((msg) => (
                   <div
                     key={msg.id}
