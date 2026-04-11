@@ -3,15 +3,15 @@ import { prisma } from "@/lib/prisma";
 
 export async function resolveTenantChannel(tenantId: string) {
   const channel = await prisma.tenantMessagingChannel.findFirst({
-    where: { tenantId, provider: "SPOTLER", isActive: true }
+    where: { tenantId, provider: "ZERNIO", isActive: true }
   });
-  if (!channel) throw new Error("No active Spotler channel configured for tenant");
+  if (!channel) throw new Error("No active ZERNIO channel configured for tenant");
   return channel;
 }
 
-export async function resolveTenantByExternalChannel(externalChannelId: string) {
+export async function resolveTenantByWhatsappAccount(whatsappAccountId: string) {
   return prisma.tenantMessagingChannel.findFirst({
-    where: { provider: "SPOTLER", externalChannelId },
+    where: { provider: "ZERNIO", whatsappAccountId },
     include: { tenant: true }
   });
 }

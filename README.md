@@ -8,16 +8,16 @@ Production-oriented multi-tenant MVP for businesses that run ongoing work (garag
 - Prisma + PostgreSQL
 - NextAuth credentials (ready for expansion)
 - Zod validation
-- Server-only Spotler integration layer
+- Server-only ZERNIO integration layer
 
 ## Implemented foundations
 - Strict tenant-scoped domain schema (Tenant, Customer, Asset, WorkItem, WorkflowStage, Thread, Message, Template, Channel, WebhookEvent, AuditLog)
 - Role model: system admin, tenant owner/admin, employee
 - Tenant channel resolution to prevent cross-tenant outbound/inbound mixups
 - Stage transition service with transition rule checks and optional approval request creation
-- Spotler outbound API wrapper in server-only modules
-- Spotler webhook intake with raw payload storage and processing status updates
-- Tenant advanced settings page skeleton (all required sections)
+- ZERNIO outbound API wrapper in server-only modules
+- ZERNIO webhook intake with normalized payload storage and processing status updates
+- Tenant advanced settings page with tenant-level WhatsApp (ZERNIO) connect/reconnect/disconnect controls
 - Dashboard + operational sections scaffolded with responsive dark SaaS layout
 - Seed script with 1 system admin + 3 tenants in different industries and different terminology/workflow setups
 
@@ -41,8 +41,8 @@ Production-oriented multi-tenant MVP for businesses that run ongoing work (garag
 - All tenant-owned tables include `tenantId`.
 - Tenant context is resolved server-side from auth session (`requireTenantContext`).
 - Service/repository layer expects tenantId from server context, never client payload.
-- Spotler outbound: resolve `tenant -> active channel` before sending.
-- Spotler inbound webhook: resolve `externalChannelId -> tenant` before writes.
+- ZERNIO outbound: resolve `tenant -> active WhatsApp account` before sending.
+- ZERNIO inbound webhook: resolve `whatsappAccountId -> tenant` before writes.
 
 ## Workflow stage system
 - Stages are tenant-specific and configurable (`WorkflowStage`).
@@ -50,21 +50,29 @@ Production-oriented multi-tenant MVP for businesses that run ongoing work (garag
 - Transition rules are tenant-specific (`StageTransitionRule`).
 - Stage transitions validated in `transitionWorkItemStage` with audit logging and optional approval creation.
 
-## Spotler integration notes
+## ZERNIO integration notes
 - Provider logic is isolated in server-only files:
-  - `lib/spotler/client.ts`
+  - `lib/integrations/zernio/client.ts`
+  - `lib/integrations/zernio/whatsapp.ts`
+  - `lib/integrations/zernio/templates.ts`
+  - `lib/integrations/zernio/inbox.ts`
+  - `lib/integrations/zernio/phone-numbers.ts`
+  - `lib/integrations/zernio/connect.ts`
+  - `lib/integrations/zernio/webhooks.ts`
   - `server/services/tenant-channel-service.ts`
   - `server/services/messaging-service.ts`
-  - `app/api/webhooks/spotler/route.ts`
-- API key comes from env; no secret in client code.
-- Where Spotler endpoints or payload shapes may differ by account version, assumptions are isolated in one layer for easy adjustment.
+  - `app/api/webhooks/zernio/route.ts`
+  - `app/api/whatsapp/zernio/connect/route.ts`
+  - `app/api/whatsapp/zernio/callback/route.ts`
+- API key is read only from `process.env.ZERNIO_API_KEY` server-side.
+- Webhook supports retry-safe idempotency by checking external message IDs before write.
 
 ## What is currently placeholder vs complete
 ### Implemented now
-- Domain schema, tenant-safe service boundaries, seed data, webhook and outbound messaging architecture, UI navigation/pages.
+- Domain schema, tenant-safe service boundaries, webhook and outbound messaging architecture, UI navigation/pages.
 
 ### Next iterations
 - Complete CRUD UIs and server actions for all entities
 - Enhanced auth (password reset, SSO providers)
-- Full Spotler endpoint/payload alignment once account docs/keys are connected
+- Full ZERNIO endpoint/payload alignment once account docs/keys are connected
 - Queueing, retries, rate limiting, and observability dashboards

@@ -4,7 +4,7 @@ export type StoredTemplate = {
   category: "UTILITY" | "MARKETING" | string;
   language: string;
   body: string;
-  spotlerId?: string;
+  zernioTemplateId?: string;
   active: boolean;
   variables?: {
     id: string;
@@ -36,7 +36,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
     category: "UTILITY",
     language: "nl",
     body: "Hallo {{1}}, we hebben uw {{2}} ontvangen en gaan deze diagnosticeren. U ontvangt een update binnen 24 uur.",
-    spotlerId: "",
+    zernioTemplateId: "",
     active: true,
     variables: [
       { id: "var_1", name: "Customer name", mode: "repair_field", repairField: "customerName" },
@@ -50,7 +50,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
     category: "UTILITY",
     language: "nl",
     body: "Hallo {{1}}, uw {{2}} is gerepareerd en klaar voor ophalen! Kom langs op ons adres tijdens openingstijden.",
-    spotlerId: "",
+    zernioTemplateId: "",
     active: true,
     variables: [
       { id: "var_3", name: "Customer name", mode: "repair_field", repairField: "customerName" },
@@ -64,7 +64,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
     category: "UTILITY",
     language: "nl",
     body: "Beste {{1}}, uw reparatie kost {{2}}. U kunt akkoord geven via de onderstaande knoppen.",
-    spotlerId: "",
+    zernioTemplateId: "",
     active: true,
     variables: [
       { id: "var_5", name: "Customer name", mode: "repair_field", repairField: "customerName" },

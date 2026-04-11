@@ -219,7 +219,7 @@ model ConversationThread {
   assetId                String?
   workItemId             String?
   externalConversationId String?
-  externalChannelId      String
+  whatsappAccountId      String
   phoneNumber            String
   unreadCount            Int      @default(0)
   lastMessageAt          DateTime?
@@ -232,8 +232,8 @@ model ConversationThread {
   workItem WorkItem? @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   messages Message[]
 
-  @@index([tenantId, externalChannelId])
-  @@unique([tenantId, externalChannelId, externalConversationId])
+  @@index([tenantId, whatsappAccountId])
+  @@unique([tenantId, whatsappAccountId, externalConversationId])
 }
 
 model Message {
@@ -284,17 +284,22 @@ model MessageTemplate {
 model TenantMessagingChannel {
   id                  String   @id @default(cuid())
   tenantId            String
-  provider            String   @default("SPOTLER")
-  externalChannelId   String
+  provider            String   @default("ZERNIO")
+  zernioProfileId     String?
+  zernioAccountId     String?
+  whatsappAccountId   String
+  zernioPhoneNumberId String?
   whatsappPhoneNumber String
   displayName         String
+  connectionStatus    String   @default("DISCONNECTED")
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, externalChannelId])
+  @@unique([provider, whatsappAccountId])
+  @@unique([tenantId, provider])
 }
 
 model WebhookEvent {
