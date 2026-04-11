@@ -416,9 +416,15 @@ function ConversationsPageContent() {
   );
 
   useEffect(() => {
-    if (visibleThreads.some((thread) => thread.id === selectedThreadId)) return;
+    if (!selectedThreadId) {
+      setSelectedThreadId(visibleThreads[0]?.id ?? "");
+      return;
+    }
+
+    if (threads.some((thread) => thread.id === selectedThreadId)) return;
+
     setSelectedThreadId(visibleThreads[0]?.id ?? "");
-  }, [selectedThreadId, visibleThreads]);
+  }, [selectedThreadId, threads, visibleThreads]);
 
   useEffect(() => {
     if (!messageWindowRef.current) return;
