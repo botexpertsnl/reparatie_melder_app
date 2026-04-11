@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, type TouchEvent } from "react";
 import clsx from "clsx";
 import { MessageSquareText, type LucideIcon } from "lucide-react";
 
@@ -21,6 +22,43 @@ type MobileMenuProps = {
 };
 
 export function MobileMenu({ isOpen, sections, pathname, onClose, onNavigate }: MobileMenuProps) {
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const firstTouch = event.touches[0];
+    if (!firstTouch) return;
+    touchStartXRef.current = firstTouch.clientX;
+    touchStartYRef.current = firstTouch.clientY;
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (!isOpen) return;
+    const startX = touchStartXRef.current;
+    const startY = touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    if (startX === null || startY === null) return;
+
+    const changedTouch = event.changedTouches[0];
+    if (!changedTouch) return;
+
+    const deltaX = changedTouch.clientX - startX;
+    const deltaY = changedTouch.clientY - startY;
+    const minHorizontalSwipe = 70;
+    const maxVerticalMovement = 50;
+
+    if (
+      Math.abs(deltaX) < minHorizontalSwipe ||
+      Math.abs(deltaY) > maxVerticalMovement ||
+      deltaX > 0
+    ) {
+      return;
+    }
+
+    onClose();
+  };
+
   return (
     <div
       className={clsx(
@@ -28,6 +66,8 @@ export function MobileMenu({ isOpen, sections, pathname, onClose, onNavigate }: 
         isOpen ? "pointer-events-auto" : "pointer-events-none"
       )}
       aria-hidden={!isOpen}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <button
         type="button"
