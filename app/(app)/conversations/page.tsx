@@ -425,6 +425,12 @@ function ConversationsPageContent() {
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
 
+  const updateConversationOpenState = (threadId: string, open: boolean) => {
+    setThreads((prev) =>
+      prev.map((thread) => (thread.id === threadId ? { ...thread, open } : thread))
+    );
+  };
+
   const sendMessage = ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
     if (!selectedThread || !message.trim()) return;
 
@@ -454,15 +460,8 @@ function ConversationsPageContent() {
   };
 
   const handleConversationStatusButtonClick = () => {
-    if (!selectedThreadId) return;
-
-    setThreads((prev) =>
-      prev.map((thread) =>
-        thread.id === selectedThreadId
-          ? { ...thread, open: !thread.open }
-          : thread
-      )
-    );
+    if (!selectedThread) return;
+    updateConversationOpenState(selectedThread.id, !selectedThread.open);
   };
 
   const linkRepairToThread = (threadId: string, repairId: string) => {
@@ -750,19 +749,6 @@ function ConversationsPageContent() {
 
     window.dispatchEvent(new Event("mobile-menu:open"));
   };
-
-  useEffect(() => {
-    setThreads((prev) => {
-      let hasChanges = false;
-      const updated = prev.map((thread) => {
-        const latestMessage = thread.messages[thread.messages.length - 1];
-        if (latestMessage?.role !== "customer" || thread.open) return thread;
-        hasChanges = true;
-        return { ...thread, open: true };
-      });
-      return hasChanges ? updated : prev;
-    });
-  }, [threads]);
 
   return (
     <div
