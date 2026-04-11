@@ -82,6 +82,13 @@ body::-webkit-scrollbar {
 
 .chat-input {
   border-width: 2px !important;
+  font-size: 16px !important;
+}
+
+@media (min-width: 768px) {
+  .chat-input {
+    font-size: 0.875rem !important;
+  }
 }
 
 .chat-input:focus {

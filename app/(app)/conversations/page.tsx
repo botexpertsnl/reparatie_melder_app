@@ -618,7 +618,7 @@ function ConversationsPageContent() {
 
   return (
     <div
-      className={`-mx-5 -my-6 h-[calc(100dvh-69px)] overflow-hidden md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] md:grid md:gap-0 md:transition-[grid-template-columns] md:duration-300 ${
+      className={`fixed inset-x-0 bottom-0 top-[69px] overflow-hidden md:static md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] md:grid md:gap-0 md:transition-[grid-template-columns] md:duration-300 ${
         listCollapsed ? "grid-cols-[88px_1fr]" : "grid-cols-[380px_1fr]"
       }`}
       style={{ background: "var(--bg)" }}
