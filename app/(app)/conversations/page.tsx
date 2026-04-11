@@ -442,7 +442,6 @@ function ConversationsPageContent() {
         thread.id === selectedThread.id ? { ...thread, open: nextOpenState } : thread
       )
     );
-    setStatusFilter(nextOpenState ? "open" : "closed");
   };
 
   const linkRepairToThread = (threadId: string, repairId: string) => {
