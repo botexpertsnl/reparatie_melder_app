@@ -87,9 +87,14 @@ async function main() {
     const channel = await prisma.tenantMessagingChannel.create({
       data: {
         tenantId: tenant.id,
-        externalChannelId: `spotler-channel-${index + 1}`,
+        provider: "ZERNIO",
+        zernioProfileId: `zernio-profile-${index + 1}`,
+        zernioAccountId: `zernio-account-${index + 1}`,
+        whatsappAccountId: `zernio-wa-account-${index + 1}`,
+        zernioPhoneNumberId: `zernio-phone-${index + 1}`,
         whatsappPhoneNumber: `+319700000000${index + 1}`,
-        displayName: `${tenant.name} WhatsApp`
+        displayName: `WhatsApp (ZERNIO) - ${tenant.name}`,
+        connectionStatus: "CONNECTED"
       }
     });
 
@@ -99,7 +104,7 @@ async function main() {
         customerId: customer.id,
         assetId: asset.id,
         workItemId: workItem.id,
-        externalChannelId: channel.externalChannelId,
+        whatsappAccountId: channel.whatsappAccountId,
         phoneNumber: customer.phoneNumber,
         lastMessageAt: new Date()
       }
