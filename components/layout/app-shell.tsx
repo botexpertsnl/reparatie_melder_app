@@ -280,7 +280,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 window.dispatchEvent(new Event("conversations:nav-click"));
                 router.push(resolveConversationHref());
               }}
-              className="inline-flex items-center gap-1.5 self-start rounded-full border px-2 py-1 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold"
               style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
               aria-label="View open conversations"
             >
