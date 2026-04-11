@@ -435,11 +435,14 @@ function ConversationsPageContent() {
 
   const toggleConversationStatus = () => {
     if (!selectedThread) return;
+    const nextOpenState = !selectedThread.open;
+
     setThreads((prev) =>
       prev.map((thread) =>
-        thread.id === selectedThread.id ? { ...thread, open: !thread.open } : thread
+        thread.id === selectedThread.id ? { ...thread, open: nextOpenState } : thread
       )
     );
+    setStatusFilter(nextOpenState ? "open" : "closed");
   };
 
   const linkRepairToThread = (threadId: string, repairId: string) => {
