@@ -314,6 +314,16 @@ export function RepairDetailsPanel({
               <button
                 type="button"
                 onClick={() => {
+                  onStageChange?.(templateConfirmation.stage.name);
+                  setTemplateConfirmation(null);
+                }}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Not Send
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   if (hasEmptyVariableValues) return;
                   onStageChange?.(templateConfirmation.stage.name, {
                     sentTemplateMessage: buildTemplateMessageWithButtons(
