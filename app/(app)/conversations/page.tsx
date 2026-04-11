@@ -433,15 +433,25 @@ function ConversationsPageContent() {
     setMessage("");
   };
 
-  const toggleConversationStatus = () => {
+  const setConversationStatus = (open: boolean) => {
     if (!selectedThread) return;
-    const nextOpenState = !selectedThread.open;
 
     setThreads((prev) =>
       prev.map((thread) =>
-        thread.id === selectedThread.id ? { ...thread, open: nextOpenState } : thread
+        thread.id === selectedThread.id ? { ...thread, open } : thread
       )
     );
+  };
+
+  const handleConversationStatusButtonClick = () => {
+    if (!selectedThread) return;
+
+    if (selectedThread.open) {
+      setConversationStatus(false);
+      return;
+    }
+
+    setConversationStatus(true);
   };
 
   const linkRepairToThread = (threadId: string, repairId: string) => {
@@ -1003,7 +1013,7 @@ function ConversationsPageContent() {
                   </button>
                   <button
                     type="button"
-                    onClick={toggleConversationStatus}
+                    onClick={handleConversationStatusButtonClick}
                     className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 transition-colors hover:bg-[#182236]"
                     aria-label={selectedThread.open ? "Close conversation" : "Reopen conversation"}
                   >
