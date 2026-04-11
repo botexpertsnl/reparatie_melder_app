@@ -5,6 +5,7 @@ import { Cog, Clock3, Users, Plus, X } from "lucide-react";
 import { getImpersonatingTenant } from "@/lib/impersonation-store";
 import { defaultTenantSettings, readTenantSettings, writeTenantSettings, type TenantSettings } from "@/lib/tenant-settings-store";
 import { readTenantUsers, type TenantUser, writeTenantUsers } from "@/lib/tenant-users-store";
+import { WhatsappZernioCard } from "@/components/settings/whatsapp-zernio-card";
 
 const knownTenants = ["AutoGarage De Vries", "FixIt Phone Repair"];
 const retentionOptions = ["1 week", "2 weeks", "1 month", "3 months"];
@@ -114,6 +115,8 @@ export default function CustomersPage() {
           <button type="button" onClick={saveRetention} className="rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">Save</button>
         </div>
       </section>
+
+      <WhatsappZernioCard />
 
       <section className="card">
         <div className="flex items-center justify-between gap-3">
