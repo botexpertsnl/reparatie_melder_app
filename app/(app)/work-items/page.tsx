@@ -138,6 +138,14 @@ function normalizeRepairStage(stage: string, validStageNames: Set<string>) {
   return validStageNames.has(stage) ? stage : UNKNOWN_STAGE;
 }
 
+function matchesRepairSearch(repair: RepairItem, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return true;
+  return `${repair.title} ${repair.description} ${repair.customerName} ${repair.customerPhone} ${repair.assetName} ${repair.stage}`
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
 function StageBadge({
   stage,
   stageColor
@@ -460,19 +468,30 @@ export default function WorkItemsPage() {
       selectedRepair ? conversations.find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null : null,
     [conversations, selectedRepair]
   );
+  const repairsInFilterScope = useMemo(
+    () => repairs.filter((repair) => matchesRepairSearch(repair, searchQuery)),
+    [repairs, searchQuery]
+  );
   const stageCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const repair of repairs) {
+    for (const repair of repairsInFilterScope) {
       counts.set(repair.stage, (counts.get(repair.stage) ?? 0) + 1);
     }
     return counts;
-  }, [repairs]);
+  }, [repairsInFilterScope]);
   const filterStages = useMemo(() => {
-    const stageNamesFromRepairs = Array.from(stageCounts.keys()).filter(
-      (stageName) => !visibleWorkflowStages.some((stage) => stage.name === stageName)
-    );
-    return [...visibleWorkflowStages.map((stage) => stage.name), ...stageNamesFromRepairs];
+    const stageNamesFromRepairs = Array.from(stageCounts.entries())
+      .filter(([, count]) => count > 0)
+      .map(([stageName]) => stageName)
+      .filter((stageName) => !visibleWorkflowStages.some((stage) => stage.name === stageName));
+    const visibleConfiguredStages = visibleWorkflowStages
+      .map((stage) => stage.name)
+      .filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0);
+    return [...visibleConfiguredStages, ...stageNamesFromRepairs];
   }, [stageCounts, visibleWorkflowStages]);
+  useEffect(() => {
+    setSelectedStageFilters((prev) => prev.filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0));
+  }, [stageCounts]);
   const activeStageFilters = useMemo(
     () =>
       filterStages.filter((stageName) => {
@@ -482,13 +501,8 @@ export default function WorkItemsPage() {
     [filterStages]
   );
   const filteredRepairs = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
     return repairs.filter((repair) => {
-      const matchesSearch =
-        normalizedQuery.length === 0 ||
-        `${repair.title} ${repair.description} ${repair.customerName} ${repair.customerPhone} ${repair.assetName} ${repair.stage}`
-          .toLowerCase()
-          .includes(normalizedQuery);
+      const matchesSearch = matchesRepairSearch(repair, searchQuery);
       const matchesStageFilter =
         selectedStageFilters.length === 0 || selectedStageFilters.includes(repair.stage);
       return matchesSearch && matchesStageFilter;
