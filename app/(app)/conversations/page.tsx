@@ -13,6 +13,7 @@ import {
   MessageSquareText,
   Camera,
   ArrowUpDown,
+  RotateCcw,
 } from "lucide-react";
 import {
   defaultConversations,
@@ -430,6 +431,15 @@ function ConversationsPageContent() {
     );
 
     setMessage("");
+  };
+
+  const toggleConversationStatus = () => {
+    if (!selectedThread) return;
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === selectedThread.id ? { ...thread, open: !thread.open } : thread
+      )
+    );
   };
 
   const linkRepairToThread = (threadId: string, repairId: string) => {
@@ -887,7 +897,7 @@ function ConversationsPageContent() {
                         onClick={() => setIsMobileRepairDrawerOpen(true)}
                         className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-3)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)]"
                       >
-                        <Wrench className="h-4 w-4" />
+                        <Wrench className="h-4 w-4 text-[#25d3c4]" />
                         {repairLabel} details
                       </button>
                     ) : (
@@ -991,11 +1001,11 @@ function ConversationsPageContent() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => sendMessage({ closeConversation: true })}
+                    onClick={toggleConversationStatus}
                     className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 transition-colors hover:bg-[#182236]"
-                    aria-label="Close conversation"
+                    aria-label={selectedThread.open ? "Close conversation" : "Reopen conversation"}
                   >
-                    <X className="h-4 w-4" />
+                    {selectedThread.open ? <X className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                   </button>
                   <button
                     type="button"

@@ -303,20 +303,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <header className="hidden h-[69px] items-center justify-end gap-3 border-b px-6 pr-8 min-[769px]:flex" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
-          <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new Event("conversations:nav-click"));
+              router.push("/conversations");
+            }}
+            className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"
+            style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+            aria-label="Open conversations page"
+          >
             <span className="text-xs tracking-[0.08em] text-slate-400">Open conversations</span>
-            <button
-              type="button"
-              onClick={() => {
-                window.dispatchEvent(new Event("conversations:nav-click"));
-                router.push("/conversations");
-              }}
-              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30"
-              aria-label="Open conversations page"
-            >
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30">
               {openConversationCount}
-            </button>
-          </div>
+            </span>
+          </button>
           <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
             {superAdmin ? (
               <button
