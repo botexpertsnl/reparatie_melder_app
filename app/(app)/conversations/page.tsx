@@ -985,7 +985,7 @@ function ConversationsPageContent() {
           aria-hidden="true"
         >
           <div
-            className={`absolute inset-y-0 right-0 w-full max-w-[min(100vw,28rem)] transform border-l shadow-[-16px_0_36px_rgba(0,0,0,0.36)] transition-transform duration-300 ease-out ${
+            className={`absolute inset-y-0 right-0 w-[calc(100%-3.25rem)] max-w-[28rem] min-w-[18rem] transform border-l shadow-[-16px_0_36px_rgba(0,0,0,0.36)] transition-transform duration-300 ease-out ${
               isMobileRepairDrawerOpen ? "translate-x-0" : "translate-x-full"
             }`}
             style={{
@@ -996,6 +996,9 @@ function ConversationsPageContent() {
             onTouchStart={handleRepairDrawerTouchStart}
             onTouchEnd={handleRepairDrawerTouchEnd}
           >
+            <div className="pointer-events-none absolute inset-y-0 -left-3 flex items-center">
+              <span className="h-12 w-1 rounded-full bg-white/30" aria-hidden="true" />
+            </div>
             <RepairDetailsPanel
               repair={linkedRepair}
               itemLabel={repairLabel}
