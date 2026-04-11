@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import clsx from "clsx";
 import {
   Search,
   Send,
@@ -51,6 +52,7 @@ function LinkRepairModal({
   onCreate: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
 
   const filtered = repairs.filter((repair) =>
     `${repair.title} ${repair.customerName} ${repair.assetName}`
@@ -59,8 +61,14 @@ function LinkRepairModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-semibold">Link to {repairLabel}</h2>
@@ -76,6 +84,7 @@ function LinkRepairModal({
             onClick={onClose}
             className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
             type="button"
+            aria-label="Close link repair dialog"
           >
             <X className="h-5 w-5" />
           </button>
@@ -96,8 +105,13 @@ function LinkRepairModal({
             <button
               key={repair.id}
               type="button"
-              onClick={() => onSelect(repair.id)}
-              className="w-full rounded-xl border border-[#cdd5e2] bg-white p-3 text-left hover:bg-slate-50"
+              onClick={() => setSelectedRepairId(repair.id)}
+              className={clsx(
+                "w-full rounded-xl border bg-white p-3 text-left hover:bg-slate-50",
+                selectedRepairId === repair.id
+                  ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20"
+                  : "border-[#cdd5e2]"
+              )}
             >
               <div className="flex items-center justify-between">
                 <div className="font-semibold">{repair.title}</div>
@@ -110,6 +124,26 @@ function LinkRepairModal({
               </div>
             </button>
           ))}
+        </div>
+        <div className="mt-5 flex items-center justify-end gap-3 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => selectedRepairId && onSelect(selectedRepairId)}
+            className={clsx(
+              "rounded-xl px-5 py-2 text-sm font-semibold text-white",
+              selectedRepairId ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
+            )}
+            disabled={!selectedRepairId}
+          >
+            Link
+          </button>
         </div>
       </div>
     </div>
