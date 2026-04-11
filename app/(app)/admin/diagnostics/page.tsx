@@ -6,35 +6,7 @@ import clsx from "clsx";
 import { setSuperAdmin, startImpersonation, stopImpersonation } from "@/lib/impersonation-store";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultTenantSettings, readTenantSettings, writeTenantSettings } from "@/lib/tenant-settings-store";
-
-type TenantUser = { id: string; name: string; email: string; role: "Owner" | "Manager" | "Operator" };
-type Tenant = {
-  id: string;
-  name: string;
-  users: TenantUser[];
-  monthlyCredits: number;
-  oneTimeCredits: number;
-};
-
-const initialTenants: Tenant[] = [
-  {
-    id: "ten_1",
-    name: "AutoGarage De Vries",
-    users: [
-      { id: "u_1", name: "Sven de Vries", email: "sven@devries.nl", role: "Owner" },
-      { id: "u_2", name: "Nina Bakker", email: "nina@devries.nl", role: "Manager" }
-    ],
-    monthlyCredits: 1500,
-    oneTimeCredits: 240
-  },
-  {
-    id: "ten_2",
-    name: "FixIt Phone Repair",
-    users: [{ id: "u_3", name: "Rik Jansen", email: "rik@fixit.nl", role: "Owner" }],
-    monthlyCredits: 900,
-    oneTimeCredits: 0
-  }
-];
+import { defaultAdminTenants, readAdminTenants, writeAdminTenants, type Tenant } from "@/lib/admin-tenants-store";
 
 function AdminModalShell({
   title,
@@ -53,10 +25,11 @@ function AdminModalShell({
 }
 
 export default function DiagnosticsPage() {
-  const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
-  const [selectedTenantId, setSelectedTenantId] = useState<string>(initialTenants[0].id);
+  const [tenants, setTenants] = useState<Tenant[]>(() => readAdminTenants());
+  const [selectedTenantId, setSelectedTenantId] = useState<string>(() => readAdminTenants()[0]?.id ?? defaultAdminTenants[0].id);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerZernioProfileId, setNewCustomerZernioProfileId] = useState("");
   const [userModal, setUserModal] = useState<{ mode: "create" | "edit"; userId?: string } | null>(null);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -70,8 +43,10 @@ export default function DiagnosticsPage() {
   });
 
   const selectedTenant = tenants.find((tenant) => tenant.id === selectedTenantId) ?? tenants[0];
+  const [zernioProfileIdInput, setZernioProfileIdInput] = useState("");
 
   useEffect(() => {
+    if (!selectedTenant) return;
     const settings = readTenantSettings(selectedTenant.name, { ...defaultTenantSettings, businessName: selectedTenant.name });
     setTerminology({
       repairLabel: settings.repairLabel,
@@ -79,15 +54,25 @@ export default function DiagnosticsPage() {
       customerLabel: settings.customerLabel,
       identifierLabel: settings.identifierLabel
     });
-  }, [selectedTenant.name]);
+    setZernioProfileIdInput(selectedTenant.zernioProfileId ?? "");
+  }, [selectedTenant]);
 
   useEffect(() => {
     setSuperAdmin(true);
     stopImpersonation();
   }, []);
 
+  const updateTenants = (updater: (previous: Tenant[]) => Tenant[]) => {
+    setTenants((prev) => {
+      const updated = updater(prev);
+      writeAdminTenants(updated);
+      return updated;
+    });
+  };
+
   const addUser = (name: string, email: string) => {
-    setTenants((prev) =>
+    if (!selectedTenant) return;
+    updateTenants((prev) =>
       prev.map((tenant) =>
         tenant.id === selectedTenant.id
           ? {
@@ -100,7 +85,8 @@ export default function DiagnosticsPage() {
   };
 
   const editUser = (userId: string, name: string, email: string) => {
-    setTenants((prev) =>
+    if (!selectedTenant) return;
+    updateTenants((prev) =>
       prev.map((tenant) =>
         tenant.id === selectedTenant.id
           ? {
@@ -113,9 +99,9 @@ export default function DiagnosticsPage() {
   };
 
   const addCredits = (type: "monthly" | "one-time", amount: number) => {
-    if (!amount || Number.isNaN(amount)) return;
+    if (!amount || Number.isNaN(amount) || !selectedTenant) return;
 
-    setTenants((prev) =>
+    updateTenants((prev) =>
       prev.map((tenant) =>
         tenant.id === selectedTenant.id
           ? {
@@ -128,7 +114,17 @@ export default function DiagnosticsPage() {
     );
   };
 
+  const saveTenantZernioProfile = () => {
+    if (!selectedTenant) return;
+    const trimmed = zernioProfileIdInput.trim();
+    updateTenants((prev) =>
+      prev.map((tenant) => (tenant.id === selectedTenant.id ? { ...tenant, zernioProfileId: trimmed || undefined } : tenant))
+    );
+    setZernioProfileIdInput(trimmed);
+  };
+
   const impersonateTenant = () => {
+    if (!selectedTenant) return;
     startImpersonation(selectedTenant.name);
     window.location.href = "/dashboard";
   };
@@ -158,6 +154,15 @@ export default function DiagnosticsPage() {
     setUserModal({ mode: "edit", userId });
   };
 
+  if (!selectedTenant) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold text-white">System Admin</h1>
+        <p className="text-sm text-slate-400">No tenants available yet. Add a customer to get started.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -169,7 +174,7 @@ export default function DiagnosticsPage() {
         <aside className="card space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">Customers</h2>
-            <button type="button" onClick={() => { setNewCustomerName(""); setShowAddCustomerModal(true); }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#28d9c6]/50 bg-[#28d9c6]/10 text-[#69f0df] hover:bg-[#28d9c6]/20" aria-label="Add customer">
+            <button type="button" onClick={() => { setNewCustomerName(""); setNewCustomerZernioProfileId(""); setShowAddCustomerModal(true); }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#28d9c6]/50 bg-[#28d9c6]/10 text-[#69f0df] hover:bg-[#28d9c6]/20" aria-label="Add customer">
               <Plus className="h-4 w-4" />
             </button>
           </div>
@@ -182,6 +187,7 @@ export default function DiagnosticsPage() {
             >
               <div className="font-semibold text-white">{tenant.name}</div>
               <div className="mt-1 text-sm text-slate-400">{tenant.users.length} users attached</div>
+              <div className="mt-2 text-xs text-slate-500">{tenant.zernioProfileId ? "Connected to Zernio profile" : "No Zernio profile linked"}</div>
             </button>
           ))}
         </aside>
@@ -192,6 +198,9 @@ export default function DiagnosticsPage() {
               <div>
                 <h2 className="text-lg font-semibold text-white">{selectedTenant.name}</h2>
                 <p className="text-sm text-slate-400">Attached users and credit controls</p>
+                <div className={clsx("mt-2 inline-flex rounded-full border px-2 py-1 text-xs", selectedTenant.zernioProfileId ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-slate-500/40 bg-slate-600/10 text-slate-300")}>
+                  {selectedTenant.zernioProfileId ? "Connected to Zernio profile" : "No Zernio profile linked"}
+                </div>
               </div>
               <button type="button" onClick={openCreateUserModal} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#28d9c6] px-4 text-sm font-semibold text-[#022a36]">
                 <Plus className="h-4 w-4" />
@@ -202,6 +211,22 @@ export default function DiagnosticsPage() {
             <button type="button" onClick={impersonateTenant} className="mt-3 rounded-xl border border-[#28d9c6]/60 bg-[#28d9c6]/10 px-4 py-2 text-sm font-semibold text-[#7ff5e9]">
               Impersonate customer account
             </button>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div>
+                <label htmlFor="zernio-profile-id" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Zernio Profile ID</label>
+                <input
+                  id="zernio-profile-id"
+                  className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#30b5a5]"
+                  placeholder="Enter Zernio profile ID"
+                  value={zernioProfileIdInput}
+                  onChange={(event) => setZernioProfileIdInput(event.target.value)}
+                />
+              </div>
+              <button type="button" onClick={saveTenantZernioProfile} className="rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">
+                Save Tenant Settings
+              </button>
+            </div>
 
             <div className="mt-4 space-y-2">
               {selectedTenant.users.map((user) => (
@@ -270,6 +295,10 @@ export default function DiagnosticsPage() {
             <label htmlFor="customer-name" className="mb-2 block text-sm font-medium text-slate-700">Customer name *</label>
             <input id="customer-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" placeholder="e.g. QuickFix Amsterdam" value={newCustomerName} onChange={(event) => setNewCustomerName(event.target.value)} />
           </div>
+          <div>
+            <label htmlFor="customer-zernio-profile" className="mb-2 block text-sm font-medium text-slate-700">Zernio Profile ID</label>
+            <input id="customer-zernio-profile" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" placeholder="Enter Zernio profile ID" value={newCustomerZernioProfileId} onChange={(event) => setNewCustomerZernioProfileId(event.target.value)} />
+          </div>
           <div className="flex items-center justify-end gap-3">
             <button type="button" onClick={() => setShowAddCustomerModal(false)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
             <button
@@ -277,8 +306,9 @@ export default function DiagnosticsPage() {
               onClick={() => {
                 const name = newCustomerName.trim();
                 if (!name) return;
-                const newTenant = { id: `ten_${Date.now()}`, name, users: [], monthlyCredits: 0, oneTimeCredits: 0 };
-                setTenants((prev) => [...prev, newTenant]);
+                const zernioProfileId = newCustomerZernioProfileId.trim();
+                const newTenant: Tenant = { id: `ten_${Date.now()}`, name, users: [], monthlyCredits: 0, oneTimeCredits: 0, zernioProfileId: zernioProfileId || undefined };
+                updateTenants((prev) => [...prev, newTenant]);
                 setSelectedTenantId(newTenant.id);
                 setShowAddCustomerModal(false);
               }}
