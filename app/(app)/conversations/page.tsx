@@ -989,17 +989,18 @@ function ConversationsPageContent() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => sendMessage({ closeConversation: true })}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 text-sm font-semibold text-slate-300 hover:bg-[#182236]"
+                  >
+                    <X className="h-4 w-4" />
+                    Close
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => sendMessage()}
                     className="inline-flex h-11 w-14 items-center justify-center rounded-xl bg-[#25d3c4] text-[#022a36]"
                   >
                     <Send className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => sendMessage({ closeConversation: true })}
-                    className="inline-flex h-11 w-32 items-center justify-center rounded-xl bg-[#16bfae] px-3 text-xs font-semibold text-[#022a36]"
-                  >
-                    Send & Close
                   </button>
                 </div>
                 <input
