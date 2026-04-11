@@ -48,14 +48,14 @@ function LinkConversationModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
+        className="flex h-[calc(100dvh-1rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:h-auto sm:max-h-[90vh]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
           <h2 className="text-2xl font-semibold">Link conversation</h2>
           <button
             onClick={onClose}
@@ -67,7 +67,8 @@ function LinkConversationModal({
           </button>
         </div>
 
-        <label className="mb-4 flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
+        <div className="subtle-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+        <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
           <Search className="h-4 w-4 text-slate-500" />
           <input
             className="w-full bg-transparent text-sm outline-none"
@@ -106,7 +107,8 @@ function LinkConversationModal({
             </div>
           ) : null}
         </div>
-        <div className="mt-5 flex items-center justify-end gap-3 pt-1">
+        </div>
+        <div className="flex items-center justify-end gap-3 border-t border-[#e2e8f0] bg-[#f4f6fa] px-6 py-4">
           <button
             type="button"
             onClick={onClose}
@@ -200,9 +202,9 @@ function AddRepairModal({
     formValues.description.trim();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between px-6 py-5">
+    <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:h-auto sm:max-h-[90vh]">
+        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
           <h2 className="text-2xl font-semibold">
             {mode === "create" ? `New ${repairLabel}` : `Edit ${repairLabel}`}
           </h2>
@@ -217,7 +219,7 @@ function AddRepairModal({
         </div>
 
         <form
-          className="space-y-5 px-6 pb-6"
+          className="subtle-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5"
           onSubmit={(event) => {
             event.preventDefault();
             if (!canSubmit) return;
@@ -852,7 +854,7 @@ export default function WorkItemsPage() {
       ) : null}
 
       {deletingRepair ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4">
           <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Delete repair</h2>

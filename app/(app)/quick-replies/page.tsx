@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import Link from "next/link";
+import { ModalShell } from "@/components/ui/modal-shell";
 
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 
@@ -54,59 +55,58 @@ function QuickReplyModal({
   const isValid = name.trim().length > 0 && body.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-2xl font-semibold">{mode === "create" ? "Add Quick Reply" : "Edit Quick Reply"}</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close quick reply modal">
-            <X className="h-5 w-5" />
-          </button>
+    <ModalShell
+      title={mode === "create" ? "Add Quick Reply" : "Edit Quick Reply"}
+      onClose={onClose}
+      maxWidthClassName="max-w-xl"
+      closeLabel="Close quick reply modal"
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+          <button type="submit" form="quick-reply-form" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", isValid ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!isValid}>{mode === "create" ? "Add Quick Reply" : "Save Quick Reply"}</button>
+        </>
+      }
+    >
+      <form
+        id="quick-reply-form"
+        className="space-y-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!isValid) return;
+          onSubmit({ name: name.trim(), body: body.trim() });
+        }}
+      >
+        <div>
+          <label htmlFor="quick-reply-name" className="mb-2 block text-sm font-medium text-slate-700">Name *</label>
+          <input id="quick-reply-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" value={name} onChange={(event) => setName(event.target.value)} />
         </div>
-        <form
-          className="space-y-5 px-6 pb-6"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!isValid) return;
-            onSubmit({ name: name.trim(), body: body.trim() });
-          }}
-        >
-          <div>
-            <label htmlFor="quick-reply-name" className="mb-2 block text-sm font-medium text-slate-700">Name *</label>
-            <input id="quick-reply-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" value={name} onChange={(event) => setName(event.target.value)} />
-          </div>
-          <div>
-            <label htmlFor="quick-reply-body" className="mb-2 block text-sm font-medium text-slate-700">Body preview *</label>
-            <textarea id="quick-reply-body" className="min-h-24 w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" value={body} onChange={(event) => setBody(event.target.value)} />
-          </div>
-          <div className="flex items-center justify-end gap-3">
-            <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
-            <button type="submit" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", isValid ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!isValid}>{mode === "create" ? "Add Quick Reply" : "Save Quick Reply"}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div>
+          <label htmlFor="quick-reply-body" className="mb-2 block text-sm font-medium text-slate-700">Body preview *</label>
+          <textarea id="quick-reply-body" className="min-h-24 w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" value={body} onChange={(event) => setBody(event.target.value)} />
+        </div>
+      </form>
+    </ModalShell>
   );
 }
 
 function DeleteQuickReplyModal({ quickReplyName, onCancel, onConfirm }: { quickReplyName: string; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Delete quick reply</h2>
-          <button type="button" onClick={onCancel} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close delete quick reply dialog">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="mt-2 text-sm text-slate-600">
-          This quick reply will be permanently deleted: <span className="font-semibold">{quickReplyName}</span>.
-        </p>
-        <div className="mt-6 flex items-center justify-end gap-3">
+    <ModalShell
+      title="Delete quick reply"
+      onClose={onCancel}
+      maxWidthClassName="max-w-md"
+      closeLabel="Close delete quick reply dialog"
+      footer={
+        <>
           <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
           <button type="button" onClick={onConfirm} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Delete</button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-600">
+        This quick reply will be permanently deleted: <span className="font-semibold">{quickReplyName}</span>.
+      </p>
+    </ModalShell>
   );
 }
 
