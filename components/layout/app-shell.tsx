@@ -172,7 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={clsx(
-        "min-h-screen min-[769px]:grid min-[769px]:transition-[grid-template-columns] min-[769px]:duration-300",
+        "h-dvh overflow-hidden min-[769px]:grid min-[769px]:transition-[grid-template-columns] min-[769px]:duration-300",
         collapsed ? "min-[769px]:grid-cols-[88px_1fr]" : "min-[769px]:grid-cols-[316px_1fr]"
       )}
       style={{ background: "var(--bg)", color: "var(--text-primary)" }}
@@ -254,7 +254,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col overflow-x-hidden">
+      <div className="flex min-h-0 h-full flex-col overflow-hidden">
         <header
           className="sticky top-0 z-40 flex h-[69px] items-center justify-between gap-3 border-b px-4 min-[769px]:hidden"
           style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
@@ -321,7 +321,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <main className="flex-1 px-5 py-6 min-[769px]:px-10 min-[769px]:py-8">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6 min-[769px]:px-10 min-[769px]:py-8">{children}</main>
       </div>
 
       <MobileMenu
