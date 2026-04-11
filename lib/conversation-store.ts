@@ -33,22 +33,30 @@ export const defaultConversations: StoredConversation[] = [
   }
 ];
 
+export function dedupeConversationsById(items: StoredConversation[]): StoredConversation[] {
+  const byId = new Map<string, StoredConversation>();
+  items.forEach((conversation) => {
+    byId.set(conversation.id, conversation);
+  });
+  return Array.from(byId.values());
+}
+
 export function readStoredConversations(fallback: StoredConversation[]): StoredConversation[] {
-  if (typeof window === "undefined") return fallback;
+  if (typeof window === "undefined") return dedupeConversationsById(fallback);
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
+    if (!raw) return dedupeConversationsById(fallback);
     const parsed = JSON.parse(raw) as StoredConversation[];
-    if (!Array.isArray(parsed)) return fallback;
-    return parsed;
+    if (!Array.isArray(parsed)) return dedupeConversationsById(fallback);
+    return dedupeConversationsById(parsed);
   } catch {
-    return fallback;
+    return dedupeConversationsById(fallback);
   }
 }
 
 export function writeStoredConversations(items: StoredConversation[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dedupeConversationsById(items)));
   window.dispatchEvent(new Event("conversations:changed"));
 }

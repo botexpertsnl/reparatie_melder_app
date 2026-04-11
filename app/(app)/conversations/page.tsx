@@ -16,6 +16,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import {
+  dedupeConversationsById,
   defaultConversations,
   readStoredConversations,
   writeStoredConversations,
@@ -249,6 +250,7 @@ function ConversationsPageContent() {
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"open" | "closed">("open");
+  const [statusPinnedThreadId, setStatusPinnedThreadId] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"newest" | "oldest">("newest");
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const [listCollapsed, setListCollapsed] = useState(false);
@@ -267,12 +269,20 @@ function ConversationsPageContent() {
   const listTouchStartRef = useRef<TouchGesture | null>(null);
 
   const threadIdParam = searchParams.get("threadId");
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const updateThreads = useCallback(
+    (updater: (current: StoredConversation[]) => StoredConversation[]) => {
+      setThreads((previousThreads) => dedupeConversationsById(updater(previousThreads)));
+    },
+    []
+  );
 
   useEffect(() => {
     const storedRepairs = readStoredRepairs(defaultRepairs);
     setRepairs(storedRepairs);
 
-    setThreads((prev) =>
+    updateThreads((prev) =>
       prev.map((thread) => {
         const autoRepair = storedRepairs.find(
           (repair) => repair.customerPhone === thread.customerPhone
@@ -287,7 +297,7 @@ function ConversationsPageContent() {
         };
       })
     );
-  }, []);
+  }, [updateThreads]);
 
   useEffect(() => {
     const refreshWorkflowStages = () => setWorkflowStages(readStoredWorkflowStages(defaultWorkflowStages));
@@ -406,37 +416,31 @@ function ConversationsPageContent() {
         : left.updatedAt.localeCompare(right.updatedAt);
     };
 
-    const matchesConversationFilters = (thread: StoredConversation) => {
-      const matchesStatusFilter = thread.open === (statusFilter === "open");
-      const matchesSearchQuery = `${thread.customerName} ${thread.customerPhone} ${thread.preview}`
+    const matchesSearchQuery = (thread: StoredConversation) =>
+      `${thread.customerName} ${thread.customerPhone} ${thread.preview}`
         .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      return matchesStatusFilter && matchesSearchQuery;
+        .includes(normalizedSearchQuery);
+
+    const matchesStatusFilter = (thread: StoredConversation) =>
+      thread.open === (statusFilter === "open");
+
+    const shouldKeepSelectedThreadVisible = (thread: StoredConversation) =>
+      Boolean(
+        selectedThreadId &&
+        statusPinnedThreadId &&
+        selectedThreadId === statusPinnedThreadId &&
+        thread.id === selectedThreadId &&
+        matchesSearchQuery(thread)
+      );
+
+    const matchesConversationFilters = (thread: StoredConversation) => {
+      if (!matchesSearchQuery(thread)) return false;
+      if (matchesStatusFilter(thread)) return true;
+      return shouldKeepSelectedThreadVisible(thread);
     };
 
-    const filteredThreads = threads
-      .filter((thread) => matchesConversationFilters(thread))
-      .sort(sortThreads);
-
-    if (!selectedThreadId) {
-      return filteredThreads;
-    }
-
-    const selectedThreadFromAll = threads.find((thread) => thread.id === selectedThreadId);
-    if (!selectedThreadFromAll) {
-      return filteredThreads;
-    }
-
-    const selectedThreadInFilteredResults = filteredThreads.some(
-      (thread) => thread.id === selectedThreadId
-    );
-
-    if (selectedThreadInFilteredResults) {
-      return filteredThreads;
-    }
-
-    return [selectedThreadFromAll, ...filteredThreads].sort(sortThreads);
-  }, [searchQuery, selectedThreadId, sortDirection, statusFilter, threads]);
+    return dedupeConversationsById(threads.filter(matchesConversationFilters)).sort(sortThreads);
+  }, [normalizedSearchQuery, selectedThreadId, sortDirection, statusFilter, statusPinnedThreadId, threads]);
 
   useEffect(() => {
     if (!selectedThreadId) {
@@ -454,8 +458,28 @@ function ConversationsPageContent() {
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
 
+  useEffect(() => {
+    if (!statusPinnedThreadId) return;
+    if (selectedThreadId !== statusPinnedThreadId) {
+      setStatusPinnedThreadId(null);
+    }
+  }, [selectedThreadId, statusPinnedThreadId]);
+
+  useEffect(() => {
+    if (!statusPinnedThreadId) return;
+    const pinnedThread = threads.find((thread) => thread.id === statusPinnedThreadId);
+    if (!pinnedThread) {
+      setStatusPinnedThreadId(null);
+      return;
+    }
+    if (pinnedThread.open === (statusFilter === "open")) {
+      setStatusPinnedThreadId(null);
+    }
+  }, [statusFilter, statusPinnedThreadId, threads]);
+
   const updateConversationOpenState = (threadId: string, open: boolean) => {
-    setThreads((prev) =>
+    setStatusPinnedThreadId(threadId);
+    updateThreads((prev) =>
       prev.map((thread) => (thread.id === threadId ? { ...thread, open } : thread))
     );
   };
@@ -463,7 +487,7 @@ function ConversationsPageContent() {
   const sendMessage = ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
     if (!selectedThread || !message.trim()) return;
 
-    setThreads((prev) =>
+    updateThreads((prev) =>
       prev.map((thread) =>
         thread.id === selectedThread.id
           ? {
@@ -497,7 +521,7 @@ function ConversationsPageContent() {
     const repair = repairs.find((item) => item.id === repairId);
     if (!repair) return;
 
-    setThreads((prev) =>
+    updateThreads((prev) =>
       prev.map((thread) =>
         thread.id === threadId
           ? {
@@ -536,7 +560,7 @@ function ConversationsPageContent() {
       return updated;
     });
 
-    setThreads((prev) =>
+    updateThreads((prev) =>
       prev.map((item) =>
         item.id === threadId
           ? {
@@ -556,7 +580,7 @@ function ConversationsPageContent() {
   const handleImageSelected = (file: File | null) => {
     if (!selectedThread || !file) return;
 
-    setThreads((prev) =>
+    updateThreads((prev) =>
       prev.map((thread) =>
         thread.id === selectedThread.id
           ? {
@@ -597,8 +621,8 @@ function ConversationsPageContent() {
     });
     setRepairs(result.repairs);
     writeStoredRepairs(result.repairs);
-    setThreads(result.conversations);
-  }, [repairs, threads]);
+    updateThreads(() => result.conversations);
+  }, [repairs, threads, updateThreads]);
 
   useEffect(() => {
     const tenantId = getLocalTenantId();
