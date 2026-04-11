@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Plus, MoreHorizontal, X, ChevronDown, ChevronUp, Pencil, Trash2, Link2 } from "lucide-react";
 import clsx from "clsx";
+import { ModalShell } from "@/components/ui/modal-shell";
 import Link from "next/link";
 
 import { defaultStoredTemplates, readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
@@ -855,28 +856,26 @@ function TemplateModal({
 
 function DeleteTemplateModal({ templateName, onCancel, onConfirm }: { templateName: string; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Delete template</h2>
-          <button type="button" onClick={onCancel} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close delete template dialog">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="mt-2 text-sm text-slate-600">
-          This template will be permanently deleted: <span className="font-semibold">{templateName}</span>.
-        </p>
-
-        <div className="mt-6 flex items-center justify-end gap-3">
+    <ModalShell
+      title="Delete template"
+      onClose={onCancel}
+      maxWidthClassName="max-w-md"
+      closeLabel="Close delete template dialog"
+      footer={
+        <>
           <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
             Cancel
           </button>
           <button type="button" onClick={onConfirm} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">
             Delete
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-600">
+        This template will be permanently deleted: <span className="font-semibold">{templateName}</span>.
+      </p>
+    </ModalShell>
   );
 }
 
