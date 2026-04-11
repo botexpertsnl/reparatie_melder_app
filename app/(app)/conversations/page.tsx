@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import {
@@ -34,6 +34,7 @@ import { createNormalizedInboundMessage } from "@/lib/integrations/providers/nor
 import { findMatchingWorkflowButtonAction } from "@/lib/workflows/button-reply-matcher";
 import { executeWorkflowButtonAction } from "@/lib/workflows/workflow-button-action-executor";
 import { LocalWorkflowActionRepository, getLocalTenantId } from "@/lib/workflows/workflow-action-repository";
+import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
@@ -586,49 +587,18 @@ function ConversationsPageContent() {
     });
   };
 
-  const updateRepairStage = (
-    repairId: string,
-    stageName: string,
-    options?: { sentTemplateMessage?: string }
-  ) => {
-    setRepairs((prev) => {
-      const updated = prev.map((repair) =>
-        repair.id === repairId
-          ? {
-            ...repair,
-            stage: stageName
-          }
-          : repair
-      );
-      writeStoredRepairs(updated);
-      return updated;
+  const updateRepairStage = useCallback((repairId: string, stageName: string, options?: RepairStageChangeOptions) => {
+    const result = applyRepairStageChange({
+      repairs,
+      conversations: threads,
+      repairId,
+      stageName,
+      options
     });
-
-    if (options?.sentTemplateMessage?.trim()) {
-      const templateMessageText = options.sentTemplateMessage.trim();
-      setThreads((prev) =>
-        prev.map((thread) => {
-          if (thread.linkedRepairId !== repairId) return thread;
-
-          return {
-            ...thread,
-            preview: templateMessageText,
-            updatedAt: "Now",
-            open: true,
-            messages: [
-              ...thread.messages,
-              {
-                id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                role: "agent",
-                text: templateMessageText,
-                at: "Now",
-              },
-            ],
-          };
-        })
-      );
-    }
-  };
+    setRepairs(result.repairs);
+    writeStoredRepairs(result.repairs);
+    setThreads(result.conversations);
+  }, [repairs, threads]);
 
   useEffect(() => {
     const tenantId = getLocalTenantId();
@@ -680,7 +650,7 @@ function ConversationsPageContent() {
         }
       }
     });
-  }, [repairs, threads, workflowStages]);
+  }, [repairs, threads, updateRepairStage, workflowStages]);
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
   const showMobileRepairDrawer = Boolean(selectedThread && linkedRepair);

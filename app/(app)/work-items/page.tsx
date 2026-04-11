@@ -8,6 +8,7 @@ import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
+import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
 
 type RepairItem = StoredRepair;
 const UNKNOWN_STAGE = "Unknown";
@@ -577,17 +578,17 @@ export default function WorkItemsPage() {
     setOpenRepairLinkMenu(false);
   };
 
-  const updateRepairStage = (repairId: string, stageName: string) => {
-    setRepairs((prev) =>
-      prev.map((repair) =>
-        repair.id === repairId
-          ? {
-              ...repair,
-              stage: stageName
-            }
-          : repair
-      )
-    );
+  const updateRepairStage = (repairId: string, stageName: string, options?: RepairStageChangeOptions) => {
+    const result = applyRepairStageChange({
+      repairs,
+      conversations,
+      repairId,
+      stageName,
+      options
+    });
+    setRepairs(result.repairs);
+    setConversations(result.conversations);
+    writeStoredConversations(result.conversations);
   };
 
   return (
@@ -790,7 +791,7 @@ export default function WorkItemsPage() {
               repair={selectedRepair}
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
-              onStageChange={(stageName) => updateRepairStage(selectedRepair.id, stageName)}
+              onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
               onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
