@@ -57,6 +57,24 @@ export const defaultStoredTemplates: StoredTemplate[] = [
       { id: "var_4", name: "Device name", mode: "repair_field", repairField: "assetName" }
     ],
     buttons: [{ id: "btn_1", type: "QUICK_REPLY", text: "Ik kom eraan" }]
+  },
+  {
+    id: "tpl_3",
+    name: "approval",
+    category: "UTILITY",
+    language: "nl",
+    body: "Beste {{1}}, uw reparatie kost {{2}}. U kunt akkoord geven via de onderstaande knoppen.",
+    spotlerId: "",
+    active: true,
+    variables: [
+      { id: "var_5", name: "Customer name", mode: "repair_field", repairField: "customerName" },
+      { id: "var_6", name: "Price", mode: "manual", manualValue: "", label: "price" }
+    ],
+    buttons: [
+      { id: "btn_2", type: "QUICK_REPLY", text: "Akkoord" },
+      { id: "btn_3", type: "QUICK_REPLY", text: "Niet akkoord" },
+      { id: "btn_4", type: "QUICK_REPLY", text: "Contactverzoek" }
+    ]
   }
 ];
 

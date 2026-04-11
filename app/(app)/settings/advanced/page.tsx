@@ -1106,7 +1106,7 @@ function AdvancedSettingsPageContent() {
               {stage.isStart ? <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">Start</span> : null}
               {stage.isTerminal ? <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-300">End</span> : null}
               {stage.isHidden ? <span className="rounded-md border border-slate-400/40 bg-slate-400/10 px-2 py-0.5 text-xs font-medium text-slate-400">Hidden</span> : null}
-              {stage.requiresApproval ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300"><Sparkles className="h-3 w-3" />Approval</span> : null}
+              {stage.requiresApproval ? <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-300"><Sparkles className="h-3 w-3" />Waiting for Approval</span> : null}
               {hasTemplateAutomation ? (
                 <>
                   <span className={automationLabelClassName}>
