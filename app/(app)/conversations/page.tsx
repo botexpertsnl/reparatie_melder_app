@@ -250,7 +250,6 @@ function ConversationsPageContent() {
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"open" | "closed">("open");
-  const [statusPinnedThreadId, setStatusPinnedThreadId] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"newest" | "oldest">("newest");
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const [listCollapsed, setListCollapsed] = useState(false);
@@ -424,61 +423,38 @@ function ConversationsPageContent() {
     const matchesStatusFilter = (thread: StoredConversation) =>
       thread.open === (statusFilter === "open");
 
-    const shouldKeepSelectedThreadVisible = (thread: StoredConversation) =>
-      Boolean(
-        selectedThreadId &&
-        statusPinnedThreadId &&
-        selectedThreadId === statusPinnedThreadId &&
-        thread.id === selectedThreadId &&
-        matchesSearchQuery(thread)
-      );
-
     const matchesConversationFilters = (thread: StoredConversation) => {
       if (!matchesSearchQuery(thread)) return false;
-      if (matchesStatusFilter(thread)) return true;
-      return shouldKeepSelectedThreadVisible(thread);
+      return matchesStatusFilter(thread);
     };
 
     return dedupeConversationsById(threads.filter(matchesConversationFilters)).sort(sortThreads);
-  }, [normalizedSearchQuery, selectedThreadId, sortDirection, statusFilter, statusPinnedThreadId, threads]);
+  }, [normalizedSearchQuery, sortDirection, statusFilter, threads]);
 
   useEffect(() => {
+    if (visibleThreads.length === 0) {
+      if (selectedThreadId) {
+        setSelectedThreadId("");
+      }
+      return;
+    }
+
     if (!selectedThreadId) {
       setSelectedThreadId(visibleThreads[0]?.id ?? "");
       return;
     }
 
-    if (threads.some((thread) => thread.id === selectedThreadId)) return;
+    if (visibleThreads.some((thread) => thread.id === selectedThreadId)) return;
 
     setSelectedThreadId(visibleThreads[0]?.id ?? "");
-  }, [selectedThreadId, threads, visibleThreads]);
+  }, [selectedThreadId, visibleThreads]);
 
   useEffect(() => {
     if (!messageWindowRef.current) return;
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
 
-  useEffect(() => {
-    if (!statusPinnedThreadId) return;
-    if (selectedThreadId !== statusPinnedThreadId) {
-      setStatusPinnedThreadId(null);
-    }
-  }, [selectedThreadId, statusPinnedThreadId]);
-
-  useEffect(() => {
-    if (!statusPinnedThreadId) return;
-    const pinnedThread = threads.find((thread) => thread.id === statusPinnedThreadId);
-    if (!pinnedThread) {
-      setStatusPinnedThreadId(null);
-      return;
-    }
-    if (pinnedThread.open === (statusFilter === "open")) {
-      setStatusPinnedThreadId(null);
-    }
-  }, [statusFilter, statusPinnedThreadId, threads]);
-
   const updateConversationOpenState = (threadId: string, open: boolean) => {
-    setStatusPinnedThreadId(threadId);
     updateThreads((prev) =>
       prev.map((thread) => (thread.id === threadId ? { ...thread, open } : thread))
     );
