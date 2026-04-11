@@ -433,25 +433,16 @@ function ConversationsPageContent() {
     setMessage("");
   };
 
-  const setConversationStatus = (open: boolean) => {
-    if (!selectedThread) return;
+  const handleConversationStatusButtonClick = () => {
+    if (!selectedThreadId) return;
 
     setThreads((prev) =>
       prev.map((thread) =>
-        thread.id === selectedThread.id ? { ...thread, open } : thread
+        thread.id === selectedThreadId
+          ? { ...thread, open: !thread.open }
+          : thread
       )
     );
-  };
-
-  const handleConversationStatusButtonClick = () => {
-    if (!selectedThread) return;
-
-    if (selectedThread.open) {
-      setConversationStatus(false);
-      return;
-    }
-
-    setConversationStatus(true);
   };
 
   const linkRepairToThread = (threadId: string, repairId: string) => {
