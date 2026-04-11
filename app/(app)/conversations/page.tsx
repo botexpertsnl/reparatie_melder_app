@@ -29,6 +29,11 @@ import {
 } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
+import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { createNormalizedInboundMessage } from "@/lib/integrations/providers/normalized-inbound-message";
+import { findMatchingWorkflowButtonAction } from "@/lib/workflows/button-reply-matcher";
+import { executeWorkflowButtonAction } from "@/lib/workflows/workflow-button-action-executor";
+import { LocalWorkflowActionRepository, getLocalTenantId } from "@/lib/workflows/workflow-action-repository";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
@@ -209,6 +214,9 @@ function ConversationsPageContent() {
   const [repairs, setRepairs] = useState<StoredRepair[]>(() =>
     readStoredRepairs(defaultRepairs)
   );
+  const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
+    readStoredWorkflowStages(defaultWorkflowStages)
+  );
   const [selectedThreadId, setSelectedThreadId] = useState<string>(
     () => {
       if (typeof window === "undefined") return readStoredConversations(defaultConversations)[0]?.id ?? "";
@@ -236,6 +244,7 @@ function ConversationsPageContent() {
     }
   });
   const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false);
+  const processedInboundIdsRef = useRef<Set<string>>(new Set());
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"open" | "closed">("open");
@@ -277,6 +286,17 @@ function ConversationsPageContent() {
         };
       })
     );
+  }, []);
+
+  useEffect(() => {
+    const refreshWorkflowStages = () => setWorkflowStages(readStoredWorkflowStages(defaultWorkflowStages));
+    refreshWorkflowStages();
+    window.addEventListener("workflow-stages:changed", refreshWorkflowStages);
+    window.addEventListener("storage", refreshWorkflowStages);
+    return () => {
+      window.removeEventListener("workflow-stages:changed", refreshWorkflowStages);
+      window.removeEventListener("storage", refreshWorkflowStages);
+    };
   }, []);
 
   useEffect(() => {
@@ -582,6 +602,58 @@ function ConversationsPageContent() {
       );
     }
   };
+
+  useEffect(() => {
+    const tenantId = getLocalTenantId();
+    const repository = new LocalWorkflowActionRepository(workflowStages);
+
+    threads.forEach((thread) => {
+      const lastMessage = thread.messages[thread.messages.length - 1];
+      if (!lastMessage || lastMessage.role !== "customer") return;
+      if (processedInboundIdsRef.current.has(lastMessage.id)) return;
+      processedInboundIdsRef.current.add(lastMessage.id);
+
+      const inbound = createNormalizedInboundMessage({
+        tenantId,
+        provider: "local",
+        conversationId: thread.id,
+        messageId: lastMessage.id,
+        messageText: lastMessage.text,
+        occurredAt: new Date().toISOString(),
+        rawPayload: { threadId: thread.id, messageId: lastMessage.id }
+      });
+
+      const preferredStageId = repairs.find((item) => item.id === thread.linkedRepairId)?.stage;
+      const preferredWorkflowStageId = workflowStages.find((item) => item.name === preferredStageId)?.id;
+      const result = findMatchingWorkflowButtonAction({
+        repository,
+        inboundMessage: inbound,
+        preferredWorkflowStageId
+      });
+
+      if (result.status !== "matched") {
+        if (result.status === "ambiguous") {
+          console.warn("[workflow-button-reply] Ambiguous button reply, skipping automatic execution.", {
+            tenantId,
+            normalizedText: inbound.messageTextNormalized,
+            candidateCount: result.candidates.length
+          });
+        }
+        return;
+      }
+
+      const linkedRepairId = thread.linkedRepairId;
+      if (!linkedRepairId) return;
+
+      const execution = executeWorkflowButtonAction(result.mapping);
+      if (execution.actionType === "MOVE_TO_STAGE" && execution.moveToStageId) {
+        const targetStage = workflowStages.find((item) => item.id === execution.moveToStageId);
+        if (targetStage) {
+          updateRepairStage(linkedRepairId, targetStage.name);
+        }
+      }
+    });
+  }, [repairs, threads, workflowStages]);
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
   const showMobileRepairDrawer = Boolean(selectedThread && linkedRepair);

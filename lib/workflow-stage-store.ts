@@ -1,3 +1,29 @@
+import { normalizeButtonReplyText } from "@/lib/workflows/button-reply-normalizer";
+
+export const DEFAULT_WORKFLOW_ID = "workflow_default";
+
+export type WorkflowButtonActionType = "SEND_QUICK_REPLY" | "MOVE_TO_STAGE";
+
+export type StoredWorkflowButtonActionMapping = {
+  id: string;
+  tenantId: string;
+  workflowId: string;
+  workflowStageId: string;
+  templateId: string;
+  templateButtonId: string;
+  templateButtonText: string;
+  templateButtonTextNormalized: string;
+  actionType: WorkflowButtonActionType;
+  actionConfig: {
+    quickReplyId?: string;
+    moveToStageId?: string;
+  };
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  templateName?: string;
+};
+
 export type StoredWorkflowStage = {
   id: string;
   name: string;
@@ -18,12 +44,21 @@ export type StoredWorkflowStage = {
 };
 
 export type StoredTemplateButtonAction = {
+  id?: string;
+  tenantId?: string;
+  workflowId?: string;
+  workflowStageId?: string;
+  templateId?: string;
   buttonId: string;
   buttonText?: string;
+  buttonTextNormalized?: string;
   sendQuickReplyEnabled?: boolean;
   quickReplyId?: string;
   moveToStageEnabled?: boolean;
   moveToStageId?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 const STORAGE_KEY = "statusflow.workflow-stages";
@@ -54,21 +89,42 @@ export const defaultWorkflowStages: StoredWorkflowStage[] = [
   { id: "stage_cancelled", name: "Cancelled", key: "cancelled", description: "Repair cancelled", color: "#ef4444", visibleToCustomer: true, isTerminal: true }
 ];
 
+function normalizeStageActions(stage: StoredWorkflowStage): StoredWorkflowStage {
+  const normalizedActions = (stage.templateButtonActions ?? []).map((action) => {
+    const buttonText = action.buttonText?.trim() ?? "";
+    const nowIso = new Date().toISOString();
+
+    return {
+      ...action,
+      buttonText,
+      buttonTextNormalized: action.buttonTextNormalized ?? normalizeButtonReplyText(buttonText),
+      isActive: action.isActive ?? true,
+      createdAt: action.createdAt ?? nowIso,
+      updatedAt: action.updatedAt ?? nowIso
+    };
+  });
+
+  return {
+    ...stage,
+    templateButtonActions: normalizedActions
+  };
+}
+
 export function readStoredWorkflowStages(fallback: StoredWorkflowStage[]): StoredWorkflowStage[] {
   if (typeof window === "undefined") {
-    return fallback;
+    return fallback.map(normalizeStageActions);
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
+    if (!raw) return fallback.map(normalizeStageActions);
 
     const parsed = JSON.parse(raw) as StoredWorkflowStage[];
-    if (!Array.isArray(parsed)) return fallback;
+    if (!Array.isArray(parsed)) return fallback.map(normalizeStageActions);
 
-    return parsed;
+    return parsed.map(normalizeStageActions);
   } catch {
-    return fallback;
+    return fallback.map(normalizeStageActions);
   }
 }
 
@@ -77,7 +133,7 @@ export function writeStoredWorkflowStages(stages: StoredWorkflowStage[]) {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stages));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stages.map(normalizeStageActions)));
   window.dispatchEvent(new Event("workflow-stages:changed"));
 }
 
