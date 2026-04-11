@@ -70,6 +70,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setIsMenuOpen(false);
       }
     };
+    const handleOpenMenu = () => {
+      setIsMenuOpen(true);
+    };
+    const handleCloseMenu = () => {
+      setIsMenuOpen(false);
+    };
 
     const desktopQuery = window.matchMedia("(min-width: 769px)");
     const closeOnDesktop = (event: MediaQueryListEvent) => {
@@ -79,10 +85,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("mobile-menu:open", handleOpenMenu);
+    window.addEventListener("mobile-menu:close", handleCloseMenu);
     desktopQuery.addEventListener("change", closeOnDesktop);
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mobile-menu:open", handleOpenMenu);
+      window.removeEventListener("mobile-menu:close", handleCloseMenu);
       desktopQuery.removeEventListener("change", closeOnDesktop);
     };
   }, []);
