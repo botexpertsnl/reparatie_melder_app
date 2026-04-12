@@ -32,6 +32,13 @@ type ApplyRepairStageChangeResult = {
   historyItems: StoredRepairHistoryItem[];
 };
 
+type CreateRepairHistoryEntryParams = {
+  historyItems?: StoredRepairHistoryItem[];
+  repairId: string;
+  initialStage: string;
+  actor?: RepairStageChangeActor;
+};
+
 function buildOutgoingTemplateMessage(text: string, scheduledSendAtIso?: string) {
   return {
     id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -58,6 +65,14 @@ function buildRepairHistoryItem(
     actorType: actor.type,
     actorName: actor.type === "user" ? actor.name?.trim() || "User" : undefined
   };
+}
+
+export function appendRepairCreatedHistoryEntry(params: CreateRepairHistoryEntryParams): StoredRepairHistoryItem[] {
+  const { historyItems = [], repairId, initialStage, actor } = params;
+  return [
+    ...historyItems,
+    buildRepairHistoryItem(repairId, "Created", initialStage, actor ?? { type: "user", name: "User" })
+  ];
 }
 
 export function applyRepairStageChange(params: ApplyRepairStageChangeParams): ApplyRepairStageChangeResult {

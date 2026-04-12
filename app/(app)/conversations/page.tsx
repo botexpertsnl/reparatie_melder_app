@@ -39,7 +39,11 @@ import { createNormalizedInboundMessage } from "@/lib/integrations/providers/nor
 import { findMatchingWorkflowButtonAction } from "@/lib/workflows/button-reply-matcher";
 import { executeWorkflowButtonAction } from "@/lib/workflows/workflow-button-action-executor";
 import { LocalWorkflowActionRepository, getLocalTenantId } from "@/lib/workflows/workflow-action-repository";
-import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
+import {
+  appendRepairCreatedHistoryEntry,
+  applyRepairStageChange,
+  type RepairStageChangeOptions
+} from "@/lib/repair-stage-change";
 import {
   readStoredRepairHistory,
   writeStoredRepairHistory,
@@ -641,6 +645,16 @@ function ConversationsPageContent() {
     setRepairs((prev) => {
       const updated = [newRepair, ...prev];
       writeStoredRepairs(updated);
+      return updated;
+    });
+    setRepairHistory((prev) => {
+      const updated = appendRepairCreatedHistoryEntry({
+        historyItems: prev,
+        repairId: newRepair.id,
+        initialStage: newRepair.stage,
+        actor: { type: "user", name: activeUsername }
+      });
+      writeStoredRepairHistory(updated);
       return updated;
     });
 

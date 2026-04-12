@@ -21,7 +21,11 @@ import {
   type StoredConversation
 } from "@/lib/conversation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
-import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
+import {
+  appendRepairCreatedHistoryEntry,
+  applyRepairStageChange,
+  type RepairStageChangeOptions
+} from "@/lib/repair-stage-change";
 import {
   readStoredRepairHistory,
   writeStoredRepairHistory,
@@ -769,6 +773,16 @@ function WorkItemsPageContent() {
       status: "Open" as const
     };
     setRepairs((prev) => [newRepair, ...prev]);
+    setRepairHistory((prev) => {
+      const updated = appendRepairCreatedHistoryEntry({
+        historyItems: prev,
+        repairId: newRepair.id,
+        initialStage: newRepair.stage,
+        actor: { type: "user", name: activeUsername }
+      });
+      writeStoredRepairHistory(updated);
+      return updated;
+    });
     setSelectedRepairId(newRepair.id);
     runStageTransitionFromSave(newRepair.id, newRepair.stage, payload.repairStage, newRepair, true);
     setIsAddRepairOpen(false);
