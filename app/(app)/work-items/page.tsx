@@ -936,65 +936,60 @@ function WorkItemsPageContent() {
                     )}
                     style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
                       <div className="min-w-0">
-                        <div className="truncate text-base font-semibold leading-tight text-white">
-                          {repair.title}
-                        </div>
-                        <div className="mt-1 truncate text-sm text-slate-500">
-                          {repair.assetName} · {repair.description}
-                        </div>
-                        <div className="mt-1 truncate text-xs text-slate-400 md:hidden">
+                        <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
+                        <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3 pl-1">
+                        <div className="w-24 truncate text-right text-xs font-medium text-white sm:w-36 sm:text-sm">
                           {repair.customerName}
                         </div>
-                      </div>
-                      <div className="relative shrink-0" data-action-menu="true">
-                        <button
-                          data-action-menu="true"
-                          className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setOpenMenuId((prev) => (prev === repair.id ? null : repair.id));
-                          }}
-                        >
-                          <MoreHorizontal className="h-5 w-5" />
-                        </button>
-                        {openMenuId === repair.id ? (
-                          <div
+                        <div className="relative flex items-center gap-2" data-action-menu="true">
+                          <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+                          <button
                             data-action-menu="true"
-                            className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
+                            className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setOpenMenuId((prev) => (prev === repair.id ? null : repair.id));
+                            }}
                           >
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setEditingRepairId(repair.id);
-                                setOpenMenuId(null);
-                              }}
+                            <MoreHorizontal className="h-5 w-5" />
+                          </button>
+                          {openMenuId === repair.id ? (
+                            <div
+                              data-action-menu="true"
+                              className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
                             >
-                              <Pencil className="h-4 w-4" />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setDeletingRepairId(repair.id);
-                                setOpenMenuId(null);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </button>
-                          </div>
-                        ) : null}
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setEditingRepairId(repair.id);
+                                  setOpenMenuId(null);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setDeletingRepairId(repair.id);
+                                  setOpenMenuId(null);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="hidden truncate text-sm font-medium text-white md:block">{repair.customerName}</div>
-                      <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
                     </div>
                   </button>
                 ))}
