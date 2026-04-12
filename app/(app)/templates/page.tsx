@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { defaultStoredTemplates, readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { validateButtonTextUniqueness } from "@/lib/templates/button-text-uniqueness";
 
 type TemplateVariable = {
   id: string;
@@ -324,11 +325,15 @@ function renderPreviewButtons(buttons: TemplateButton[]) {
 
 function TemplateModal({
   mode,
+  templateId,
+  templates,
   initialValues,
   onClose,
   onSubmit
 }: {
   mode: "create" | "edit";
+  templateId?: string;
+  templates: Template[];
   initialValues: TemplateFormValues;
   onClose: () => void;
   onSubmit: (values: TemplateFormValues) => void;
@@ -374,12 +379,11 @@ function TemplateModal({
   const hasMixedButtonTypes = hasQuickReplyButtons && hasCtaButtons;
   const buttonMode: "QUICK_REPLY" | "CTA" | null = hasQuickReplyButtons ? "QUICK_REPLY" : hasCtaButtons ? "CTA" : null;
 
-  const normalizedButtonLabels = values.buttons.map((button) => button.text.trim().toLowerCase());
-  const duplicateButtonIndexes = new Set(
-    normalizedButtonLabels
-      .map((label, index) => (label.length > 0 && normalizedButtonLabels.indexOf(label) !== index ? index : -1))
-      .filter((index) => index >= 0)
-  );
+  const { duplicateWithinTemplateIndexes, duplicateAcrossTemplatesIndexes } = validateButtonTextUniqueness({
+    buttons: values.buttons,
+    templates,
+    currentTemplateId: templateId
+  });
   const emptyButtonIndexes = new Set(values.buttons.map((button, index) => (button.text.trim().length === 0 ? index : -1)).filter((index) => index >= 0));
   const tooLongButtonIndexes = new Set(values.buttons.map((button, index) => (button.text.trim().length > 20 ? index : -1)).filter((index) => index >= 0));
   const ctaNeedsValueIndexes = new Set(
@@ -419,7 +423,8 @@ function TemplateModal({
 
   const hasButtonValidationError =
     hasMixedButtonTypes ||
-    duplicateButtonIndexes.size > 0 ||
+    duplicateWithinTemplateIndexes.size > 0 ||
+    duplicateAcrossTemplatesIndexes.size > 0 ||
     emptyButtonIndexes.size > 0 ||
     tooLongButtonIndexes.size > 0 ||
     ctaNeedsValueIndexes.size > 0 ||
@@ -809,7 +814,8 @@ function TemplateModal({
                         <div className="mt-1 text-xs text-slate-500">{button.text.trim().length}/20</div>
                         {emptyButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot be empty.</p> : null}
                         {tooLongButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot exceed 20 characters.</p> : null}
-                        {duplicateButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Duplicate button label is not allowed.</p> : null}
+                        {duplicateWithinTemplateIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">This button text is already used in this template.</p> : null}
+                        {duplicateAcrossTemplatesIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">This button text is already used in another template and must be unique across all templates.</p> : null}
                         {button.type === "URL" || button.type === "PHONE_NUMBER" ? (
                           <>
                             <input
@@ -949,6 +955,11 @@ export default function TemplatesPage() {
   const handleCreateTemplate = (values: TemplateFormValues) => {
     const normalizedButtons = sanitizeButtonsForSave(values.buttons);
     if (hasMixedButtonModes(normalizedButtons)) return;
+    const uniqueness = validateButtonTextUniqueness({
+      buttons: normalizedButtons,
+      templates
+    });
+    if (uniqueness.duplicateWithinTemplateIndexes.size > 0 || uniqueness.duplicateAcrossTemplatesIndexes.size > 0) return;
 
     const newTemplate: Template = {
       id: `tpl_${Date.now()}`,
@@ -966,6 +977,14 @@ export default function TemplatesPage() {
   };
 
   const handleEditTemplate = (templateId: string, values: TemplateFormValues) => {
+    const normalizedButtons = sanitizeButtonsForSave(values.buttons);
+    const uniqueness = validateButtonTextUniqueness({
+      buttons: normalizedButtons,
+      templates,
+      currentTemplateId: templateId
+    });
+    if (uniqueness.duplicateWithinTemplateIndexes.size > 0 || uniqueness.duplicateAcrossTemplatesIndexes.size > 0) return;
+
     setTemplates((prev) =>
       prev.map((template) => {
         if (template.id !== templateId) return template;
@@ -1106,12 +1125,20 @@ export default function TemplatesPage() {
       </div>
 
       {isCreateModalOpen ? (
-        <TemplateModal mode="create" initialValues={emptyTemplateForm} onClose={() => setIsCreateModalOpen(false)} onSubmit={handleCreateTemplate} />
+        <TemplateModal
+          mode="create"
+          templates={templates}
+          initialValues={emptyTemplateForm}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateTemplate}
+        />
       ) : null}
 
       {editingTemplate ? (
         <TemplateModal
           mode="edit"
+          templateId={editingTemplate.id}
+          templates={templates}
           initialValues={templateToFormValues(editingTemplate)}
           onClose={() => setEditingTemplateId(null)}
           onSubmit={(values) => handleEditTemplate(editingTemplate.id, values)}
