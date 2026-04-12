@@ -5,6 +5,7 @@ import { Link as LinkIcon, MessageSquare, Wrench, X } from "lucide-react";
 import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
+import { ModalShell } from "@/components/ui/modal-shell";
 
 type RepairDetailsPanelProps = {
   repair: StoredRepair;
@@ -240,19 +241,51 @@ export function RepairDetailsPanel({
       </aside>
 
       {templateConfirmation ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Confirm template send</h2>
+        <ModalShell
+          title="Confirm template send"
+          onClose={() => setTemplateConfirmation(null)}
+          maxWidthClassName="max-w-2xl"
+          closeLabel="Close template confirmation"
+          footer={(
+            <>
               <button
                 type="button"
                 onClick={() => setTemplateConfirmation(null)}
-                className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
-                aria-label="Close template confirmation"
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
-                <X className="h-5 w-5" />
+                Cancel
               </button>
-            </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onStageChange?.(templateConfirmation.stage.name);
+                  setTemplateConfirmation(null);
+                }}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Not Send
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (hasEmptyVariableValues) return;
+                  onStageChange?.(templateConfirmation.stage.name, {
+                    sentTemplateMessage: buildTemplateMessageWithButtons(
+                      templatePreview,
+                      templateButtons
+                    ),
+                    scheduledSendAtIso: buildScheduledSendAtIso(templateConfirmation.stage),
+                  });
+                  setTemplateConfirmation(null);
+                }}
+                disabled={hasEmptyVariableValues}
+                className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91] disabled:cursor-not-allowed disabled:bg-[#9fd8d2] disabled:text-white/90"
+              >
+                Send template
+              </button>
+            </>
+          )}
+        >
             <p className="text-sm text-slate-700">
               Moving to <span className="font-semibold">{templateConfirmation.stage.name}</span> will send template{" "}
               <span className="font-semibold">{templateConfirmation.template.name}</span>{" "}
@@ -312,46 +345,7 @@ export function RepairDetailsPanel({
                 ) : null}
               </div>
             </div>
-
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setTemplateConfirmation(null)}
-                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onStageChange?.(templateConfirmation.stage.name);
-                  setTemplateConfirmation(null);
-                }}
-                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Not Send
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (hasEmptyVariableValues) return;
-                  onStageChange?.(templateConfirmation.stage.name, {
-                    sentTemplateMessage: buildTemplateMessageWithButtons(
-                      templatePreview,
-                      templateButtons
-                    ),
-                    scheduledSendAtIso: buildScheduledSendAtIso(templateConfirmation.stage),
-                  });
-                  setTemplateConfirmation(null);
-                }}
-                disabled={hasEmptyVariableValues}
-                className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91] disabled:cursor-not-allowed disabled:bg-[#9fd8d2] disabled:text-white/90"
-              >
-                Send template
-              </button>
-            </div>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
     </>
   );

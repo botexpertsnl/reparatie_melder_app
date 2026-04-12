@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   RotateCcw,
 } from "lucide-react";
+import { ModalShell } from "@/components/ui/modal-shell";
 import {
   dedupeConversationsById,
   defaultConversations,
@@ -69,36 +70,47 @@ function LinkRepairModal({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="flex h-[calc(100dvh-1rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:h-auto sm:max-h-[90vh]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold">Link to {repairLabel}</h2>
-            <button
-              type="button"
-              onClick={onCreate}
-              className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20"
-            >
-              + New {repairLabel}
-            </button>
-          </div>
+    <ModalShell
+      title={(
+        <div className="flex items-center gap-3">
+          <span>Link to {repairLabel}</span>
           <button
-            onClick={onClose}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
             type="button"
-            aria-label="Close link repair dialog"
+            onClick={onCreate}
+            className="rounded-xl border border-[#2fb2a3]/40 bg-[#2fb2a3]/10 px-3 py-1 text-xs font-semibold text-[#1f8e82] hover:bg-[#2fb2a3]/20"
           >
-            <X className="h-5 w-5" />
+            + New {repairLabel}
           </button>
         </div>
-
-        <div className="subtle-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+      )}
+      onClose={onClose}
+      maxWidthClassName="max-w-xl"
+      closeLabel="Close link repair dialog"
+      closeOnBackdrop
+      footer={(
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => selectedRepairId && onSelect(selectedRepairId)}
+            className={clsx(
+              "rounded-xl px-5 py-2 text-sm font-semibold text-white",
+              selectedRepairId ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
+            )}
+            disabled={!selectedRepairId}
+          >
+            Link
+          </button>
+        </>
+      )}
+    >
+      <div className="space-y-4">
         <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
           <Search className="h-4 w-4 text-slate-500" />
           <input
@@ -134,29 +146,8 @@ function LinkRepairModal({
             </button>
           ))}
         </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 border-t border-[#e2e8f0] bg-[#f4f6fa] px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => selectedRepairId && onSelect(selectedRepairId)}
-            className={clsx(
-              "rounded-xl px-5 py-2 text-sm font-semibold text-white",
-              selectedRepairId ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
-            )}
-            disabled={!selectedRepairId}
-          >
-            Link
-          </button>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -170,39 +161,25 @@ function QuickReplyPickerModal({
   quickReplyOptions: string[];
 }) {
   return (
-    <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:h-auto sm:max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
-          <h2 className="text-2xl font-semibold">Quick replies</h2>
+    <ModalShell title="Quick replies" onClose={onClose} maxWidthClassName="max-w-xl" closeLabel="Close quick reply picker">
+      <div className="space-y-2">
+        {quickReplyOptions.map((item, index) => (
           <button
+            key={`${item}-${index}`}
             type="button"
-            onClick={onClose}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
-            aria-label="Close quick reply picker"
+            onClick={() => onSelect(item)}
+            className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            <X className="h-5 w-5" />
+            {item}
           </button>
-        </div>
-
-        <div className="subtle-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-5">
-          {quickReplyOptions.map((item, index) => (
-            <button
-              key={`${item}-${index}`}
-              type="button"
-              onClick={() => onSelect(item)}
-              className="w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              {item}
-            </button>
-          ))}
-          {quickReplyOptions.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-[#cdd5e2] bg-white px-3 py-4 text-sm text-slate-500">
-              No quick replies available.
-            </p>
-          ) : null}
-        </div>
+        ))}
+        {quickReplyOptions.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-[#cdd5e2] bg-white px-3 py-4 text-sm text-slate-500">
+            No quick replies available.
+          </p>
+        ) : null}
       </div>
-    </div>
+    </ModalShell>
   );
 }
 

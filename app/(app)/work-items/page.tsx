@@ -2,8 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, Search, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
 import clsx from "clsx";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import {
@@ -88,27 +89,36 @@ function LinkConversationModal({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="flex h-[calc(100dvh-1rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:h-auto sm:max-h-[90vh]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
-          <h2 className="text-2xl font-semibold">Link conversation</h2>
+    <ModalShell
+      title="Link conversation"
+      onClose={onClose}
+      maxWidthClassName="max-w-xl"
+      closeLabel="Close link conversation dialog"
+      closeOnBackdrop
+      footer={(
+        <>
           <button
-            onClick={onClose}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
             type="button"
-            aria-label="Close link conversation dialog"
+            onClick={onClose}
+            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
-            <X className="h-5 w-5" />
+            Cancel
           </button>
-        </div>
-
-        <div className="subtle-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+          <button
+            type="button"
+            onClick={() => selectedThreadId && onSelect(selectedThreadId)}
+            className={clsx(
+              "rounded-xl px-5 py-2 text-sm font-semibold text-white",
+              selectedThreadId ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
+            )}
+            disabled={!selectedThreadId}
+          >
+            Link
+          </button>
+        </>
+      )}
+    >
+      <div className="space-y-4">
           <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
             <Search className="h-4 w-4 text-slate-500" />
             <input
@@ -148,29 +158,8 @@ function LinkConversationModal({
               </div>
             ) : null}
           </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 border-t border-[#e2e8f0] bg-[#f4f6fa] px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => selectedThreadId && onSelect(selectedThreadId)}
-            className={clsx(
-              "rounded-xl px-5 py-2 text-sm font-semibold text-white",
-              selectedThreadId ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
-            )}
-            disabled={!selectedThreadId}
-          >
-            Link
-          </button>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -251,24 +240,37 @@ function AddRepairModal({
     formValues.description.trim();
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:h-auto sm:max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
-          <h2 className="text-2xl font-semibold">
-            {mode === "create" ? `New ${repairLabel}` : `Edit ${repairLabel}`}
-          </h2>
+    <ModalShell
+      title={mode === "create" ? `New ${repairLabel}` : `Edit ${repairLabel}`}
+      onClose={onClose}
+      maxWidthClassName="max-w-2xl"
+      closeLabel="Close repair dialog"
+      footer={(
+        <>
           <button
-            onClick={onClose}
-            className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
             type="button"
-            aria-label="Close repair dialog"
+            onClick={onClose}
+            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
-            <X className="h-5 w-5" />
+            Cancel
           </button>
-        </div>
-
-        <form
-          className="subtle-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5"
+          <button
+            type="submit"
+            form="repair-form"
+            className={clsx(
+              "rounded-xl px-5 py-2 text-sm font-semibold text-white",
+              canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
+            )}
+            disabled={!canSubmit}
+          >
+            {mode === "create" ? `Create ${repairLabel}` : `Save ${repairLabel}`}
+          </button>
+        </>
+      )}
+    >
+      <form
+          id="repair-form"
+          className="space-y-5"
           onSubmit={(event) => {
             event.preventDefault();
             if (!canSubmit) return;
@@ -354,28 +356,8 @@ function AddRepairModal({
             </select>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className={clsx(
-                "rounded-xl px-5 py-2 text-sm font-semibold text-white",
-                canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
-              )}
-              disabled={!canSubmit}
-            >
-              {mode === "create" ? `Create ${repairLabel}` : `Save ${repairLabel}`}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalShell>
   );
 }
 
@@ -1011,23 +993,13 @@ function WorkItemsPageContent() {
       ) : null}
 
       {deletingRepair ? (
-        <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Delete repair</h2>
-              <button
-                type="button"
-                onClick={() => setDeletingRepairId(null)}
-                className="rounded-md p-1 text-slate-500 hover:bg-slate-200"
-                aria-label="Close delete repair dialog"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="mt-2 text-sm text-slate-600">
-              Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
+        <ModalShell
+          title="Delete repair"
+          onClose={() => setDeletingRepairId(null)}
+          maxWidthClassName="max-w-md"
+          closeLabel="Close delete repair dialog"
+          footer={(
+            <>
               <button
                 type="button"
                 onClick={() => setDeletingRepairId(null)}
@@ -1046,9 +1018,13 @@ function WorkItemsPageContent() {
               >
                 Delete
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+        >
+          <p className="text-sm text-slate-600">
+            Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?
+          </p>
+        </ModalShell>
       ) : null}
 
       {isLinkConversationOpen && selectedRepair ? (
