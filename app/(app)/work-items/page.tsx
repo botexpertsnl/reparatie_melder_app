@@ -625,16 +625,19 @@ function WorkItemsPageContent() {
   };
 
   const updateRepairStage = (repairId: string, stageName: string, options?: RepairStageChangeOptions) => {
-    const result = applyRepairStageChange({
-      repairs,
-      conversations,
-      repairId,
-      stageName,
-      options
+    setSelectedRepairId(repairId);
+    setRepairs((prevRepairs) => {
+      const result = applyRepairStageChange({
+        repairs: prevRepairs,
+        conversations,
+        repairId,
+        stageName,
+        options
+      });
+      setConversations(result.conversations);
+      writeStoredConversations(result.conversations);
+      return result.repairs;
     });
-    setRepairs(result.repairs);
-    setConversations(result.conversations);
-    writeStoredConversations(result.conversations);
   };
 
   const handleRepairDrawerTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -752,55 +755,36 @@ function WorkItemsPageContent() {
               }`}
               style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
             >
-              <table className="w-full table-fixed">
-                <thead className="border-b border-[#253149] text-left text-sm text-slate-400">
-                  <tr>
-                    <th className="w-[66%] px-5 py-4 md:w-[42%]">Title</th>
-                    <th className="hidden w-[28%] px-5 py-4 md:table-cell">Customer</th>
-                    <th className="w-[28%] px-5 py-4 pr-3 md:w-[24%]">Stage</th>
-                    <th className="w-[6%] py-4 pl-2 pr-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRepairs.map((repair) => (
-                    <tr
-                      key={repair.id}
-                      onClick={() => setSelectedRepairId(repair.id)}
-                      className={`border-b border-[#253149] last:border-b-0 ${
-                        selectedRepairId === repair.id ? "bg-white/10" : ""
-                      }`}
-                    >
-                      <td className="px-5 py-4 align-middle">
-                        <button
-                          type="button"
-                          className="w-full min-w-0 text-left"
-                          onClick={() => setSelectedRepairId(repair.id)}
-                        >
-                          <div className="truncate text-base font-semibold leading-tight text-white transition-colors hover:text-[#25d3c4]">
-                            {repair.title}
-                          </div>
-                          <div className="mt-1 truncate text-sm text-slate-500">
-                            {repair.assetName} · {repair.description}
-                          </div>
-                          <div className="mt-1 truncate text-xs text-slate-400 md:hidden">
-                            {repair.customerName}
-                          </div>
-                        </button>
-                      </td>
-                      <td className="hidden truncate px-5 py-4 align-middle text-base font-medium text-white md:table-cell">
-                        {repair.customerName}
-                      </td>
-                      <td className="px-5 py-4 pr-3 align-middle">
-                        <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
-                      </td>
-                      <td
-                        className={`relative py-4 pl-2 align-middle text-right text-slate-400 ${
-                          selectedRepair ? "pr-6" : "pr-3"
-                        }`}
-                      >
+              <div className="space-y-1 p-3">
+                {filteredRepairs.map((repair) => (
+                  <button
+                    key={repair.id}
+                    type="button"
+                    onClick={() => setSelectedRepairId(repair.id)}
+                    className={clsx(
+                      "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
+                      selectedRepairId === repair.id
+                        ? "bg-[var(--surface-3)]"
+                        : "border-transparent hover:bg-white/5"
+                    )}
+                    style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-semibold leading-tight text-white">
+                          {repair.title}
+                        </div>
+                        <div className="mt-1 truncate text-sm text-slate-500">
+                          {repair.assetName} · {repair.description}
+                        </div>
+                        <div className="mt-1 truncate text-xs text-slate-400 md:hidden">
+                          {repair.customerName}
+                        </div>
+                      </div>
+                      <div className="relative shrink-0" data-action-menu="true">
                         <button
                           data-action-menu="true"
-                          className="rounded-md p-2 hover:bg-slate-800/70"
+                          className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
                           onClick={(event) => {
                             event.stopPropagation();
                             setOpenMenuId((prev) => (prev === repair.id ? null : repair.id));
@@ -811,14 +795,13 @@ function WorkItemsPageContent() {
                         {openMenuId === repair.id ? (
                           <div
                             data-action-menu="true"
-                            className={`absolute top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl ${
-                              selectedRepair ? "right-4" : "right-2"
-                            }`}
+                            className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
                           >
                             <button
                               type="button"
                               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                              onClick={() => {
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 setEditingRepairId(repair.id);
                                 setOpenMenuId(null);
                               }}
@@ -829,7 +812,8 @@ function WorkItemsPageContent() {
                             <button
                               type="button"
                               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
-                              onClick={() => {
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 setDeletingRepairId(repair.id);
                                 setOpenMenuId(null);
                               }}
@@ -839,18 +823,20 @@ function WorkItemsPageContent() {
                             </button>
                           </div>
                         ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredRepairs.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center text-sm text-slate-400">
-                        No {repairLabelPlural.toLowerCase()} found for the current search and filters.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="hidden truncate text-sm font-medium text-white md:block">{repair.customerName}</div>
+                      <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+                    </div>
+                  </button>
+                ))}
+                {filteredRepairs.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-10 text-center text-sm text-slate-400">
+                    No {repairLabelPlural.toLowerCase()} found for the current search and filters.
+                  </div>
+                ) : null}
+              </div>
             </div>
           </section>
         </div>
