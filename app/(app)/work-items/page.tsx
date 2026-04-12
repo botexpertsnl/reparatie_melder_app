@@ -936,13 +936,13 @@ function WorkItemsPageContent() {
                     )}
                     style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
                   >
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,15rem)] items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
                       <div className="min-w-0">
                         <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
                         <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
                       </div>
-                      <div className="flex shrink-0 items-center justify-end gap-3 pl-1 sm:pl-2">
-                        <div className="w-28 min-w-0 truncate text-left text-xs font-medium text-white sm:w-40 sm:text-sm">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 pl-1 sm:pl-2">
+                        <div className="min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:text-sm">
                           {repair.customerName}
                         </div>
                         <div className="relative flex items-center gap-2" data-action-menu="true">
