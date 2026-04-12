@@ -1,3 +1,11 @@
+export type StoredConversationMessage = {
+  id: string;
+  role: "customer" | "agent";
+  text: string;
+  at: string;
+  scheduledForIso?: string;
+};
+
 export type StoredConversation = {
   id: string;
   customerName: string;
@@ -6,7 +14,7 @@ export type StoredConversation = {
   updatedAt: string;
   open: boolean;
   linkedRepairId?: string;
-  messages: { id: string; role: "customer" | "agent"; text: string; at: string }[];
+  messages: StoredConversationMessage[];
 };
 
 const STORAGE_KEY = "statusflow.conversations";

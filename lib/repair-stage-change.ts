@@ -3,6 +3,7 @@ import type { StoredRepair } from "@/lib/repair-store";
 
 export type RepairStageChangeOptions = {
   sentTemplateMessage?: string;
+  scheduledSendAtIso?: string;
 };
 
 type ApplyRepairStageChangeParams = {
@@ -18,12 +19,13 @@ type ApplyRepairStageChangeResult = {
   conversations: StoredConversation[];
 };
 
-function buildOutgoingTemplateMessage(text: string) {
+function buildOutgoingTemplateMessage(text: string, scheduledSendAtIso?: string) {
   return {
     id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     role: "agent" as const,
     text,
-    at: "Now"
+    at: "Now",
+    scheduledForIso: scheduledSendAtIso
   };
 }
 
@@ -55,7 +57,7 @@ export function applyRepairStageChange(params: ApplyRepairStageChangeParams): Ap
       preview: normalizedTemplateText,
       updatedAt: "Now",
       open: true,
-      messages: [...thread.messages, buildOutgoingTemplateMessage(normalizedTemplateText)]
+      messages: [...thread.messages, buildOutgoingTemplateMessage(normalizedTemplateText, options?.scheduledSendAtIso)]
     };
   });
 

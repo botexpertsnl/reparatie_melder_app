@@ -17,7 +17,7 @@ type RepairDetailsPanelProps = {
   className?: string;
   onStageChange?: (
     stageName: string,
-    options?: { sentTemplateMessage?: string }
+    options?: { sentTemplateMessage?: string; scheduledSendAtIso?: string }
   ) => void;
 };
 
@@ -139,6 +139,16 @@ export function RepairDetailsPanel({
     return formattedButtons.length > 0
       ? `${body}\n\nButtons:\n${formattedButtons}`
       : body;
+  };
+
+  const buildScheduledSendAtIso = (stage: StoredWorkflowStage) => {
+    if (!stage.templateSendDelayEnabled) return undefined;
+    const delayHours = Math.max(0, stage.templateSendDelayHours ?? 0);
+    const delayMinutes = Math.max(0, stage.templateSendDelayMinutes ?? 0);
+    const totalDelayMinutes = delayHours * 60 + delayMinutes;
+    if (totalDelayMinutes <= 0) return undefined;
+
+    return new Date(Date.now() + totalDelayMinutes * 60 * 1000).toISOString();
   };
 
   return (
@@ -330,6 +340,7 @@ export function RepairDetailsPanel({
                       templatePreview,
                       templateButtons
                     ),
+                    scheduledSendAtIso: buildScheduledSendAtIso(templateConfirmation.stage),
                   });
                   setTemplateConfirmation(null);
                 }}
