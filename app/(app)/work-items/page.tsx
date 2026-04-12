@@ -427,6 +427,39 @@ function WorkItemsPageContent() {
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
+  const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
+  const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
+  const selectedRepair = useMemo(
+    () => repairs.find((repair) => repair.id === selectedRepairId) ?? null,
+    [repairs, selectedRepairId]
+  );
+  const selectedRepairConversation = useMemo(
+    () =>
+      selectedRepair ? conversations.find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null : null,
+    [conversations, selectedRepair]
+  );
+  const repairsInFilterScope = useMemo(
+    () => repairs.filter((repair) => matchesRepairSearch(repair, searchQuery)),
+    [repairs, searchQuery]
+  );
+  const stageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const repair of repairsInFilterScope) {
+      counts.set(repair.stage, (counts.get(repair.stage) ?? 0) + 1);
+    }
+    return counts;
+  }, [repairsInFilterScope]);
+  const filterStages = useMemo(() => {
+    const stageNamesFromRepairs = Array.from(stageCounts.entries())
+      .filter(([, count]) => count > 0)
+      .map(([stageName]) => stageName)
+      .filter((stageName) => !visibleWorkflowStages.some((stage) => stage.name === stageName));
+    const visibleConfiguredStages = visibleWorkflowStages
+      .map((stage) => stage.name)
+      .filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0);
+    return [...visibleConfiguredStages, ...stageNamesFromRepairs];
+  }, [stageCounts, visibleWorkflowStages]);
+
   useEffect(() => {
     writeStoredRepairs(repairs);
   }, [repairs]);
@@ -498,39 +531,6 @@ function WorkItemsPageContent() {
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, []);
-
-  const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
-  const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
-  const selectedRepair = useMemo(
-    () => repairs.find((repair) => repair.id === selectedRepairId) ?? null,
-    [repairs, selectedRepairId]
-  );
-  const selectedRepairConversation = useMemo(
-    () =>
-      selectedRepair ? conversations.find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null : null,
-    [conversations, selectedRepair]
-  );
-  const repairsInFilterScope = useMemo(
-    () => repairs.filter((repair) => matchesRepairSearch(repair, searchQuery)),
-    [repairs, searchQuery]
-  );
-  const stageCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const repair of repairsInFilterScope) {
-      counts.set(repair.stage, (counts.get(repair.stage) ?? 0) + 1);
-    }
-    return counts;
-  }, [repairsInFilterScope]);
-  const filterStages = useMemo(() => {
-    const stageNamesFromRepairs = Array.from(stageCounts.entries())
-      .filter(([, count]) => count > 0)
-      .map(([stageName]) => stageName)
-      .filter((stageName) => !visibleWorkflowStages.some((stage) => stage.name === stageName));
-    const visibleConfiguredStages = visibleWorkflowStages
-      .map((stage) => stage.name)
-      .filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0);
-    return [...visibleConfiguredStages, ...stageNamesFromRepairs];
-  }, [stageCounts, visibleWorkflowStages]);
 
   useEffect(() => {
     setSelectedStageFilters((prev) => prev.filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0));
