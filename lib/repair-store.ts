@@ -3,6 +3,8 @@ export type StoredRepair = {
   title: string;
   description: string;
   customerName: string;
+  customerFirstName?: string;
+  customerLastName?: string;
   customerPhone: string;
   assetName: string;
   stage: string;
@@ -18,6 +20,8 @@ export const defaultRepairs: StoredRepair[] = [
     title: "Cracked screen replacement",
     description: "Replace cracked front glass and run diagnostics",
     customerName: "Sophie de Jong",
+    customerFirstName: "Sophie",
+    customerLastName: "de Jong",
     customerPhone: "+31 612345604",
     assetName: "iPhone 14 Pro",
     stage: "In Progress",
@@ -29,6 +33,8 @@ export const defaultRepairs: StoredRepair[] = [
     title: "Battery swollen - urgent",
     description: "Battery replacement and safety test",
     customerName: "Ahmed El Karimi",
+    customerFirstName: "Ahmed",
+    customerLastName: "El Karimi",
     customerPhone: "+31 612333888",
     assetName: "Samsung Galaxy S23",
     stage: "New",
