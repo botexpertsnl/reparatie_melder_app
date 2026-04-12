@@ -21,6 +21,14 @@ import {
 } from "@/lib/conversation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
+import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
+import {
+  buildScheduledSendAtIso,
+  buildTemplateMessageWithButtons,
+  buildTemplateVariableDefaults,
+  fillTemplateBody,
+  resolveStageTemplateAutomation
+} from "@/lib/repair-stage-transition";
 
 type RepairItem = StoredRepair;
 const UNKNOWN_STAGE = "Unknown";
@@ -50,7 +58,6 @@ const FIRST_NAME_MAX_LENGTH = 25;
 const LAST_NAME_MAX_LENGTH = 25;
 const REPAIR_TITLE_MAX_LENGTH = 50;
 const ASSET_NAME_MAX_LENGTH = 50;
-const SUBTITLE_MAX_LENGTH = 70;
 
 function normalizePhoneInput(value: string) {
   const trimmed = value.trim();
@@ -340,13 +347,9 @@ function AddRepairModal({
   const isPhoneValid = isSupportedCountryPhoneValid(formValues.customerPhone);
   const showPhoneError = Boolean(normalizedPhone) && !isPhoneValid && (hasTriedSubmit || isPhoneFieldTouched);
   const canSubmit =
-    formValues.customerFirstName.trim() &&
-    formValues.customerLastName.trim() &&
     normalizedPhone &&
     isPhoneValid &&
-    formValues.assetName.trim() &&
-    formValues.repairTitle.trim() &&
-    formValues.description.trim();
+    formValues.repairTitle.trim();
 
   return (
     <ModalShell
@@ -393,7 +396,7 @@ function AddRepairModal({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="repair-customer-first-name" className="mb-2 block text-sm font-medium text-slate-700">
-                First name *
+                First name
               </label>
               <input
                 id="repair-customer-first-name"
@@ -411,7 +414,7 @@ function AddRepairModal({
             </div>
             <div>
               <label htmlFor="repair-customer-last-name" className="mb-2 block text-sm font-medium text-slate-700">
-                Last name *
+                Last name
               </label>
               <input
                 id="repair-customer-last-name"
@@ -450,7 +453,7 @@ function AddRepairModal({
           </div>
           <div>
             <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
-              Device / asset *
+              Device / asset
             </label>
             <input
               id="repair-asset"
@@ -480,17 +483,14 @@ function AddRepairModal({
           </div>
           <div>
             <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">
-              Description *
+              Description
             </label>
             <textarea
               id="repair-description"
-              maxLength={SUBTITLE_MAX_LENGTH}
               className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
               placeholder="Describe the issue and any diagnostics."
               value={formValues.description}
-              onChange={(event) =>
-                setFormValues((prev) => ({ ...prev, description: event.target.value.slice(0, SUBTITLE_MAX_LENGTH) }))
-              }
+              onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
             />
           </div>
 
@@ -560,9 +560,16 @@ function WorkItemsPageContent() {
   const [conversations, setConversations] = useState<StoredConversation[]>(() =>
     readStoredConversations(defaultConversations)
   );
+  const [templates, setTemplates] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultStoredTemplates));
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
   const [unlinkConfirmationRepairId, setUnlinkConfirmationRepairId] = useState<string | null>(null);
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
+  const [pendingTemplateStageChange, setPendingTemplateStageChange] = useState<{
+    repairId: string;
+    stage: StoredWorkflowStage;
+    template: StoredTemplate;
+    variableValues: string[];
+  } | null>(null);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
@@ -660,6 +667,17 @@ function WorkItemsPageContent() {
   }, []);
 
   useEffect(() => {
+    const refreshTemplates = () => setTemplates(readStoredTemplates(defaultStoredTemplates));
+    refreshTemplates();
+    window.addEventListener("templates:changed", refreshTemplates);
+    window.addEventListener("storage", refreshTemplates);
+    return () => {
+      window.removeEventListener("templates:changed", refreshTemplates);
+      window.removeEventListener("storage", refreshTemplates);
+    };
+  }, []);
+
+  useEffect(() => {
     const handle = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest("[data-action-menu='true']")) return;
@@ -709,14 +727,16 @@ function WorkItemsPageContent() {
   };
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
-    const customerName = `${payload.customerFirstName.trim()} ${payload.customerLastName.trim()}`.trim();
+    const customerFirstName = payload.customerFirstName.trim();
+    const customerLastName = payload.customerLastName.trim();
+    const customerName = `${customerFirstName} ${customerLastName}`.trim();
     const newRepair = {
       id: `repair_${Date.now()}`,
       title: payload.repairTitle,
       description: payload.description,
       customerName,
-      customerFirstName: payload.customerFirstName.trim(),
-      customerLastName: payload.customerLastName.trim(),
+      customerFirstName,
+      customerLastName,
       customerPhone: payload.customerPhone,
       assetName: payload.assetName,
       stage: payload.repairStage,
@@ -725,27 +745,39 @@ function WorkItemsPageContent() {
     };
     setRepairs((prev) => [newRepair, ...prev]);
     setSelectedRepairId(newRepair.id);
+    runStageTransitionFromSave(newRepair.id, newRepair.stage, payload.repairStage, newRepair, true);
     setIsAddRepairOpen(false);
   };
 
   const handleEditRepair = (repairId: string, payload: NewRepairFormValues) => {
+    const repairBeforeEdit = repairs.find((repair) => repair.id === repairId);
+    if (!repairBeforeEdit) return;
+
+    const customerFirstName = payload.customerFirstName.trim();
+    const customerLastName = payload.customerLastName.trim();
+    const customerName = `${customerFirstName} ${customerLastName}`.trim();
+    const repairSnapshot: RepairItem = {
+      ...repairBeforeEdit,
+      title: payload.repairTitle,
+      description: payload.description,
+      customerName,
+      customerFirstName,
+      customerLastName,
+      customerPhone: payload.customerPhone,
+      assetName: payload.assetName
+    };
+
     setRepairs((prev) =>
       prev.map((repair) =>
         repair.id === repairId
           ? {
-              ...repair,
-              title: payload.repairTitle,
-              description: payload.description,
-              customerName: `${payload.customerFirstName.trim()} ${payload.customerLastName.trim()}`.trim(),
-              customerFirstName: payload.customerFirstName.trim(),
-              customerLastName: payload.customerLastName.trim(),
-              customerPhone: payload.customerPhone,
-              assetName: payload.assetName,
-              stage: payload.repairStage
+              ...repairSnapshot,
+              stage: repair.stage
             }
           : repair
       )
     );
+    runStageTransitionFromSave(repairId, repairBeforeEdit.stage, payload.repairStage, repairSnapshot);
     setEditingRepairId(null);
   };
 
@@ -805,6 +837,29 @@ function WorkItemsPageContent() {
       writeStoredConversations(result.conversations);
       return result.repairs;
     });
+  };
+
+  const runStageTransitionFromSave = (
+    repairId: string,
+    previousStage: string,
+    nextStage: string,
+    repairSnapshot: RepairItem,
+    isNewAssignment = false
+  ) => {
+    if (!isNewAssignment && previousStage === nextStage) return;
+
+    const stageTemplateAutomation = resolveStageTemplateAutomation(nextStage, workflowStages, templates);
+    if (stageTemplateAutomation) {
+      setPendingTemplateStageChange({
+        repairId,
+        stage: stageTemplateAutomation.stage,
+        template: stageTemplateAutomation.template,
+        variableValues: buildTemplateVariableDefaults(stageTemplateAutomation.template, repairSnapshot)
+      });
+      return;
+    }
+
+    updateRepairStage(repairId, nextStage);
   };
 
   const handleRepairDrawerTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -1160,6 +1215,128 @@ function WorkItemsPageContent() {
           <p className="text-sm text-slate-600">
             Are you sure you want to unlink this conversation from the repair?
           </p>
+        </ModalShell>
+      ) : null}
+
+      {pendingTemplateStageChange ? (
+        <ModalShell
+          title="Confirm template send"
+          onClose={() => setPendingTemplateStageChange(null)}
+          maxWidthClassName="max-w-2xl"
+          closeLabel="Close template confirmation"
+          footer={(
+            <>
+              <button
+                type="button"
+                onClick={() => setPendingTemplateStageChange(null)}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateRepairStage(pendingTemplateStageChange.repairId, pendingTemplateStageChange.stage.name);
+                  setPendingTemplateStageChange(null);
+                }}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Not Send
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const templatePreview = fillTemplateBody(
+                    pendingTemplateStageChange.template,
+                    pendingTemplateStageChange.variableValues
+                  );
+                  const hasEmptyVariableValues = (pendingTemplateStageChange.template.variables ?? []).some(
+                    (_, index) => !(pendingTemplateStageChange.variableValues[index] ?? "").trim()
+                  );
+                  if (hasEmptyVariableValues) return;
+
+                  updateRepairStage(pendingTemplateStageChange.repairId, pendingTemplateStageChange.stage.name, {
+                    sentTemplateMessage: buildTemplateMessageWithButtons(
+                      templatePreview,
+                      pendingTemplateStageChange.template.buttons
+                    ),
+                    scheduledSendAtIso: buildScheduledSendAtIso(pendingTemplateStageChange.stage)
+                  });
+                  setPendingTemplateStageChange(null);
+                }}
+                disabled={(pendingTemplateStageChange.template.variables ?? []).some(
+                  (_, index) => !(pendingTemplateStageChange.variableValues[index] ?? "").trim()
+                )}
+                className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91] disabled:cursor-not-allowed disabled:bg-[#9fd8d2] disabled:text-white/90"
+              >
+                Send template
+              </button>
+            </>
+          )}
+        >
+          <p className="text-sm text-slate-700">
+            Moving to <span className="font-semibold">{pendingTemplateStageChange.stage.name}</span> will send template{" "}
+            <span className="font-semibold">{pendingTemplateStageChange.template.name}</span>{" "}
+            {pendingTemplateStageChange.stage.templateSendDelayEnabled
+              ? `after ${pendingTemplateStageChange.stage.templateSendDelayHours ?? 0} hour(s) and ${pendingTemplateStageChange.stage.templateSendDelayMinutes ?? 0} minute(s).`
+              : "immediately."}
+          </p>
+
+          {(pendingTemplateStageChange.template.variables ?? []).length > 0 ? (
+            <div className="mt-4 space-y-3">
+              <h3 className="text-base font-semibold text-slate-800">Variables</h3>
+              {(pendingTemplateStageChange.template.variables ?? []).map((variable, index) => (
+                <div key={variable.id} className="space-y-1">
+                  <label className="block text-sm font-medium text-slate-700">
+                    {variable.name || variable.label || variable.key || `Variable ${index + 1}`}
+                  </label>
+                  <input
+                    type="text"
+                    value={pendingTemplateStageChange.variableValues[index] ?? ""}
+                    onChange={(event) =>
+                      setPendingTemplateStageChange((prev) => {
+                        if (!prev) return prev;
+                        const nextValues = [...prev.variableValues];
+                        nextValues[index] = event.target.value;
+                        return { ...prev, variableValues: nextValues };
+                      })
+                    }
+                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]"
+                  />
+                </div>
+              ))}
+              {(pendingTemplateStageChange.template.variables ?? []).some(
+                (_, index) => !(pendingTemplateStageChange.variableValues[index] ?? "").trim()
+              ) ? (
+                <p className="text-sm font-medium text-amber-700">Fill in all variables before sending this template.</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Template preview</h3>
+            <div className="mt-2 rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+              <div className="text-sm leading-6 text-slate-700">
+                {fillTemplateBody(pendingTemplateStageChange.template, pendingTemplateStageChange.variableValues)}
+              </div>
+              {(pendingTemplateStageChange.template.buttons ?? []).length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-[#d7dce3] pt-3">
+                  {(pendingTemplateStageChange.template.buttons ?? []).map((button) => {
+                    const normalizedType = button.type.toUpperCase();
+                    const isQuickReply = normalizedType === "QUICK_REPLY";
+                    return (
+                      <span
+                        key={button.id}
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${isQuickReply ? "border-[#b8d8ff] bg-[#eef6ff] text-[#285b9b]" : "border-[#b8e8e2] bg-[#ecfbf8] text-[#16786b]"}`}
+                      >
+                        {button.text.trim() || "Button"}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </div>
         </ModalShell>
       ) : null}
     </>
