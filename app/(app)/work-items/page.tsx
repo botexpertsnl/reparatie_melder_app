@@ -27,7 +27,8 @@ const UNKNOWN_STAGE = "Unknown";
 const SELECTED_REPAIR_STORAGE_KEY = "statusflow.selected-repair-id";
 
 type NewRepairFormValues = {
-  customerName: string;
+  customerFirstName: string;
+  customerLastName: string;
   customerPhone: string;
   assetName: string;
   repairTitle: string;
@@ -36,13 +37,98 @@ type NewRepairFormValues = {
 };
 
 const initialFormValues: NewRepairFormValues = {
-  customerName: "",
+  customerFirstName: "",
+  customerLastName: "",
   customerPhone: "+31 ",
   assetName: "",
   repairTitle: "",
   description: "",
   repairStage: "New"
 };
+
+const FIRST_NAME_MAX_LENGTH = 25;
+const LAST_NAME_MAX_LENGTH = 25;
+const REPAIR_TITLE_MAX_LENGTH = 50;
+const ASSET_NAME_MAX_LENGTH = 50;
+const SUBTITLE_MAX_LENGTH = 70;
+
+function normalizePhoneInput(value: string) {
+  const trimmed = value.trim();
+  const normalizedSeparators = trimmed.replace(/[\s\-().]/g, "");
+  if (normalizedSeparators.startsWith("00")) return `+${normalizedSeparators.slice(2)}`;
+  return normalizedSeparators;
+}
+
+function toNationalNumber(normalizedPhone: string, countryCode: string) {
+  if (!normalizedPhone.startsWith(`+${countryCode}`)) return null;
+  return `0${normalizedPhone.slice(countryCode.length + 1)}`;
+}
+
+function isValidDutchPhone(nationalPhone: string) {
+  return /^0\d{9}$/.test(nationalPhone);
+}
+
+function isValidBelgianPhone(nationalPhone: string) {
+  return /^0\d{8,9}$/.test(nationalPhone);
+}
+
+function isValidGermanPhone(nationalPhone: string) {
+  return /^0\d{6,14}$/.test(nationalPhone);
+}
+
+function isValidUkPhone(nationalPhone: string) {
+  return /^0(?:7\d{9}|[123]\d{9,10})$/.test(nationalPhone);
+}
+
+function isSupportedCountryPhoneValid(value: string) {
+  const normalizedPhone = normalizePhoneInput(value);
+  if (!normalizedPhone) return false;
+  if (/^\+/.test(normalizedPhone)) {
+    const normalizedNl = toNationalNumber(normalizedPhone, "31");
+    if (normalizedNl) return isValidDutchPhone(normalizedNl);
+
+    const normalizedBe = toNationalNumber(normalizedPhone, "32");
+    if (normalizedBe) return isValidBelgianPhone(normalizedBe);
+
+    const normalizedDe = toNationalNumber(normalizedPhone, "49");
+    if (normalizedDe) return isValidGermanPhone(normalizedDe);
+
+    const normalizedUk = toNationalNumber(normalizedPhone, "44");
+    if (normalizedUk) return isValidUkPhone(normalizedUk);
+
+    return true;
+  }
+
+  if (!/^0\d+$/.test(normalizedPhone)) return true;
+
+  return (
+    isValidDutchPhone(normalizedPhone) ||
+    isValidBelgianPhone(normalizedPhone) ||
+    isValidGermanPhone(normalizedPhone) ||
+    isValidUkPhone(normalizedPhone)
+  );
+}
+
+function splitCustomerName(repair: RepairItem) {
+  const storedFirstName = repair.customerFirstName?.trim() ?? "";
+  const storedLastName = repair.customerLastName?.trim() ?? "";
+  if (storedFirstName || storedLastName) {
+    return {
+      customerFirstName: storedFirstName.slice(0, FIRST_NAME_MAX_LENGTH),
+      customerLastName: storedLastName.slice(0, LAST_NAME_MAX_LENGTH)
+    };
+  }
+
+  const fullName = repair.customerName.trim();
+  if (!fullName) {
+    return { customerFirstName: "", customerLastName: "" };
+  }
+  const [firstName, ...lastNameParts] = fullName.split(/\s+/);
+  return {
+    customerFirstName: (firstName ?? "").slice(0, FIRST_NAME_MAX_LENGTH),
+    customerLastName: lastNameParts.join(" ").slice(0, LAST_NAME_MAX_LENGTH)
+  };
+}
 
 function normalizeStageToken(value: string) {
   return value.trim().toLowerCase().replace(/[\s_-]+/g, "_");
@@ -244,13 +330,20 @@ function AddRepairModal({
   onSubmit: (payload: NewRepairFormValues) => void;
 }) {
   const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
+  const [isPhoneFieldTouched, setIsPhoneFieldTouched] = useState(false);
   const selectOptions = useMemo(
     () => (stageOptions.includes(formValues.repairStage) ? stageOptions : [...stageOptions, formValues.repairStage]),
     [formValues.repairStage, stageOptions]
   );
+  const normalizedPhone = normalizePhoneInput(formValues.customerPhone);
+  const isPhoneValid = isSupportedCountryPhoneValid(formValues.customerPhone);
+  const showPhoneError = Boolean(normalizedPhone) && !isPhoneValid && (hasTriedSubmit || isPhoneFieldTouched);
   const canSubmit =
-    formValues.customerName.trim() &&
-    formValues.customerPhone.trim() &&
+    formValues.customerFirstName.trim() &&
+    formValues.customerLastName.trim() &&
+    normalizedPhone &&
+    isPhoneValid &&
     formValues.assetName.trim() &&
     formValues.repairTitle.trim() &&
     formValues.description.trim();
@@ -289,21 +382,51 @@ function AddRepairModal({
           className="space-y-5"
           onSubmit={(event) => {
             event.preventDefault();
+            setHasTriedSubmit(true);
             if (!canSubmit) return;
-            onSubmit(formValues);
+            onSubmit({
+              ...formValues,
+              customerPhone: formValues.customerPhone.trim()
+            });
           }}
         >
-          <div>
-            <label htmlFor="repair-customer-name" className="mb-2 block text-sm font-medium text-slate-700">
-              Customer name *
-            </label>
-            <input
-              id="repair-customer-name"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
-              placeholder="e.g. John Doe"
-              value={formValues.customerName}
-              onChange={(event) => setFormValues((prev) => ({ ...prev, customerName: event.target.value }))}
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="repair-customer-first-name" className="mb-2 block text-sm font-medium text-slate-700">
+                First name *
+              </label>
+              <input
+                id="repair-customer-first-name"
+                maxLength={FIRST_NAME_MAX_LENGTH}
+                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                placeholder="e.g. John"
+                value={formValues.customerFirstName}
+                onChange={(event) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    customerFirstName: event.target.value.slice(0, FIRST_NAME_MAX_LENGTH)
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label htmlFor="repair-customer-last-name" className="mb-2 block text-sm font-medium text-slate-700">
+                Last name *
+              </label>
+              <input
+                id="repair-customer-last-name"
+                maxLength={LAST_NAME_MAX_LENGTH}
+                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                placeholder="e.g. Doe"
+                value={formValues.customerLastName}
+                onChange={(event) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    customerLastName: event.target.value.slice(0, LAST_NAME_MAX_LENGTH)
+                  }))
+                }
+              />
+            </div>
           </div>
           <div>
             <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">
@@ -311,11 +434,19 @@ function AddRepairModal({
             </label>
             <input
               id="repair-customer-phone"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              className={clsx(
+                "w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ring-0",
+                showPhoneError ? "border-red-400 focus:border-red-500" : "border-[#bfc9d8] focus:border-[#30b5a5]"
+              )}
               placeholder="+31 6 12345678"
               value={formValues.customerPhone}
               onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))}
+              onBlur={() => setIsPhoneFieldTouched(true)}
+              aria-invalid={showPhoneError}
             />
+            {showPhoneError ? (
+              <p className="mt-1 text-sm text-red-600">Please enter a valid phone number.</p>
+            ) : null}
           </div>
           <div>
             <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
@@ -323,10 +454,13 @@ function AddRepairModal({
             </label>
             <input
               id="repair-asset"
+              maxLength={ASSET_NAME_MAX_LENGTH}
               className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
               placeholder="e.g. iPhone 14 Pro"
               value={formValues.assetName}
-              onChange={(event) => setFormValues((prev) => ({ ...prev, assetName: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((prev) => ({ ...prev, assetName: event.target.value.slice(0, ASSET_NAME_MAX_LENGTH) }))
+              }
             />
           </div>
           <div>
@@ -335,10 +469,13 @@ function AddRepairModal({
             </label>
             <input
               id="repair-title"
+              maxLength={REPAIR_TITLE_MAX_LENGTH}
               className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
               placeholder="e.g. Screen replacement"
               value={formValues.repairTitle}
-              onChange={(event) => setFormValues((prev) => ({ ...prev, repairTitle: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((prev) => ({ ...prev, repairTitle: event.target.value.slice(0, REPAIR_TITLE_MAX_LENGTH) }))
+              }
             />
           </div>
           <div>
@@ -347,10 +484,13 @@ function AddRepairModal({
             </label>
             <textarea
               id="repair-description"
+              maxLength={SUBTITLE_MAX_LENGTH}
               className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
               placeholder="Describe the issue and any diagnostics."
               value={formValues.description}
-              onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
+              onChange={(event) =>
+                setFormValues((prev) => ({ ...prev, description: event.target.value.slice(0, SUBTITLE_MAX_LENGTH) }))
+              }
             />
           </div>
 
@@ -568,11 +708,14 @@ function WorkItemsPageContent() {
   };
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
+    const customerName = `${payload.customerFirstName.trim()} ${payload.customerLastName.trim()}`.trim();
     const newRepair = {
       id: `repair_${Date.now()}`,
       title: payload.repairTitle,
       description: payload.description,
-      customerName: payload.customerName,
+      customerName,
+      customerFirstName: payload.customerFirstName.trim(),
+      customerLastName: payload.customerLastName.trim(),
       customerPhone: payload.customerPhone,
       assetName: payload.assetName,
       stage: payload.repairStage,
@@ -592,7 +735,9 @@ function WorkItemsPageContent() {
               ...repair,
               title: payload.repairTitle,
               description: payload.description,
-              customerName: payload.customerName,
+              customerName: `${payload.customerFirstName.trim()} ${payload.customerLastName.trim()}`.trim(),
+              customerFirstName: payload.customerFirstName.trim(),
+              customerLastName: payload.customerLastName.trim(),
               customerPhone: payload.customerPhone,
               assetName: payload.assetName,
               stage: payload.repairStage
@@ -604,7 +749,7 @@ function WorkItemsPageContent() {
   };
 
   const toFormValues = (repair: RepairItem): NewRepairFormValues => ({
-    customerName: repair.customerName,
+    ...splitCustomerName(repair),
     customerPhone: repair.customerPhone,
     assetName: repair.assetName,
     repairTitle: repair.title,
