@@ -578,7 +578,8 @@ function WorkItemsPageContent() {
     variableValues: string[];
   } | null>(null);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const { data: session } = useSession();
+  const sessionState = useSession();
+  const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
 
   const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
