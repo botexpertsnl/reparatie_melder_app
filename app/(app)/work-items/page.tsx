@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -75,28 +75,44 @@ function resolveStageFilterFromQuery(
 
 function LinkConversationModal({
   conversations,
+  linkedConversation,
   onClose,
-  onSelect
+  onSelect,
+  onUnlink
 }: {
   conversations: StoredConversation[];
+  linkedConversation: StoredConversation | null;
   onClose: () => void;
   onSelect: (threadId: string) => void;
+  onUnlink?: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(linkedConversation?.id ?? null);
   const filtered = conversations.filter((thread) =>
     `${thread.customerName} ${thread.customerPhone} ${thread.preview}`.toLowerCase().includes(query.toLowerCase())
   );
 
+  useEffect(() => {
+    setSelectedThreadId(linkedConversation?.id ?? null);
+  }, [linkedConversation]);
+
   return (
     <ModalShell
-      title="Link conversation"
+      title={linkedConversation ? "Change linked conversation" : "Link conversation"}
       onClose={onClose}
       maxWidthClassName="max-w-xl"
       closeLabel="Close link conversation dialog"
-      closeOnBackdrop
       footer={(
         <>
+          {linkedConversation && onUnlink ? (
+            <button
+              type="button"
+              onClick={onUnlink}
+              className="mr-auto rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+            >
+              Unlink
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onClose}
@@ -113,7 +129,7 @@ function LinkConversationModal({
             )}
             disabled={!selectedThreadId}
           >
-            Link
+            {linkedConversation ? "Save" : "Link"}
           </button>
         </>
       )}
@@ -404,7 +420,6 @@ function WorkItemsPageContent() {
   const [conversations, setConversations] = useState<StoredConversation[]>(() =>
     readStoredConversations(defaultConversations)
   );
-  const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -506,9 +521,8 @@ function WorkItemsPageContent() {
   useEffect(() => {
     const handle = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-action-menu='true']") || target?.closest("[data-repair-link-menu='true']")) return;
+      if (target?.closest("[data-action-menu='true']")) return;
       setOpenMenuId(null);
-      setOpenRepairLinkMenu(false);
     };
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
@@ -611,7 +625,6 @@ function WorkItemsPageContent() {
     });
     setConversations(updated);
     writeStoredConversations(updated);
-    setOpenRepairLinkMenu(false);
     setIsLinkConversationOpen(false);
   };
 
@@ -621,7 +634,7 @@ function WorkItemsPageContent() {
     );
     setConversations(updated);
     writeStoredConversations(updated);
-    setOpenRepairLinkMenu(false);
+    setIsLinkConversationOpen(false);
   };
 
   const updateRepairStage = (repairId: string, stageName: string, options?: RepairStageChangeOptions) => {
@@ -851,7 +864,7 @@ function WorkItemsPageContent() {
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
-              onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
+              onLinkChange={() => setIsLinkConversationOpen(true)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
               linkedConversationHref={
@@ -859,34 +872,6 @@ function WorkItemsPageContent() {
               }
               className="h-full min-h-0 py-5 pl-6 pr-5"
             />
-            {openRepairLinkMenu ? (
-              <div
-                data-repair-link-menu="true"
-                className="absolute bottom-16 right-5 z-20 w-52 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
-              >
-                {selectedRepairConversation ? (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                    onClick={() => (selectedRepair ? unlinkConversationFromRepair(selectedRepair.id) : null)}
-                  >
-                    <Unlink2 className="h-4 w-4" />
-                    Unlink conversation
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                  onClick={() => {
-                    setIsLinkConversationOpen(true);
-                    setOpenRepairLinkMenu(false);
-                  }}
-                >
-                  <Link2 className="h-4 w-4" />
-                  {selectedRepairConversation ? "Link other conversation" : "Link conversation"}
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : null}
       </div>
@@ -916,7 +901,7 @@ function WorkItemsPageContent() {
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
-              onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
+              onLinkChange={() => setIsLinkConversationOpen(true)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
               linkedConversationHref={
@@ -924,34 +909,6 @@ function WorkItemsPageContent() {
               }
               className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
             />
-            {openRepairLinkMenu ? (
-              <div
-                data-repair-link-menu="true"
-                className="absolute bottom-16 right-4 z-20 w-52 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
-              >
-                {selectedRepairConversation ? (
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                    onClick={() => unlinkConversationFromRepair(selectedRepair.id)}
-                  >
-                    <Unlink2 className="h-4 w-4" />
-                    Unlink conversation
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                  onClick={() => {
-                    setIsLinkConversationOpen(true);
-                    setOpenRepairLinkMenu(false);
-                  }}
-                >
-                  <Link2 className="h-4 w-4" />
-                  {selectedRepairConversation ? "Link other conversation" : "Link conversation"}
-                </button>
-              </div>
-            ) : null}
           </div>
         </div>
       ) : null}
@@ -1016,8 +973,10 @@ function WorkItemsPageContent() {
       {isLinkConversationOpen && selectedRepair ? (
         <LinkConversationModal
           conversations={availableConversations}
+          linkedConversation={selectedRepairConversation}
           onClose={() => setIsLinkConversationOpen(false)}
           onSelect={(threadId) => linkConversationToRepair(threadId, selectedRepair.id)}
+          onUnlink={() => unlinkConversationFromRepair(selectedRepair.id)}
         />
       ) : null}
     </>
