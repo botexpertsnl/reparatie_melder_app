@@ -561,6 +561,7 @@ function WorkItemsPageContent() {
     readStoredConversations(defaultConversations)
   );
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
+  const [unlinkConfirmationRepairId, setUnlinkConfirmationRepairId] = useState<string | null>(null);
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -761,6 +762,13 @@ function WorkItemsPageContent() {
     () => conversations.filter((thread) => !thread.linkedRepairId || thread.linkedRepairId === selectedRepairId),
     [conversations, selectedRepairId]
   );
+  const unlinkConfirmationRepair = useMemo(
+    () =>
+      unlinkConfirmationRepairId
+        ? repairs.find((repair) => repair.id === unlinkConfirmationRepairId) ?? null
+        : null,
+    [repairs, unlinkConfirmationRepairId]
+  );
 
   const linkConversationToRepair = (threadId: string, repairId: string) => {
     const updated = conversations.map((thread) => {
@@ -780,6 +788,7 @@ function WorkItemsPageContent() {
     setConversations(updated);
     writeStoredConversations(updated);
     setIsLinkConversationOpen(false);
+    setUnlinkConfirmationRepairId(null);
   };
 
   const updateRepairStage = (repairId: string, stageName: string, options?: RepairStageChangeOptions) => {
@@ -1119,10 +1128,44 @@ function WorkItemsPageContent() {
         <LinkConversationModal
           conversations={availableConversations}
           linkedConversation={selectedRepairConversation}
-          onClose={() => setIsLinkConversationOpen(false)}
+          onClose={() => {
+            setIsLinkConversationOpen(false);
+            setUnlinkConfirmationRepairId(null);
+          }}
           onSelect={(threadId) => linkConversationToRepair(threadId, selectedRepair.id)}
-          onUnlink={() => unlinkConversationFromRepair(selectedRepair.id)}
+          onUnlink={() => setUnlinkConfirmationRepairId(selectedRepair.id)}
         />
+      ) : null}
+
+      {unlinkConfirmationRepair ? (
+        <ModalShell
+          title="Unlink conversation?"
+          onClose={() => setUnlinkConfirmationRepairId(null)}
+          maxWidthClassName="max-w-md"
+          closeLabel="Close unlink confirmation dialog"
+          footer={(
+            <>
+              <button
+                type="button"
+                onClick={() => setUnlinkConfirmationRepairId(null)}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => unlinkConversationFromRepair(unlinkConfirmationRepair.id)}
+                className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600"
+              >
+                Unlink
+              </button>
+            </>
+          )}
+        >
+          <p className="text-sm text-slate-600">
+            Are you sure you want to unlink this conversation from the repair?
+          </p>
+        </ModalShell>
       ) : null}
     </>
   );
