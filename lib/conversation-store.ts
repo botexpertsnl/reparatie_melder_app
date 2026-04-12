@@ -4,6 +4,7 @@ export type StoredConversationMessage = {
   text: string;
   at: string;
   scheduledForIso?: string;
+  scheduledStatus?: "scheduled" | "cancelled";
 };
 
 export type StoredConversation = {

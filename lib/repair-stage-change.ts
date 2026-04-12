@@ -25,7 +25,8 @@ function buildOutgoingTemplateMessage(text: string, scheduledSendAtIso?: string)
     role: "agent" as const,
     text,
     at: "Now",
-    scheduledForIso: scheduledSendAtIso
+    scheduledForIso: scheduledSendAtIso,
+    scheduledStatus: scheduledSendAtIso ? ("scheduled" as const) : undefined
   };
 }
 

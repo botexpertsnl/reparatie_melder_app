@@ -14,6 +14,7 @@ import {
   Camera,
   ArrowUpDown,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
@@ -46,6 +47,31 @@ const fallbackQuickReplies = [
   "Your repair is ready for pickup. Please visit us during opening hours."
 ];
 const SELECTED_THREAD_STORAGE_KEY = "statusflow.selected-thread-id";
+const TEMPLATE_BUTTONS_MARKER = "\n\nButtons:\n";
+
+function parseTemplateMessageContent(text: string) {
+  const markerIndex = text.indexOf(TEMPLATE_BUTTONS_MARKER);
+  if (markerIndex < 0) {
+    return {
+      body: text,
+      buttons: [] as string[]
+    };
+  }
+
+  const body = text.slice(0, markerIndex).trimEnd();
+  const buttons = text
+    .slice(markerIndex + TEMPLATE_BUTTONS_MARKER.length)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- "))
+    .map((line) => line.slice(2).trim())
+    .filter((line) => line.length > 0);
+
+  return {
+    body: body.length > 0 ? body : text,
+    buttons
+  };
+}
 
 function LinkRepairModal({
   repairs,
@@ -244,7 +270,7 @@ function ConversationsPageContent() {
   const repairDrawerTouchStartRef = useRef<TouchGesture | null>(null);
   const listTouchStartRef = useRef<TouchGesture | null>(null);
 
-  const formatScheduledTemplateLabel = useCallback((scheduledForIso?: string) => {
+  const formatScheduledTemplateLabel = useCallback((scheduledForIso?: string, cancelled = false) => {
     if (!scheduledForIso) return null;
     const scheduledDate = new Date(scheduledForIso);
     if (Number.isNaN(scheduledDate.getTime())) return null;
@@ -259,7 +285,7 @@ function ConversationsPageContent() {
       timeZoneName: "short"
     });
 
-    return `Scheduled send: ${formatter.format(scheduledDate)}`;
+    return `${cancelled ? "Cancelled sending" : "Scheduled send"}: ${formatter.format(scheduledDate)}`;
   }, []);
 
   const threadIdParam = searchParams.get("threadId");
@@ -317,6 +343,7 @@ function ConversationsPageContent() {
           let threadChanged = false;
           const nextMessages = thread.messages.map((message) => {
             if (!message.scheduledForIso) return message;
+            if (message.scheduledStatus === "cancelled") return message;
             const scheduledAtMs = new Date(message.scheduledForIso).getTime();
             if (Number.isNaN(scheduledAtMs) || scheduledAtMs > now) return message;
 
@@ -324,7 +351,8 @@ function ConversationsPageContent() {
             return {
               ...message,
               at: "Now",
-              scheduledForIso: undefined
+              scheduledForIso: undefined,
+              scheduledStatus: undefined
             };
           });
 
@@ -517,6 +545,28 @@ function ConversationsPageContent() {
     if (!selectedThread) return;
     updateConversationOpenState(selectedThread.id, !selectedThread.open);
   };
+
+  const cancelScheduledTemplateMessage = useCallback((threadId: string, messageId: string) => {
+    updateThreads((prev) =>
+      prev.map((thread) => {
+        if (thread.id !== threadId) return thread;
+
+        let didUpdate = false;
+        const messages = thread.messages.map((message) => {
+          if (message.id !== messageId || !message.scheduledForIso || message.scheduledStatus === "cancelled") {
+            return message;
+          }
+          didUpdate = true;
+          return {
+            ...message,
+            scheduledStatus: "cancelled"
+          };
+        });
+
+        return didUpdate ? { ...thread, messages } : thread;
+      })
+    );
+  }, [updateThreads]);
 
   const linkRepairToThread = (threadId: string, repairId: string) => {
     const repair = repairs.find((item) => item.id === repairId);
@@ -1029,33 +1079,72 @@ function ConversationsPageContent() {
                 ref={messageWindowRef}
                 className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto px-3 pb-4 pt-[76px] md:p-4"
               >
-                {selectedThread.messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${
-                      msg.role === "agent" ? "ml-auto" : ""
-                    }`}
-                    style={
-                      msg.role === "agent"
-                        ? {
-                            background: "var(--surface-3)",
-                            color: "var(--text-primary)",
-                          }
-                        : {
-                            background: "var(--surface-muted)",
-                            color: "var(--text-primary)",
-                          }
-                    }
-                  >
-                    {msg.text}
-                    {msg.scheduledForIso ? (
-                      <div className="mt-2 rounded-lg border border-[#2b6cb0]/40 bg-[#eaf4ff] px-2.5 py-1.5 text-xs font-medium text-[#1e4e8c]">
-                        {formatScheduledTemplateLabel(msg.scheduledForIso)}
-                      </div>
-                    ) : null}
-                    <div className="mt-1 text-right text-xs opacity-70">{msg.at}</div>
-                  </div>
-                ))}
+                {selectedThread.messages.map((msg) => {
+                  const parsedMessage = parseTemplateMessageContent(msg.text);
+                  const hasTemplateButtons = parsedMessage.buttons.length > 0;
+                  const isCancelledScheduledTemplate = msg.scheduledStatus === "cancelled";
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${
+                        msg.role === "agent" ? "ml-auto" : ""
+                      }`}
+                      style={
+                        msg.role === "agent"
+                          ? {
+                              background: "var(--surface-3)",
+                              color: "var(--text-primary)",
+                            }
+                          : {
+                              background: "var(--surface-muted)",
+                              color: "var(--text-primary)",
+                            }
+                      }
+                    >
+                      <div className="whitespace-pre-wrap">{parsedMessage.body}</div>
+                      {hasTemplateButtons ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {parsedMessage.buttons.map((buttonText, buttonIndex) => (
+                            <span
+                              key={`${msg.id}-template-button-${buttonText}-${buttonIndex}`}
+                              className="rounded-full border border-slate-300 bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700"
+                            >
+                              {buttonText}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {msg.scheduledForIso ? (
+                        <div
+                          className={clsx(
+                            "mt-2 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium",
+                            isCancelledScheduledTemplate
+                              ? "border-[#a43f2e]/35 bg-[#fff2ef] text-[#8f311f]"
+                              : "border-[#2b6cb0]/40 bg-[#eaf4ff] text-[#1e4e8c]"
+                          )}
+                        >
+                          {!isCancelledScheduledTemplate ? (
+                            <button
+                              type="button"
+                              onClick={() => cancelScheduledTemplateMessage(selectedThread.id, msg.id)}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded-md text-current transition hover:bg-black/10"
+                              aria-label="Cancel scheduled template send"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          ) : (
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-black/5">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </span>
+                          )}
+                          <span>{formatScheduledTemplateLabel(msg.scheduledForIso, isCancelledScheduledTemplate)}</span>
+                        </div>
+                      ) : null}
+                      <div className="mt-1 text-right text-xs opacity-70">{msg.at}</div>
+                    </div>
+                  );
+                })}
               </div>
 
               <div
