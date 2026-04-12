@@ -23,6 +23,7 @@ import {
   readStoredConversations,
   writeStoredConversations,
   type StoredConversation,
+  type StoredConversationMessage,
 } from "@/lib/conversation-store";
 import {
   defaultRepairs,
@@ -341,20 +342,22 @@ function ConversationsPageContent() {
       updateThreads((prev) =>
         prev.map((thread) => {
           let threadChanged = false;
-          const nextMessages = thread.messages.map((message) => {
-            if (!message.scheduledForIso) return message;
-            if (message.scheduledStatus === "cancelled") return message;
-            const scheduledAtMs = new Date(message.scheduledForIso).getTime();
-            if (Number.isNaN(scheduledAtMs) || scheduledAtMs > now) return message;
+          const nextMessages: StoredConversationMessage[] = thread.messages.map(
+            (message): StoredConversationMessage => {
+              if (!message.scheduledForIso) return message;
+              if (message.scheduledStatus === "cancelled") return message;
+              const scheduledAtMs = new Date(message.scheduledForIso).getTime();
+              if (Number.isNaN(scheduledAtMs) || scheduledAtMs > now) return message;
 
-            threadChanged = true;
-            return {
-              ...message,
-              at: "Now",
-              scheduledForIso: undefined,
-              scheduledStatus: undefined
-            };
-          });
+              threadChanged = true;
+              return {
+                ...message,
+                at: "Now",
+                scheduledForIso: undefined,
+                scheduledStatus: undefined
+              };
+            }
+          );
 
           return threadChanged ? { ...thread, messages: nextMessages } : thread;
         })
@@ -552,16 +555,19 @@ function ConversationsPageContent() {
         if (thread.id !== threadId) return thread;
 
         let didUpdate = false;
-        const messages = thread.messages.map((message) => {
-          if (message.id !== messageId || !message.scheduledForIso || message.scheduledStatus === "cancelled") {
-            return message;
+        const messages: StoredConversationMessage[] = thread.messages.map(
+          (message): StoredConversationMessage => {
+            if (message.id !== messageId || !message.scheduledForIso || message.scheduledStatus === "cancelled") {
+              return message;
+            }
+
+            didUpdate = true;
+            return {
+              ...message,
+              scheduledStatus: "cancelled" as const
+            };
           }
-          didUpdate = true;
-          return {
-            ...message,
-            scheduledStatus: "cancelled"
-          };
-        });
+        );
 
         return didUpdate ? { ...thread, messages } : thread;
       })
@@ -1015,13 +1021,13 @@ function ConversationsPageContent() {
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <div>
-                  <div className="font-semibold text-slate-200">
-                    {selectedThread.customerName || selectedThread.customerPhone}
+                    <div className="font-semibold text-slate-200">
+                      {selectedThread.customerName || selectedThread.customerPhone}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {selectedThread.customerPhone}
+                    </div>
                   </div>
-                  <div className="text-sm text-slate-500">
-                    {selectedThread.customerPhone}
-                  </div>
-                </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="md:hidden">
