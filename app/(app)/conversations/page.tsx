@@ -267,6 +267,24 @@ function ConversationsPageContent() {
   const repairDrawerTouchStartRef = useRef<TouchGesture | null>(null);
   const listTouchStartRef = useRef<TouchGesture | null>(null);
 
+  const formatScheduledTemplateLabel = useCallback((scheduledForIso?: string) => {
+    if (!scheduledForIso) return null;
+    const scheduledDate = new Date(scheduledForIso);
+    if (Number.isNaN(scheduledDate.getTime())) return null;
+
+    const formatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Amsterdam",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      day: "2-digit",
+      month: "short",
+      timeZoneName: "short"
+    });
+
+    return `Scheduled send: ${formatter.format(scheduledDate)}`;
+  }, []);
+
   const threadIdParam = searchParams.get("threadId");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -312,6 +330,36 @@ function ConversationsPageContent() {
   useEffect(() => {
     writeStoredConversations(threads);
   }, [threads]);
+
+  useEffect(() => {
+    const flushScheduledTemplates = () => {
+      const now = Date.now();
+
+      updateThreads((prev) =>
+        prev.map((thread) => {
+          let threadChanged = false;
+          const nextMessages = thread.messages.map((message) => {
+            if (!message.scheduledForIso) return message;
+            const scheduledAtMs = new Date(message.scheduledForIso).getTime();
+            if (Number.isNaN(scheduledAtMs) || scheduledAtMs > now) return message;
+
+            threadChanged = true;
+            return {
+              ...message,
+              at: "Now",
+              scheduledForIso: undefined
+            };
+          });
+
+          return threadChanged ? { ...thread, messages: nextMessages } : thread;
+        })
+      );
+    };
+
+    flushScheduledTemplates();
+    const intervalId = window.setInterval(flushScheduledTemplates, 30_000);
+    return () => window.clearInterval(intervalId);
+  }, [updateThreads]);
 
   useEffect(() => {
     if (!threadIdParam) return;
@@ -1023,6 +1071,11 @@ function ConversationsPageContent() {
                     }
                   >
                     {msg.text}
+                    {msg.scheduledForIso ? (
+                      <div className="mt-2 rounded-lg border border-[#2b6cb0]/40 bg-[#eaf4ff] px-2.5 py-1.5 text-xs font-medium text-[#1e4e8c]">
+                        {formatScheduledTemplateLabel(msg.scheduledForIso)}
+                      </div>
+                    ) : null}
                     <div className="mt-1 text-right text-xs opacity-70">{msg.at}</div>
                   </div>
                 ))}
