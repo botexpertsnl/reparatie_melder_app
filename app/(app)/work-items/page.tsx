@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
 import clsx from "clsx";
@@ -424,6 +424,8 @@ function WorkItemsPageContent() {
   );
   const [openRepairLinkMenu, setOpenRepairLinkMenu] = useState(false);
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
+  const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
+  const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     writeStoredRepairs(repairs);
@@ -470,6 +472,10 @@ function WorkItemsPageContent() {
       setSelectedRepairId(null);
     }
   }, [repairs, selectedRepairId]);
+
+  useEffect(() => {
+    setIsMobileRepairDrawerOpen(Boolean(selectedRepair));
+  }, [selectedRepair]);
 
   useEffect(() => {
     const refreshConversations = () => setConversations(readStoredConversations(defaultConversations));
@@ -649,11 +655,37 @@ function WorkItemsPageContent() {
     writeStoredConversations(result.conversations);
   };
 
+  const handleRepairDrawerTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const firstTouch = event.touches[0];
+    if (!firstTouch) return;
+    repairDrawerTouchStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
+  };
+
+  const handleRepairDrawerTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const touchStart = repairDrawerTouchStartRef.current;
+    repairDrawerTouchStartRef.current = null;
+    if (!touchStart || !isMobileRepairDrawerOpen) return;
+
+    const firstChangedTouch = event.changedTouches[0];
+    if (!firstChangedTouch) return;
+
+    const deltaX = firstChangedTouch.clientX - touchStart.x;
+    const deltaY = firstChangedTouch.clientY - touchStart.y;
+    const minHorizontalSwipe = 70;
+    const maxVerticalMovement = 50;
+
+    if (Math.abs(deltaX) < minHorizontalSwipe || Math.abs(deltaY) > maxVerticalMovement || deltaX < 0) {
+      return;
+    }
+
+    setSelectedRepairId(null);
+  };
+
   return (
     <>
       <div
         className={`-mx-5 -my-6 grid h-[calc(100dvh-69px)] transition-[grid-template-columns] duration-300 md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] ${
-          selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
+          selectedRepair ? "grid-cols-[1fr] md:grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
         }`}
         style={{ background: "var(--bg)" }}
       >
@@ -734,7 +766,7 @@ function WorkItemsPageContent() {
           <section className="min-h-0 flex-1 overflow-hidden">
             <div
               className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${
-                selectedRepair ? "border-r-0" : ""
+                selectedRepair ? "md:border-r-0" : ""
               }`}
               style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
             >
@@ -840,7 +872,7 @@ function WorkItemsPageContent() {
 
         {selectedRepair ? (
           <div
-            className="relative h-full min-h-0 overflow-hidden border-l"
+            className="relative hidden h-full min-h-0 overflow-hidden border-l md:block"
             style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
           >
             <RepairDetailsPanel
@@ -887,6 +919,71 @@ function WorkItemsPageContent() {
           </div>
         ) : null}
       </div>
+
+      {selectedRepair ? (
+        <div
+          className={`fixed inset-0 z-40 bg-[#02050d]/55 transition-opacity duration-300 md:hidden ${
+            isMobileRepairDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={() => setSelectedRepairId(null)}
+          aria-hidden="true"
+        >
+          <div
+            className={`absolute inset-y-0 right-0 w-[calc(100%-3.25rem)] max-w-[28rem] min-w-[18rem] transform border-l shadow-[-16px_0_36px_rgba(0,0,0,0.36)] transition-transform duration-300 ease-out ${
+              isMobileRepairDrawerOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+            style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+            onClick={(event) => event.stopPropagation()}
+            onTouchStart={handleRepairDrawerTouchStart}
+            onTouchEnd={handleRepairDrawerTouchEnd}
+          >
+            <div className="pointer-events-none absolute inset-y-0 -left-3 flex items-center">
+              <span className="h-12 w-1 rounded-full bg-white/30" aria-hidden="true" />
+            </div>
+            <RepairDetailsPanel
+              repair={selectedRepair}
+              itemLabel={repairLabel}
+              onClose={() => setSelectedRepairId(null)}
+              onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
+              onLinkChange={() => setOpenRepairLinkMenu((prev) => !prev)}
+              onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
+              isLinkActive={Boolean(selectedRepairConversation)}
+              linkedConversationHref={
+                selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined
+              }
+              className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
+            />
+            {openRepairLinkMenu ? (
+              <div
+                data-repair-link-menu="true"
+                className="absolute bottom-16 right-4 z-20 w-52 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
+              >
+                {selectedRepairConversation ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                    onClick={() => unlinkConversationFromRepair(selectedRepair.id)}
+                  >
+                    <Unlink2 className="h-4 w-4" />
+                    Unlink conversation
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                  onClick={() => {
+                    setIsLinkConversationOpen(true);
+                    setOpenRepairLinkMenu(false);
+                  }}
+                >
+                  <Link2 className="h-4 w-4" />
+                  {selectedRepairConversation ? "Link other conversation" : "Link conversation"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {isAddRepairOpen ? (
         <AddRepairModal
