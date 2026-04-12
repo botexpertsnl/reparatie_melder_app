@@ -273,7 +273,8 @@ function ConversationsPageContent() {
     open: false,
     threadId: null,
   });
-  const { data: session } = useSession();
+  const sessionState = useSession();
+  const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
