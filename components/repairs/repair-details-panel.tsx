@@ -6,6 +6,13 @@ import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { ModalShell } from "@/components/ui/modal-shell";
+import {
+  buildScheduledSendAtIso,
+  buildTemplateMessageWithButtons,
+  buildTemplateVariableDefaults,
+  fillTemplateBody,
+  resolveStageTemplateAutomation
+} from "@/lib/repair-stage-transition";
 
 type RepairDetailsPanelProps = {
   repair: StoredRepair;
@@ -77,43 +84,17 @@ export function RepairDetailsPanel({
     [repair.stage, visibleWorkflowStages]
   );
 
-  const resolveRepairField = (field?: string) => {
-    if (field === "customerName") return repair.customerName;
-    if (field === "customerPhone") return repair.customerPhone;
-    if (field === "assetName") return repair.assetName;
-    if (field === "title") return repair.title;
-    if (field === "description") return repair.description;
-    if (field === "stage") return repair.stage;
-    if (field === "priority") return repair.priority;
-    return "";
-  };
-
-  const buildVariableDefaults = (template: StoredTemplate) =>
-    (template.variables ?? []).map((variable) =>
-      variable.mode === "repair_field"
-        ? resolveRepairField(variable.repairField)
-        : variable.manualValue ?? ""
-    );
-
-  const fillTemplateBody = (template: StoredTemplate, variableValues: string[]) =>
-    template.body.replace(/\{\{\s*(\d+)\s*\}\}/g, (match, rawIndex) => {
-      const value = variableValues[Number(rawIndex) - 1];
-      return value && value.trim().length > 0 ? value : match;
-    });
-
   const handleStageSelect = (stage: StoredWorkflowStage) => {
     if (!onStageChange || stage.name === repair.stage) return;
 
-    if (stage.templateAutomationEnabled && stage.templateId) {
-      const template = templates.find((item) => item.id === stage.templateId);
-      if (template) {
-        setTemplateConfirmation({
-          stage,
-          template,
-          variableValues: buildVariableDefaults(template)
-        });
-        return;
-      }
+    const stageTemplateAutomation = resolveStageTemplateAutomation(stage.name, workflowStages, templates);
+    if (stageTemplateAutomation) {
+      setTemplateConfirmation({
+        stage: stageTemplateAutomation.stage,
+        template: stageTemplateAutomation.template,
+        variableValues: buildTemplateVariableDefaults(stageTemplateAutomation.template, repair)
+      });
+      return;
     }
 
     onStageChange(stage.name);
@@ -126,32 +107,6 @@ export function RepairDetailsPanel({
   const hasEmptyVariableValues = templateConfirmation
     ? (templateConfirmation.template.variables ?? []).some((_, index) => !(templateConfirmation.variableValues[index] ?? "").trim())
     : false;
-  const buildTemplateMessageWithButtons = (
-    body: string,
-    buttons: StoredTemplate["buttons"] = []
-  ) => {
-    const formattedButtons = (buttons ?? [])
-      .map((button, index) => {
-        const text = button.text.trim() || `Button ${index + 1}`;
-        return `• ${text}`;
-      })
-      .join("\n");
-
-    return formattedButtons.length > 0
-      ? `${body}\n\nButtons:\n${formattedButtons}`
-      : body;
-  };
-
-  const buildScheduledSendAtIso = (stage: StoredWorkflowStage) => {
-    if (!stage.templateSendDelayEnabled) return undefined;
-    const delayHours = Math.max(0, stage.templateSendDelayHours ?? 0);
-    const delayMinutes = Math.max(0, stage.templateSendDelayMinutes ?? 0);
-    const totalDelayMinutes = delayHours * 60 + delayMinutes;
-    if (totalDelayMinutes <= 0) return undefined;
-
-    return new Date(Date.now() + totalDelayMinutes * 60 * 1000).toISOString();
-  };
-
   return (
     <>
       <aside
