@@ -1,9 +1,10 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, X, MoreHorizontal, Link2, EyeOff } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, ChevronUp, ChevronDown, Sparkles, MoreHorizontal, Link2, EyeOff } from "lucide-react";
 import clsx from "clsx";
 import { useSearchParams } from "next/navigation";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import { defaultWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredTemplateButtonAction, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { normalizeButtonReplyText } from "@/lib/workflows/button-reply-normalizer";
@@ -389,18 +390,28 @@ function StageModal({
   }, [buttonTextConflicts.length, duplicateTemplateStageName, values]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#02050d]/80 px-4 py-6 backdrop-blur-sm sm:items-center sm:py-8">
-      <div className="subtle-scrollbar relative max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[calc(100vh-4rem)]">
-        <button type="button" onClick={onClose} className="absolute right-4 top-4 rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close stage dialog">
-          <X className="h-5 w-5" />
-        </button>
-
-        <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-2xl font-semibold">{title}</h2>
-        </div>
-
-        <form
-          className="space-y-5 px-6 pb-6"
+    <ModalShell
+      title={title}
+      onClose={onClose}
+      maxWidthClassName="max-w-2xl"
+      closeLabel="Close stage dialog"
+      footer={(
+        <>
+          <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
+          <button
+            type="submit"
+            form="stage-form"
+            className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")}
+            disabled={!canSubmit}
+          >
+            {confirmLabel}
+          </button>
+        </>
+      )}
+    >
+      <form
+          id="stage-form"
+          className="space-y-5"
           onSubmit={(event) => {
             event.preventDefault();
             if (!canSubmit) return;
@@ -791,63 +802,48 @@ function StageModal({
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-1">
-            <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
-            <button
-              type="submit"
-              className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")}
-              disabled={!canSubmit}
-            >
-              {confirmLabel}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalShell>
   );
 }
 
 function DeleteStageModal({ stageName, onCancel, onConfirm }: { stageName: string; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Delete stage</h2>
-          <button type="button" onClick={onCancel} className="rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close delete stage dialog">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="mt-2 text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{stageName}</span>? This action cannot be undone.</p>
-
-        <div className="mt-6 flex items-center justify-end gap-3">
+    <ModalShell
+      title="Delete stage"
+      onClose={onCancel}
+      maxWidthClassName="max-w-md"
+      closeLabel="Close delete stage dialog"
+      footer={(
+        <>
           <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">No</button>
           <button type="button" onClick={onConfirm} className="rounded-xl bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-600">Yes, delete</button>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    >
+      <p className="text-sm text-slate-600">Are you sure you want to delete <span className="font-semibold">{stageName}</span>? This action cannot be undone.</p>
+    </ModalShell>
   );
 }
 
 function HiddenStageModal({ stageName, onCancel, onConfirm }: { stageName: string; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#02050d]/80 px-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-md rounded-2xl border border-[#d7dce3] bg-[#f4f6fa] p-6 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-        <button type="button" onClick={onCancel} className="absolute right-4 top-4 rounded-md p-1 text-slate-500 hover:bg-slate-200" aria-label="Close hidden stage dialog">
-          <X className="h-5 w-5" />
-        </button>
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Hidden stage</h2>
-        </div>
-        <p className="mt-2 text-sm text-slate-600">
-          <span className="font-semibold">{stageName}</span> is currently hidden. Do you want to make this workflow stage visible again?
-        </p>
-
-        <div className="mt-6 flex items-center justify-end gap-3">
+    <ModalShell
+      title="Hidden stage"
+      onClose={onCancel}
+      maxWidthClassName="max-w-md"
+      closeLabel="Close hidden stage dialog"
+      footer={(
+        <>
           <button type="button" onClick={onCancel} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">No</button>
           <button type="button" onClick={onConfirm} className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91]">Yes, make visible</button>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    >
+      <p className="text-sm text-slate-600">
+        <span className="font-semibold">{stageName}</span> is currently hidden. Do you want to make this workflow stage visible again?
+      </p>
+    </ModalShell>
   );
 }
 
