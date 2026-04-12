@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, MoreHorizontal, X, Pencil, Trash2, Link2, Unlink2 } from "lucide-react";
 import clsx from "clsx";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
-import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
-import { defaultConversations, readStoredConversations, writeStoredConversations, type StoredConversation } from "@/lib/conversation-store";
+import {
+  defaultWorkflowStages,
+  filterVisibleWorkflowStages,
+  readStoredWorkflowStages,
+  type StoredWorkflowStage
+} from "@/lib/workflow-stage-store";
+import {
+  defaultConversations,
+  readStoredConversations,
+  writeStoredConversations,
+  type StoredConversation
+} from "@/lib/conversation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
 
@@ -99,45 +109,45 @@ function LinkConversationModal({
         </div>
 
         <div className="subtle-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
-        <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
-          <Search className="h-4 w-4 text-slate-500" />
-          <input
-            className="w-full bg-transparent text-sm outline-none"
-            placeholder="Search conversations..."
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
+          <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
+            <Search className="h-4 w-4 text-slate-500" />
+            <input
+              className="w-full bg-transparent text-sm outline-none"
+              placeholder="Search conversations..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
 
-        <div className="space-y-2">
-          {filtered.map((thread) => (
-            <button
-              key={thread.id}
-              type="button"
-              onClick={() => setSelectedThreadId(thread.id)}
-              className={clsx(
-                "w-full rounded-xl border bg-white p-3 text-left hover:bg-slate-50",
-                selectedThreadId === thread.id
-                  ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20"
-                  : "border-[#cdd5e2]"
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <div className="font-semibold text-slate-800">{thread.customerName || thread.customerPhone}</div>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
-                  {thread.open ? "Open" : "Closed"}
-                </span>
+          <div className="space-y-2">
+            {filtered.map((thread) => (
+              <button
+                key={thread.id}
+                type="button"
+                onClick={() => setSelectedThreadId(thread.id)}
+                className={clsx(
+                  "w-full rounded-xl border bg-white p-3 text-left hover:bg-slate-50",
+                  selectedThreadId === thread.id
+                    ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20"
+                    : "border-[#cdd5e2]"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-slate-800">{thread.customerName || thread.customerPhone}</div>
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
+                    {thread.open ? "Open" : "Closed"}
+                  </span>
+                </div>
+                <div className="mt-1 text-sm text-slate-600">{thread.customerPhone}</div>
+                <div className="truncate text-sm text-slate-500">{thread.preview}</div>
+              </button>
+            ))}
+            {filtered.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#bfc9d8] bg-white px-3 py-4 text-center text-sm text-slate-500">
+                No conversations found.
               </div>
-              <div className="mt-1 text-sm text-slate-600">{thread.customerPhone}</div>
-              <div className="truncate text-sm text-slate-500">{thread.preview}</div>
-            </button>
-          ))}
-          {filtered.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#bfc9d8] bg-white px-3 py-4 text-center text-sm text-slate-500">
-              No conversations found.
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-[#e2e8f0] bg-[#f4f6fa] px-6 py-4">
           <button
@@ -369,7 +379,7 @@ function AddRepairModal({
   );
 }
 
-export default function WorkItemsPage() {
+function WorkItemsPageContent() {
   const repairLabel = useTenantRepairLabel();
   const repairLabelPlural = pluralizeLabel(repairLabel);
   const searchParams = useSearchParams();
@@ -515,14 +525,17 @@ export default function WorkItemsPage() {
       .filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0);
     return [...visibleConfiguredStages, ...stageNamesFromRepairs];
   }, [stageCounts, visibleWorkflowStages]);
+
   useEffect(() => {
     setSelectedStageFilters((prev) => prev.filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0));
   }, [stageCounts]);
+
   useEffect(() => {
     if (!stageParam) return;
     const resolvedStageName = resolveStageFilterFromQuery(stageParam, workflowStages, filterStages);
     setSelectedStageFilters(resolvedStageName ? [resolvedStageName] : []);
   }, [filterStages, stageParam, workflowStages]);
+
   const activeStageFilters = useMemo(
     () =>
       filterStages.filter((stageName) => {
@@ -639,15 +652,13 @@ export default function WorkItemsPage() {
   return (
     <>
       <div
-        className={`-mx-5 -my-6 grid h-[calc(100dvh-69px)] md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] transition-[grid-template-columns] duration-300 ${
+        className={`-mx-5 -my-6 grid h-[calc(100dvh-69px)] transition-[grid-template-columns] duration-300 md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] ${
           selectedRepair ? "grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
         }`}
         style={{ background: "var(--bg)" }}
       >
         <div className="flex min-h-0 flex-col pb-6 pt-0 md:pb-8 md:pt-0">
-          <div
-            className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5"
-          >
+          <div className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
               <div className="flex w-full sm:w-auto">
@@ -843,7 +854,7 @@ export default function WorkItemsPage() {
               linkedConversationHref={
                 selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined
               }
-              className="h-full min-h-0 pl-6 pr-5 py-5"
+              className="h-full min-h-0 py-5 pl-6 pr-5"
             />
             {openRepairLinkMenu ? (
               <div
@@ -948,5 +959,24 @@ export default function WorkItemsPage() {
         />
       ) : null}
     </>
+  );
+}
+
+function WorkItemsPageFallback() {
+  return (
+    <div
+      className="-mx-5 -my-6 flex h-[calc(100dvh-69px)] items-center justify-center md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)]"
+      style={{ background: "var(--bg)" }}
+    >
+      <div className="text-sm text-slate-400">Loading work items...</div>
+    </div>
+  );
+}
+
+export default function WorkItemsPage() {
+  return (
+    <Suspense fallback={<WorkItemsPageFallback />}>
+      <WorkItemsPageContent />
+    </Suspense>
   );
 }
