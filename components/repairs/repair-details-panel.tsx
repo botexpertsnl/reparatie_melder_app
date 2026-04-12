@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link as LinkIcon, MessageSquare, Wrench, X } from "lucide-react";
+import type { StoredRepairHistoryItem } from "@/lib/repair-history-store";
 import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
@@ -27,7 +28,18 @@ type RepairDetailsPanelProps = {
     stageName: string,
     options?: { sentTemplateMessage?: string; scheduledSendAtIso?: string }
   ) => void;
+  historyItems?: StoredRepairHistoryItem[];
 };
+
+function formatHistoryTime(atIso: string) {
+  const parsed = new Date(atIso);
+  if (Number.isNaN(parsed.getTime())) return "--:--";
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(parsed);
+}
 
 export function RepairDetailsPanel({
   repair,
@@ -39,6 +51,7 @@ export function RepairDetailsPanel({
   linkedConversationHref,
   className,
   onStageChange,
+  historyItems = [],
 }: RepairDetailsPanelProps) {
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
@@ -107,6 +120,10 @@ export function RepairDetailsPanel({
   const hasEmptyVariableValues = templateConfirmation
     ? (templateConfirmation.template.variables ?? []).some((_, index) => !(templateConfirmation.variableValues[index] ?? "").trim())
     : false;
+  const repairHistoryTimeline = useMemo(
+    () => [...historyItems].sort((a, b) => new Date(b.atIso).getTime() - new Date(a.atIso).getTime()),
+    [historyItems]
+  );
   return (
     <>
       <aside
@@ -192,6 +209,25 @@ export function RepairDetailsPanel({
           );
           })}
         </div>
+        <section className="mt-5 border-t border-[#253149] pt-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Repair history</h4>
+          {repairHistoryTimeline.length > 0 ? (
+            <ul className="mt-2 space-y-2">
+              {repairHistoryTimeline.map((item) => (
+                <li key={item.id} className="relative pl-4 text-xs text-slate-300">
+                  <span className="absolute left-0 top-1 h-1.5 w-1.5 rounded-full bg-[#4d668f]" />
+                  <span className="font-medium text-slate-400">{formatHistoryTime(item.atIso)}</span>
+                  <span className="mx-1">—</span>
+                  <span className="text-slate-200">{item.fromStage} → {item.toStage}</span>
+                  <span className="mx-1 text-slate-500">—</span>
+                  <span className="text-slate-400">{item.actorType === "workflow" ? "Workflow action" : item.actorName ?? "User"}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">No stage changes yet.</p>
+          )}
+        </section>
       </div>
       </aside>
 

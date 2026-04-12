@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Plus, Search, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -21,6 +22,11 @@ import {
 } from "@/lib/conversation-store";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
+import {
+  readStoredRepairHistory,
+  writeStoredRepairHistory,
+  type StoredRepairHistoryItem
+} from "@/lib/repair-history-store";
 import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import {
   buildScheduledSendAtIso,
@@ -560,6 +566,7 @@ function WorkItemsPageContent() {
   const [conversations, setConversations] = useState<StoredConversation[]>(() =>
     readStoredConversations(defaultConversations)
   );
+  const [repairHistory, setRepairHistory] = useState<StoredRepairHistoryItem[]>(() => readStoredRepairHistory());
   const [templates, setTemplates] = useState<StoredTemplate[]>(() => readStoredTemplates(defaultStoredTemplates));
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
   const [unlinkConfirmationRepairId, setUnlinkConfirmationRepairId] = useState<string | null>(null);
@@ -571,6 +578,8 @@ function WorkItemsPageContent() {
     variableValues: string[];
   } | null>(null);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const { data: session } = useSession();
+  const activeUsername = session?.user?.name?.trim() || "User";
 
   const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
   const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
@@ -586,6 +595,10 @@ function WorkItemsPageContent() {
   const repairsInFilterScope = useMemo(
     () => repairs.filter((repair) => matchesRepairSearch(repair, searchQuery)),
     [repairs, searchQuery]
+  );
+  const selectedRepairHistory = useMemo(
+    () => (selectedRepair ? repairHistory.filter((item) => item.repairId === selectedRepair.id) : []),
+    [repairHistory, selectedRepair]
   );
   const stageCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -663,6 +676,17 @@ function WorkItemsPageContent() {
     return () => {
       window.removeEventListener("conversations:changed", refreshConversations);
       window.removeEventListener("storage", refreshConversations);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshRepairHistory = () => setRepairHistory(readStoredRepairHistory());
+    refreshRepairHistory();
+    window.addEventListener("repair-history:changed", refreshRepairHistory);
+    window.addEventListener("storage", refreshRepairHistory);
+    return () => {
+      window.removeEventListener("repair-history:changed", refreshRepairHistory);
+      window.removeEventListener("storage", refreshRepairHistory);
     };
   }, []);
 
@@ -829,12 +853,18 @@ function WorkItemsPageContent() {
       const result = applyRepairStageChange({
         repairs: prevRepairs,
         conversations,
+        historyItems: repairHistory,
         repairId,
         stageName,
-        options
+        options: {
+          ...options,
+          actor: options?.actor ?? { type: "user", name: activeUsername }
+        }
       });
       setConversations(result.conversations);
       writeStoredConversations(result.conversations);
+      setRepairHistory(result.historyItems);
+      writeStoredRepairHistory(result.historyItems);
       return result.repairs;
     });
   };
@@ -1065,6 +1095,7 @@ function WorkItemsPageContent() {
           >
             <RepairDetailsPanel
               repair={selectedRepair}
+              historyItems={selectedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
@@ -1102,6 +1133,7 @@ function WorkItemsPageContent() {
             </div>
             <RepairDetailsPanel
               repair={selectedRepair}
+              historyItems={selectedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}

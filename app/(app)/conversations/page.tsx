@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import clsx from "clsx";
 import {
   Search,
@@ -39,6 +40,11 @@ import { findMatchingWorkflowButtonAction } from "@/lib/workflows/button-reply-m
 import { executeWorkflowButtonAction } from "@/lib/workflows/workflow-button-action-executor";
 import { LocalWorkflowActionRepository, getLocalTenantId } from "@/lib/workflows/workflow-action-repository";
 import { applyRepairStageChange, type RepairStageChangeOptions } from "@/lib/repair-stage-change";
+import {
+  readStoredRepairHistory,
+  writeStoredRepairHistory,
+  type StoredRepairHistoryItem
+} from "@/lib/repair-history-store";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
@@ -220,6 +226,9 @@ function ConversationsPageContent() {
   const [repairs, setRepairs] = useState<StoredRepair[]>(() =>
     readStoredRepairs(defaultRepairs)
   );
+  const [repairHistory, setRepairHistory] = useState<StoredRepairHistoryItem[]>(() =>
+    readStoredRepairHistory()
+  );
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
   );
@@ -264,6 +273,8 @@ function ConversationsPageContent() {
     open: false,
     threadId: null,
   });
+  const { data: session } = useSession();
+  const activeUsername = session?.user?.name?.trim() || "User";
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -328,6 +339,17 @@ function ConversationsPageContent() {
     return () => {
       window.removeEventListener("workflow-stages:changed", refreshWorkflowStages);
       window.removeEventListener("storage", refreshWorkflowStages);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshRepairHistory = () => setRepairHistory(readStoredRepairHistory());
+    refreshRepairHistory();
+    window.addEventListener("repair-history:changed", refreshRepairHistory);
+    window.addEventListener("storage", refreshRepairHistory);
+    return () => {
+      window.removeEventListener("repair-history:changed", refreshRepairHistory);
+      window.removeEventListener("storage", refreshRepairHistory);
     };
   }, []);
 
@@ -445,6 +467,10 @@ function ConversationsPageContent() {
   const linkedRepair = selectedThread
     ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null
     : null;
+  const linkedRepairHistory = useMemo(
+    () => (linkedRepair ? repairHistory.filter((item) => item.repairId === linkedRepair.id) : []),
+    [linkedRepair, repairHistory]
+  );
 
   const visibleThreads = useMemo(() => {
     const sortThreads = (left: StoredConversation, right: StoredConversation) => {
@@ -672,14 +698,17 @@ function ConversationsPageContent() {
     const result = applyRepairStageChange({
       repairs,
       conversations: threads,
+      historyItems: repairHistory,
       repairId,
       stageName,
       options
     });
     setRepairs(result.repairs);
     writeStoredRepairs(result.repairs);
+    setRepairHistory(result.historyItems);
+    writeStoredRepairHistory(result.historyItems);
     updateThreads(() => result.conversations);
-  }, [repairs, threads, updateThreads]);
+  }, [repairHistory, repairs, threads, updateThreads]);
 
   useEffect(() => {
     const tenantId = getLocalTenantId();
@@ -727,7 +756,9 @@ function ConversationsPageContent() {
       if (execution.actionType === "MOVE_TO_STAGE" && execution.moveToStageId) {
         const targetStage = workflowStages.find((item) => item.id === execution.moveToStageId);
         if (targetStage) {
-          updateRepairStage(linkedRepairId, targetStage.name);
+          updateRepairStage(linkedRepairId, targetStage.name, {
+            actor: { type: "workflow" }
+          });
         }
       }
     });
@@ -1226,10 +1257,14 @@ function ConversationsPageContent() {
           >
             <RepairDetailsPanel
               repair={linkedRepair}
+              historyItems={linkedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
               onStageChange={(stageName, options) =>
-                updateRepairStage(linkedRepair.id, stageName, options)
+                updateRepairStage(linkedRepair.id, stageName, {
+                  ...options,
+                  actor: { type: "user", name: activeUsername }
+                })
               }
               className="relative h-full min-h-0 pl-6 pr-5 py-5"
             />
@@ -1262,10 +1297,14 @@ function ConversationsPageContent() {
             </div>
             <RepairDetailsPanel
               repair={linkedRepair}
+              historyItems={linkedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setIsMobileRepairDrawerOpen(false)}
               onStageChange={(stageName, options) =>
-                updateRepairStage(linkedRepair.id, stageName, options)
+                updateRepairStage(linkedRepair.id, stageName, {
+                  ...options,
+                  actor: { type: "user", name: activeUsername }
+                })
               }
               className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
             />

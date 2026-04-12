@@ -1,14 +1,26 @@
 import type { StoredConversation } from "@/lib/conversation-store";
+import type { StoredRepairHistoryItem } from "@/lib/repair-history-store";
 import type { StoredRepair } from "@/lib/repair-store";
+
+export type RepairStageChangeActor =
+  | {
+      type: "user";
+      name?: string;
+    }
+  | {
+      type: "workflow";
+    };
 
 export type RepairStageChangeOptions = {
   sentTemplateMessage?: string;
   scheduledSendAtIso?: string;
+  actor?: RepairStageChangeActor;
 };
 
 type ApplyRepairStageChangeParams = {
   repairs: StoredRepair[];
   conversations: StoredConversation[];
+  historyItems?: StoredRepairHistoryItem[];
   repairId: string;
   stageName: string;
   options?: RepairStageChangeOptions;
@@ -17,6 +29,7 @@ type ApplyRepairStageChangeParams = {
 type ApplyRepairStageChangeResult = {
   repairs: StoredRepair[];
   conversations: StoredConversation[];
+  historyItems: StoredRepairHistoryItem[];
 };
 
 function buildOutgoingTemplateMessage(text: string, scheduledSendAtIso?: string) {
@@ -30,9 +43,30 @@ function buildOutgoingTemplateMessage(text: string, scheduledSendAtIso?: string)
   };
 }
 
+function buildRepairHistoryItem(
+  repairId: string,
+  fromStage: string,
+  toStage: string,
+  actor: RepairStageChangeActor
+): StoredRepairHistoryItem {
+  return {
+    id: `rh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    repairId,
+    atIso: new Date().toISOString(),
+    fromStage,
+    toStage,
+    actorType: actor.type,
+    actorName: actor.type === "user" ? actor.name?.trim() || "User" : undefined
+  };
+}
+
 export function applyRepairStageChange(params: ApplyRepairStageChangeParams): ApplyRepairStageChangeResult {
-  const { repairs, conversations, repairId, stageName, options } = params;
+  const { repairs, conversations, historyItems = [], repairId, stageName, options } = params;
   const normalizedTemplateText = options?.sentTemplateMessage?.trim() ?? "";
+
+  const targetRepair = repairs.find((repair) => repair.id === repairId);
+  const previousStage = targetRepair?.stage;
+  const hasStageChanged = Boolean(targetRepair && previousStage !== stageName);
 
   const nextRepairs = repairs.map((repair) =>
     repair.id === repairId
@@ -43,10 +77,16 @@ export function applyRepairStageChange(params: ApplyRepairStageChangeParams): Ap
       : repair
   );
 
+  const actor = options?.actor ?? { type: "user", name: "User" as string };
+  const nextHistoryItems = hasStageChanged && previousStage
+    ? [...historyItems, buildRepairHistoryItem(repairId, previousStage, stageName, actor)]
+    : historyItems;
+
   if (!normalizedTemplateText) {
     return {
       repairs: nextRepairs,
-      conversations
+      conversations,
+      historyItems: nextHistoryItems
     };
   }
 
@@ -64,6 +104,7 @@ export function applyRepairStageChange(params: ApplyRepairStageChangeParams): Ap
 
   return {
     repairs: nextRepairs,
-    conversations: nextConversations
+    conversations: nextConversations,
+    historyItems: nextHistoryItems
   };
 }
