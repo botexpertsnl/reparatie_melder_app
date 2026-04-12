@@ -195,7 +195,7 @@ function StageBadge({
 }) {
   if (stage === UNKNOWN_STAGE) {
     return (
-      <span className="inline-flex rounded-xl border border-slate-600 bg-slate-700/20 px-3 py-1 text-sm font-semibold text-slate-300">
+      <span className="inline-flex rounded-xl border border-slate-600 bg-slate-700/20 px-2 py-0.5 text-xs font-semibold text-slate-300 md:px-3 md:py-1 md:text-sm">
         {stage}
       </span>
     );
@@ -203,7 +203,7 @@ function StageBadge({
 
   if (!stageColor) {
     return (
-      <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-300">
+      <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-300 md:px-3 md:py-1 md:text-sm">
         {stage}
       </span>
     );
@@ -211,7 +211,7 @@ function StageBadge({
 
   return (
     <span
-      className="inline-flex rounded-xl px-3 py-1 text-sm font-semibold"
+      className="inline-flex rounded-xl px-2 py-0.5 text-xs font-semibold md:px-3 md:py-1 md:text-sm"
       style={{
         color: stageColor,
         border: `1px solid ${stageColor}66`,
@@ -773,9 +773,9 @@ function WorkItemsPageContent() {
               <table className="w-full table-fixed">
                 <thead className="border-b border-[#253149] text-left text-sm text-slate-400">
                   <tr>
-                    <th className="w-[42%] px-5 py-4">Title</th>
-                    <th className="w-[28%] px-5 py-4">Customer</th>
-                    <th className="w-[24%] px-5 py-4 pr-3">Stage</th>
+                    <th className="w-[66%] px-5 py-4 md:w-[42%]">Title</th>
+                    <th className="hidden w-[28%] px-5 py-4 md:table-cell">Customer</th>
+                    <th className="w-[28%] px-5 py-4 pr-3 md:w-[24%]">Stage</th>
                     <th className="w-[6%] py-4 pl-2 pr-3" />
                   </tr>
                 </thead>
@@ -800,9 +800,12 @@ function WorkItemsPageContent() {
                           <div className="mt-1 truncate text-sm text-slate-500">
                             {repair.assetName} · {repair.description}
                           </div>
+                          <div className="mt-1 truncate text-xs text-slate-400 md:hidden">
+                            {repair.customerName}
+                          </div>
                         </button>
                       </td>
-                      <td className="truncate px-5 py-4 align-middle text-base font-medium text-white">
+                      <td className="hidden truncate px-5 py-4 align-middle text-base font-medium text-white md:table-cell">
                         {repair.customerName}
                       </td>
                       <td className="px-5 py-4 pr-3 align-middle">
