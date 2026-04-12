@@ -941,8 +941,8 @@ function WorkItemsPageContent() {
                         <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
                         <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-3 pl-1">
-                        <div className="w-24 truncate text-right text-xs font-medium text-white sm:w-36 sm:text-sm">
+                      <div className="flex shrink-0 items-center justify-end gap-3 pl-1 sm:pl-2">
+                        <div className="w-28 min-w-0 truncate text-left text-xs font-medium text-white sm:w-40 sm:text-sm">
                           {repair.customerName}
                         </div>
                         <div className="relative flex items-center gap-2" data-action-menu="true">
