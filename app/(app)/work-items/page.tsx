@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -1001,49 +1001,55 @@ function WorkItemsPageContent() {
                 aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
               />
             </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={selectActiveTaskFilters}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
-              >
-                Active tasks
-              </button>
-              <button
-                type="button"
-                onClick={clearAllStageFilters}
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
-              >
-                De-select all
-              </button>
-              {filterStages.map((stageName) => {
-                const isActive = selectedStageFilters.includes(stageName);
-                return (
-                  <button
-                    key={stageName}
-                    type="button"
-                    onClick={() => toggleStageFilter(stageName)}
-                    className={clsx(
-                      "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                      isActive ? "text-white" : "text-slate-300"
-                    )}
-                    style={{
-                      borderColor: isActive ? (stageColorByName.get(stageName) ?? "var(--text-primary)") : "var(--border)",
-                      background: isActive ? `${stageColorByName.get(stageName) ?? "#30b5a5"}24` : "var(--surface-1)"
-                    }}
-                  >
-                    <span>{stageName}</span>
-                    <span
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-1 flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={selectActiveTaskFilters}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
+                >
+                  Active tasks
+                </button>
+                {filterStages.map((stageName) => {
+                  const isActive = selectedStageFilters.includes(stageName);
+                  return (
+                    <button
+                      key={stageName}
+                      type="button"
+                      onClick={() => toggleStageFilter(stageName)}
                       className={clsx(
-                        "rounded-full px-2 py-0.5 text-[11px]",
-                        isActive ? "bg-white/20 text-white" : "bg-slate-700/70 text-slate-200"
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                        isActive ? "text-white" : "text-slate-300"
                       )}
+                      style={{
+                        borderColor: isActive ? (stageColorByName.get(stageName) ?? "var(--text-primary)") : "var(--border)",
+                        background: isActive ? `${stageColorByName.get(stageName) ?? "#30b5a5"}24` : "var(--surface-1)"
+                      }}
                     >
-                      {stageCounts.get(stageName) ?? 0}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>{stageName}</span>
+                      <span
+                        className={clsx(
+                          "rounded-full px-2 py-0.5 text-[11px]",
+                          isActive ? "bg-white/20 text-white" : "bg-slate-700/70 text-slate-200"
+                        )}
+                      >
+                        {stageCounts.get(stageName) ?? 0}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedStageFilters.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearAllStageFilters}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                  aria-label="Clear selected labels"
+                  title="Clear selected labels"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
             </div>
           </div>
 
