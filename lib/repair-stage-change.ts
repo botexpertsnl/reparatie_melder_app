@@ -112,7 +112,7 @@ export function applyRepairStageChange(params: ApplyRepairStageChangeParams): Ap
       ...thread,
       preview: normalizedTemplateText,
       updatedAt: "Now",
-      open: true,
+      open: thread.open,
       messages: [...thread.messages, buildOutgoingTemplateMessage(normalizedTemplateText, options?.scheduledSendAtIso)]
     };
   });
