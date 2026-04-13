@@ -1304,7 +1304,7 @@ function ConversationsPageContent() {
                 }}
                 role="button"
                 tabIndex={0}
-                className={`relative w-full rounded-xl border p-3 pr-10 text-left ${
+                className={`w-full rounded-xl border p-3 text-left ${
                   selectedThreadId === thread.id
                     ? ""
                     : "border-transparent hover:bg-white/5"
@@ -1318,11 +1318,26 @@ function ConversationsPageContent() {
                     : undefined
                 }
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <span className="font-medium text-slate-200">
                     {thread.customerName || thread.customerPhone}
                   </span>
-                  <span className="text-xs text-slate-500">{thread.updatedAt}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500">{thread.updatedAt}</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleQuickToggleConversation(thread.id, !thread.open);
+                      }}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
+                      aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
+                      title={thread.open ? "Close conversation" : "Reopen conversation"}
+                    >
+                      {thread.open ? <X className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-1 text-sm text-slate-300">{truncateMessagePreview(thread.preview)}</p>
                 <p className="mt-1 text-xs italic text-slate-500">
@@ -1333,19 +1348,6 @@ function ConversationsPageContent() {
                       }`
                     : "No repair linked"}
                 </p>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleQuickToggleConversation(thread.id, !thread.open);
-                  }}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
-                  aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
-                  title={thread.open ? "Close conversation" : "Reopen conversation"}
-                >
-                  {thread.open ? <X className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
-                </button>
               </div>
             ))}
             {visibleThreads.length === 0 ? (
