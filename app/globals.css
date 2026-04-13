@@ -161,11 +161,11 @@ body::-webkit-scrollbar {
   color: var(--text-primary) !important;
 }
 
-:root.theme-light label {
-  background: #e9edf3;
-  color: #1f2937 !important;
-  border-radius: 0.5rem;
-  padding: 0.2rem 0.5rem;
+:root.theme-light .badge,
+:root.theme-light [class*="rounded-full"][class*="border"][class*="text-xs"],
+:root.theme-light [class*="rounded-md"][class*="border"][class*="text-xs"],
+:root.theme-light [class*="inline-flex"][class*="rounded-full"][class*="border"][class*="px-2.5"][class*="py-1"] {
+  color: var(--text-primary) !important;
 }
 
 :root.theme-light [class*="hover:bg-slate-900/70"]:hover,
