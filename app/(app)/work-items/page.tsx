@@ -37,7 +37,8 @@ import {
   buildTemplateMessageWithButtons,
   buildTemplateVariableDefaults,
   fillTemplateBody,
-  resolveStageTemplateAutomation
+  resolveStageTemplateAutomation,
+  stageTransitionHasModalFlow
 } from "@/lib/repair-stage-transition";
 
 type RepairItem = StoredRepair;
@@ -581,6 +582,10 @@ function WorkItemsPageContent() {
     template: StoredTemplate;
     variableValues: string[];
   } | null>(null);
+  const [pendingStageConfirmation, setPendingStageConfirmation] = useState<{
+    repairId: string;
+    nextStage: string;
+  } | null>(null);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const sessionState = useSession();
   const session = sessionState?.data;
@@ -893,8 +898,9 @@ function WorkItemsPageContent() {
   ) => {
     if (!isNewAssignment && previousStage === nextStage) return;
 
-    const stageTemplateAutomation = resolveStageTemplateAutomation(nextStage, workflowStages, templates);
-    if (stageTemplateAutomation) {
+    if (stageTransitionHasModalFlow(nextStage, workflowStages, templates)) {
+      const stageTemplateAutomation = resolveStageTemplateAutomation(nextStage, workflowStages, templates);
+      if (!stageTemplateAutomation) return;
       setPendingTemplateStageChange({
         repairId,
         stage: stageTemplateAutomation.stage,
@@ -904,7 +910,12 @@ function WorkItemsPageContent() {
       return;
     }
 
-    updateRepairStage(repairId, nextStage);
+    if (isNewAssignment) {
+      updateRepairStage(repairId, nextStage);
+      return;
+    }
+
+    setPendingStageConfirmation({ repairId, nextStage });
   };
 
   const handleRepairDrawerTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -1384,6 +1395,43 @@ function WorkItemsPageContent() {
               ) : null}
             </div>
           </div>
+        </ModalShell>
+      ) : null}
+
+      {pendingStageConfirmation ? (
+        <ModalShell
+          title="Change workflow stage?"
+          onClose={() => setPendingStageConfirmation(null)}
+          maxWidthClassName="max-w-lg"
+          closeLabel="Close stage change confirmation"
+          footer={(
+            <>
+              <button
+                type="button"
+                onClick={() => setPendingStageConfirmation(null)}
+                className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateRepairStage(pendingStageConfirmation.repairId, pendingStageConfirmation.nextStage);
+                  setPendingStageConfirmation(null);
+                }}
+                className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91]"
+              >
+                Confirm
+              </button>
+            </>
+          )}
+        >
+          <p className="text-sm text-slate-700">
+            Are you sure you want to move this repair to another workflow stage?
+          </p>
+          <p className="mt-2 text-sm text-slate-600">
+            This may trigger workflow-related follow-up behavior if applicable.
+          </p>
         </ModalShell>
       ) : null}
     </>

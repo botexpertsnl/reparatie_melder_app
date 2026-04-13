@@ -14,6 +14,14 @@ export function resolveStageTemplateAutomation(
   return { stage, template };
 }
 
+export function stageTransitionHasModalFlow(
+  stageName: string,
+  workflowStages: StoredWorkflowStage[],
+  templates: StoredTemplate[]
+) {
+  return Boolean(resolveStageTemplateAutomation(stageName, workflowStages, templates));
+}
+
 function resolveRepairField(repair: StoredRepair, field?: string) {
   if (field === "customerName") return repair.customerName;
   if (field === "customerPhone") return repair.customerPhone;
