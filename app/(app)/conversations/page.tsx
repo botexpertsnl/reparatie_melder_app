@@ -59,6 +59,15 @@ const fallbackQuickReplies = [
 ];
 const SELECTED_THREAD_STORAGE_KEY = "statusflow.selected-thread-id";
 const TEMPLATE_BUTTONS_MARKER = "\n\nButtons:\n";
+const MESSAGE_PREVIEW_MAX_LENGTH = 78;
+
+function truncateMessagePreview(preview?: string | null) {
+  const normalizedPreview = preview ?? "";
+  if (normalizedPreview.length <= MESSAGE_PREVIEW_MAX_LENGTH) {
+    return normalizedPreview;
+  }
+  return `${normalizedPreview.slice(0, MESSAGE_PREVIEW_MAX_LENGTH)}...`;
+}
 
 function parseTemplateMessageContent(text: string) {
   const markerIndex = text.indexOf(TEMPLATE_BUTTONS_MARKER);
@@ -994,7 +1003,7 @@ function ConversationsPageContent() {
                   </span>
                   <span className="text-xs text-slate-500">{thread.updatedAt}</span>
                 </div>
-                <p className="mt-1 text-sm text-slate-300">{thread.preview}</p>
+                <p className="mt-1 text-sm text-slate-300">{truncateMessagePreview(thread.preview)}</p>
                 <p className="mt-1 text-xs italic text-slate-500">
                   {thread.linkedRepairId
                     ? `🔗 ${
@@ -1139,7 +1148,7 @@ function ConversationsPageContent() {
                   return (
                     <div
                       key={msg.id}
-                      className={`max-w-[72%] rounded-2xl px-4 py-3 text-base ${
+                      className={`max-w-[72%] min-w-0 rounded-2xl px-4 py-3 text-base ${
                         msg.role === "agent" ? "ml-auto" : ""
                       }`}
                       style={
@@ -1154,13 +1163,13 @@ function ConversationsPageContent() {
                             }
                       }
                     >
-                      <div className="whitespace-pre-wrap">{parsedMessage.body}</div>
+                      <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{parsedMessage.body}</div>
                       {hasTemplateButtons ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {parsedMessage.buttons.map((buttonText, buttonIndex) => (
                             <span
                               key={`${msg.id}-template-button-${buttonText}-${buttonIndex}`}
-                              className="rounded-full border border-slate-300 bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700"
+                              className="rounded-full border border-slate-300 bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 break-words [overflow-wrap:anywhere]"
                             >
                               {buttonText}
                             </span>
