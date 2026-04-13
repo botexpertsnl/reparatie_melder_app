@@ -89,6 +89,7 @@ const defaultTemplates: StoredTemplate[] = [
 ];
 
 const quickReplyStorageKey = "statusflow.quick-replies";
+const STAGE_NAME_MAX_LENGTH = 25;
 const initialQuickReplies: QuickReply[] = [
   { id: "qr_1", name: "Greeting", body: "Thanks for your message! We will check this right away." },
   { id: "qr_2", name: "Pickup Info", body: "Your repair is ready for pickup. Please visit us during opening hours." }
@@ -347,6 +348,9 @@ function StageModal({
     : undefined;
   const buttonTextConflicts = useMemo(() => getButtonTextConflicts(values), [getButtonTextConflicts, values]);
   const conflictByNormalizedText = useMemo(() => new Map(buttonTextConflicts.map((item) => [item.normalizedText, item])), [buttonTextConflicts]);
+  const stageNameLength = values.name.length;
+  const stageNameLimitReached = stageNameLength >= STAGE_NAME_MAX_LENGTH;
+  const stageNameTooLong = stageNameLength > STAGE_NAME_MAX_LENGTH;
 
   useEffect(() => {
     if (!values.templateId) return;
@@ -359,6 +363,9 @@ function StageModal({
 
   const canSubmit = useMemo(() => {
     if (!values.name.trim() || !values.description.trim()) {
+      return false;
+    }
+    if (values.name.length > STAGE_NAME_MAX_LENGTH) {
       return false;
     }
 
@@ -422,11 +429,19 @@ function StageModal({
             <label htmlFor="stage-name" className="mb-2 block text-sm font-medium text-slate-700">Name *</label>
             <input
               id="stage-name"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              className={clsx(
+                "w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]",
+                stageNameTooLong ? "border-red-400" : "border-[#bfc9d8]"
+              )}
               placeholder="e.g. Waiting for Customer"
               value={values.name}
               onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
             />
+            {stageNameLimitReached ? (
+              <p className={clsx("mt-2 text-xs", stageNameTooLong ? "text-red-500" : "text-slate-500")}>
+                Stage title can be up to {STAGE_NAME_MAX_LENGTH} characters. Shorten the title to save this stage.
+              </p>
+            ) : null}
           </div>
 
           <div>
