@@ -297,14 +297,20 @@ function matchesRepairSearch(repair: RepairItem, query: string) {
 
 function StageBadge({
   stage,
-  stageColor
+  stageColor,
+  compact = false
 }: {
   stage: RepairItem["stage"];
   stageColor?: string;
+  compact?: boolean;
 }) {
+  const badgeSizeClass = compact
+    ? "px-1.5 py-0.5 text-[11px] md:px-2 md:text-xs"
+    : "px-2 py-0.5 text-xs md:px-3 md:py-1 md:text-sm";
+
   if (stage === UNKNOWN_STAGE) {
     return (
-      <span className="inline-flex rounded-xl border border-slate-600 bg-slate-700/20 px-2 py-0.5 text-xs font-semibold text-slate-300 md:px-3 md:py-1 md:text-sm">
+      <span className={clsx("inline-flex rounded-xl border border-slate-600 bg-slate-700/20 font-semibold text-slate-300", badgeSizeClass)}>
         {stage}
       </span>
     );
@@ -312,7 +318,7 @@ function StageBadge({
 
   if (!stageColor) {
     return (
-      <span className="inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-300 md:px-3 md:py-1 md:text-sm">
+      <span className={clsx("inline-flex rounded-xl border border-blue-500/40 bg-blue-500/10 font-semibold text-blue-300", badgeSizeClass)}>
         {stage}
       </span>
     );
@@ -320,7 +326,7 @@ function StageBadge({
 
   return (
     <span
-      className="inline-flex rounded-xl px-2 py-0.5 text-xs font-semibold md:px-3 md:py-1 md:text-sm"
+      className={clsx("inline-flex rounded-xl font-semibold", badgeSizeClass)}
       style={{
         color: stageColor,
         border: `1px solid ${stageColor}66`,
@@ -1062,59 +1068,59 @@ function WorkItemsPageContent() {
                     )}
                     style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
                   >
-                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,15rem)] items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,9rem)_auto] items-center gap-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
+                      <div className="shrink-0">
+                        <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
+                      </div>
                       <div className="min-w-0">
                         <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
                         <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
                       </div>
-                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 pl-1 sm:pl-2">
-                        <div className="min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:text-sm">
-                          {repair.customerName}
-                        </div>
-                        <div className="relative flex items-center gap-2" data-action-menu="true">
-                          <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
-                          <button
+                      <div className="min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:text-sm">
+                        {repair.customerName}
+                      </div>
+                      <div className="relative flex items-center" data-action-menu="true">
+                        <button
+                          data-action-menu="true"
+                          className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setOpenMenuId((prev) => (prev === repair.id ? null : repair.id));
+                          }}
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                        {openMenuId === repair.id ? (
+                          <div
                             data-action-menu="true"
-                            className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenMenuId((prev) => (prev === repair.id ? null : repair.id));
-                            }}
+                            className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
                           >
-                            <MoreHorizontal className="h-5 w-5" />
-                          </button>
-                          {openMenuId === repair.id ? (
-                            <div
-                              data-action-menu="true"
-                              className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setEditingRepairId(repair.id);
+                                setOpenMenuId(null);
+                              }}
                             >
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setEditingRepairId(repair.id);
-                                  setOpenMenuId(null);
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setDeletingRepairId(repair.id);
-                                  setOpenMenuId(null);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setDeletingRepairId(repair.id);
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </button>
