@@ -83,8 +83,8 @@ function parseTemplateMessageContent(text: string) {
     .slice(markerIndex + TEMPLATE_BUTTONS_MARKER.length)
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("- "))
-    .map((line) => line.slice(2).trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.replace(/^[-•*]\s+/, "").replace(/^\d+\.\s+/, "").trim())
     .filter((line) => line.length > 0);
 
   return {
@@ -1165,11 +1165,11 @@ function ConversationsPageContent() {
                     >
                       <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{parsedMessage.body}</div>
                       {hasTemplateButtons ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
+                        <div className="mt-2 flex max-w-full flex-wrap gap-1.5">
                           {parsedMessage.buttons.map((buttonText, buttonIndex) => (
                             <span
                               key={`${msg.id}-template-button-${buttonText}-${buttonIndex}`}
-                              className="rounded-full border border-slate-300 bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 break-words [overflow-wrap:anywhere]"
+                              className="inline-flex max-w-full rounded-full border border-slate-300/90 bg-slate-200/80 px-2 py-0.5 text-[11px] font-medium leading-5 text-slate-700 break-words [overflow-wrap:anywhere]"
                             >
                               {buttonText}
                             </span>
