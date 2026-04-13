@@ -834,6 +834,14 @@ function ConversationsPageContent() {
     );
   }, [updateThreads]);
 
+  const reopenConversation = useCallback((threadId: string) => {
+    updateConversationOpenState(threadId, true);
+    setStatusFilter("open");
+    setSelectedThreadId(threadId);
+    setMobileActivePane("chat");
+    setIsMobileRepairDrawerOpen(false);
+  }, [updateConversationOpenState]);
+
   const sendMessage = ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
     if (!selectedThread || !message.trim()) return;
 
@@ -869,26 +877,25 @@ function ConversationsPageContent() {
       return;
     }
 
-    updateConversationOpenState(selectedThread.id, true);
-    setStatusFilter("open");
-    setSelectedThreadId(selectedThread.id);
-    setMobileActivePane("chat");
-    setIsMobileRepairDrawerOpen(false);
+    reopenConversation(selectedThread.id);
   };
 
   const handleQuickToggleConversation = useCallback((threadId: string, shouldOpen: boolean) => {
-    updateConversationOpenState(threadId, shouldOpen);
+    if (shouldOpen) {
+      reopenConversation(threadId);
+      return;
+    }
+
+    updateConversationOpenState(threadId, false);
     if (selectedThreadId === threadId) {
-      const willMoveOutOfFilteredList =
-        (statusFilter === "open" && !shouldOpen) ||
-        (statusFilter === "closed" && shouldOpen);
+      const willMoveOutOfFilteredList = statusFilter === "open";
       if (willMoveOutOfFilteredList) {
         setSelectedThreadId("");
         setMobileActivePane("chat");
         setIsMobileRepairDrawerOpen(false);
       }
     }
-  }, [selectedThreadId, statusFilter, updateConversationOpenState]);
+  }, [reopenConversation, selectedThreadId, statusFilter, updateConversationOpenState]);
 
   const cancelScheduledTemplateMessage = useCallback((threadId: string, messageId: string) => {
     updateThreads((prev) =>
