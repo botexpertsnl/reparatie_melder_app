@@ -658,9 +658,19 @@ function WorkItemsPageContent() {
 
   useEffect(() => {
     if (!repairIdParam) return;
-    if (!repairs.some((repair) => repair.id === repairIdParam)) return;
+    if (selectedRepairId === repairIdParam) return;
+
+    const targetRepairExists = repairs.some((repair) => repair.id === repairIdParam);
+    if (!targetRepairExists) return;
+
+    const selectedRepairStillExists = selectedRepairId
+      ? repairs.some((repair) => repair.id === selectedRepairId)
+      : false;
+
+    if (selectedRepairStillExists) return;
+
     setSelectedRepairId(repairIdParam);
-  }, [repairIdParam, repairs]);
+  }, [repairIdParam, repairs, selectedRepairId]);
 
   useEffect(() => {
     if (!selectedRepairId) {
