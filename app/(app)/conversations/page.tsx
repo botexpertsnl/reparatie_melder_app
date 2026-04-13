@@ -52,6 +52,15 @@ import {
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
+type NewRepairFormValues = {
+  customerFirstName: string;
+  customerLastName: string;
+  customerPhone: string;
+  assetName: string;
+  repairTitle: string;
+  description: string;
+  repairStage: StoredRepair["stage"];
+};
 const fallbackQuickReplies = [
   "Thanks for your message! We will check this right away.",
   "Can you share your serial number?",
@@ -60,6 +69,67 @@ const fallbackQuickReplies = [
 const SELECTED_THREAD_STORAGE_KEY = "statusflow.selected-thread-id";
 const TEMPLATE_BUTTONS_MARKER = "\n\nButtons:\n";
 const MESSAGE_PREVIEW_MAX_LENGTH = 78;
+const FIRST_NAME_MAX_LENGTH = 25;
+const LAST_NAME_MAX_LENGTH = 25;
+const REPAIR_TITLE_MAX_LENGTH = 50;
+const ASSET_NAME_MAX_LENGTH = 50;
+
+function normalizePhoneInput(value: string) {
+  const trimmed = value.trim();
+  const normalizedSeparators = trimmed.replace(/[\s\-().]/g, "");
+  if (normalizedSeparators.startsWith("00")) return `+${normalizedSeparators.slice(2)}`;
+  return normalizedSeparators;
+}
+
+function toNationalNumber(normalizedPhone: string, countryCode: string) {
+  if (!normalizedPhone.startsWith(`+${countryCode}`)) return null;
+  return `0${normalizedPhone.slice(countryCode.length + 1)}`;
+}
+
+function isValidDutchPhone(nationalPhone: string) {
+  return /^0\d{9}$/.test(nationalPhone);
+}
+
+function isValidBelgianPhone(nationalPhone: string) {
+  return /^0\d{8,9}$/.test(nationalPhone);
+}
+
+function isValidGermanPhone(nationalPhone: string) {
+  return /^0\d{6,14}$/.test(nationalPhone);
+}
+
+function isValidUkPhone(nationalPhone: string) {
+  return /^0(?:7\d{9}|[123]\d{9,10})$/.test(nationalPhone);
+}
+
+function isSupportedCountryPhoneValid(value: string) {
+  const normalizedPhone = normalizePhoneInput(value);
+  if (!normalizedPhone) return false;
+  if (/^\+/.test(normalizedPhone)) {
+    const normalizedNl = toNationalNumber(normalizedPhone, "31");
+    if (normalizedNl) return isValidDutchPhone(normalizedNl);
+
+    const normalizedBe = toNationalNumber(normalizedPhone, "32");
+    if (normalizedBe) return isValidBelgianPhone(normalizedBe);
+
+    const normalizedDe = toNationalNumber(normalizedPhone, "49");
+    if (normalizedDe) return isValidGermanPhone(normalizedDe);
+
+    const normalizedUk = toNationalNumber(normalizedPhone, "44");
+    if (normalizedUk) return isValidUkPhone(normalizedUk);
+
+    return true;
+  }
+
+  if (!/^0\d+$/.test(normalizedPhone)) return true;
+
+  return (
+    isValidDutchPhone(normalizedPhone) ||
+    isValidBelgianPhone(normalizedPhone) ||
+    isValidGermanPhone(normalizedPhone) ||
+    isValidUkPhone(normalizedPhone)
+  );
+}
 
 function truncateMessagePreview(preview?: string | null) {
   const normalizedPreview = preview ?? "";
@@ -197,6 +267,196 @@ function LinkRepairModal({
   );
 }
 
+function AddRepairModal({
+  initialValues,
+  stageOptions,
+  repairLabel,
+  onClose,
+  onSubmit
+}: {
+  initialValues: NewRepairFormValues;
+  stageOptions: string[];
+  repairLabel: string;
+  onClose: () => void;
+  onSubmit: (payload: NewRepairFormValues) => void;
+}) {
+  const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
+  const [isPhoneFieldTouched, setIsPhoneFieldTouched] = useState(false);
+  const selectOptions = useMemo(
+    () => (stageOptions.includes(formValues.repairStage) ? stageOptions : [...stageOptions, formValues.repairStage]),
+    [formValues.repairStage, stageOptions]
+  );
+  const normalizedPhone = normalizePhoneInput(formValues.customerPhone);
+  const isPhoneValid = isSupportedCountryPhoneValid(formValues.customerPhone);
+  const showPhoneError = Boolean(normalizedPhone) && !isPhoneValid && (hasTriedSubmit || isPhoneFieldTouched);
+  const canSubmit = normalizedPhone && isPhoneValid && formValues.repairTitle.trim();
+
+  return (
+    <ModalShell
+      title={`New ${repairLabel}`}
+      onClose={onClose}
+      maxWidthClassName="max-w-2xl"
+      closeLabel="Close repair dialog"
+      footer={(
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="repair-form"
+            className={clsx(
+              "rounded-xl px-5 py-2 text-sm font-semibold text-white",
+              canSubmit ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400"
+            )}
+            disabled={!canSubmit}
+          >
+            Create {repairLabel}
+          </button>
+        </>
+      )}
+    >
+      <form
+        id="repair-form"
+        className="space-y-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setHasTriedSubmit(true);
+          if (!canSubmit) return;
+          onSubmit({
+            ...formValues,
+            customerPhone: formValues.customerPhone.trim()
+          });
+        }}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="repair-customer-first-name" className="mb-2 block text-sm font-medium text-slate-700">
+              First name
+            </label>
+            <input
+              id="repair-customer-first-name"
+              maxLength={FIRST_NAME_MAX_LENGTH}
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="e.g. John"
+              value={formValues.customerFirstName}
+              onChange={(event) =>
+                setFormValues((prev) => ({
+                  ...prev,
+                  customerFirstName: event.target.value.slice(0, FIRST_NAME_MAX_LENGTH)
+                }))
+              }
+            />
+          </div>
+          <div>
+            <label htmlFor="repair-customer-last-name" className="mb-2 block text-sm font-medium text-slate-700">
+              Last name
+            </label>
+            <input
+              id="repair-customer-last-name"
+              maxLength={LAST_NAME_MAX_LENGTH}
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              placeholder="e.g. Doe"
+              value={formValues.customerLastName}
+              onChange={(event) =>
+                setFormValues((prev) => ({
+                  ...prev,
+                  customerLastName: event.target.value.slice(0, LAST_NAME_MAX_LENGTH)
+                }))
+              }
+            />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">
+            Customer phone *
+          </label>
+          <input
+            id="repair-customer-phone"
+            className={clsx(
+              "w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ring-0",
+              showPhoneError ? "border-red-400 focus:border-red-500" : "border-[#bfc9d8] focus:border-[#30b5a5]"
+            )}
+            placeholder="+31 6 12345678"
+            value={formValues.customerPhone}
+            onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))}
+            onBlur={() => setIsPhoneFieldTouched(true)}
+            aria-invalid={showPhoneError}
+          />
+          {showPhoneError ? (
+            <p className="mt-1 text-sm text-red-600">Please enter a valid phone number.</p>
+          ) : null}
+        </div>
+        <div>
+          <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
+            Device / asset
+          </label>
+          <input
+            id="repair-asset"
+            maxLength={ASSET_NAME_MAX_LENGTH}
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+            placeholder="e.g. iPhone 14 Pro"
+            value={formValues.assetName}
+            onChange={(event) =>
+              setFormValues((prev) => ({ ...prev, assetName: event.target.value.slice(0, ASSET_NAME_MAX_LENGTH) }))
+            }
+          />
+        </div>
+        <div>
+          <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">
+            {repairLabel} title *
+          </label>
+          <input
+            id="repair-title"
+            maxLength={REPAIR_TITLE_MAX_LENGTH}
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+            placeholder="e.g. Screen replacement"
+            value={formValues.repairTitle}
+            onChange={(event) =>
+              setFormValues((prev) => ({ ...prev, repairTitle: event.target.value.slice(0, REPAIR_TITLE_MAX_LENGTH) }))
+            }
+          />
+        </div>
+        <div>
+          <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">
+            Description
+          </label>
+          <textarea
+            id="repair-description"
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+            placeholder="Describe the issue and any diagnostics."
+            value={formValues.description}
+            onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">
+            Stage
+          </label>
+          <select
+            id="repair-stage"
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+            value={formValues.repairStage}
+            onChange={(event) =>
+              setFormValues((prev) => ({ ...prev, repairStage: event.target.value as StoredRepair["stage"] }))
+            }
+          >
+            {selectOptions.map((stageName) => (
+              <option key={stageName}>{stageName}</option>
+            ))}
+          </select>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
 function QuickReplyPickerModal({
   onClose,
   onSelect,
@@ -286,6 +546,7 @@ function ConversationsPageContent() {
     open: false,
     threadId: null,
   });
+  const [createRepairThreadId, setCreateRepairThreadId] = useState<string | null>(null);
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
@@ -485,6 +746,24 @@ function ConversationsPageContent() {
     () => (linkedRepair ? repairHistory.filter((item) => item.repairId === linkedRepair.id) : []),
     [linkedRepair, repairHistory]
   );
+  const stageOptions = useMemo(() => workflowStages.filter((stage) => !stage.isHidden).map((stage) => stage.name), [workflowStages]);
+  const initialStage = useMemo(
+    () => workflowStages.find((stage) => stage.isStart && !stage.isHidden)?.name ?? stageOptions[0] ?? "New",
+    [stageOptions, workflowStages]
+  );
+  const createRepairThread = useMemo(
+    () => (createRepairThreadId ? threads.find((thread) => thread.id === createRepairThreadId) ?? null : null),
+    [createRepairThreadId, threads]
+  );
+  const createRepairInitialValues = useMemo<NewRepairFormValues>(() => ({
+    customerFirstName: "",
+    customerLastName: "",
+    customerPhone: createRepairThread?.customerPhone ?? "+31 ",
+    assetName: "",
+    repairTitle: "",
+    description: "",
+    repairStage: initialStage
+  }), [createRepairThread?.customerPhone, initialStage]);
 
   const visibleThreads = useMemo(() => {
     const sortThreads = (left: StoredConversation, right: StoredConversation) => {
@@ -636,17 +915,28 @@ function ConversationsPageContent() {
   };
 
   const createRepairFromThread = (threadId: string) => {
-    const thread = threads.find((item) => item.id === threadId);
+    setCreateRepairThreadId(threadId);
+  };
+
+  const handleCreateRepairFromThread = (payload: NewRepairFormValues) => {
+    if (!createRepairThreadId) return;
+    const thread = threads.find((item) => item.id === createRepairThreadId);
     if (!thread) return;
 
+    const customerFirstName = payload.customerFirstName.trim();
+    const customerLastName = payload.customerLastName.trim();
+    const customerName = `${customerFirstName} ${customerLastName}`.trim();
+    const resolvedCustomerName = customerName || thread.customerName || payload.customerPhone;
     const newRepair: StoredRepair = {
       id: `repair_${Date.now()}`,
-      title: `New ${repairLabel}`,
-      description: "Created from conversation",
-      customerName: thread.customerName || thread.customerPhone,
-      customerPhone: thread.customerPhone,
-      assetName: "Unknown device",
-      stage: "New",
+      title: payload.repairTitle,
+      description: payload.description,
+      customerName: resolvedCustomerName,
+      customerFirstName,
+      customerLastName,
+      customerPhone: payload.customerPhone,
+      assetName: payload.assetName,
+      stage: payload.repairStage,
       priority: "Medium",
       status: "Open",
     };
@@ -669,7 +959,7 @@ function ConversationsPageContent() {
 
     updateThreads((prev) =>
       prev.map((item) =>
-        item.id === threadId
+        item.id === createRepairThreadId
           ? {
               ...item,
               linkedRepairId: newRepair.id,
@@ -682,6 +972,7 @@ function ConversationsPageContent() {
 
     setShowRepairPanel(true);
     setLinkModal({ open: false, threadId: null });
+    setCreateRepairThreadId(null);
   };
 
   const handleImageSelected = (file: File | null) => {
@@ -1096,16 +1387,25 @@ function ConversationsPageContent() {
                         {repairLabel} details
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLinkModal({ open: true, threadId: selectedThread.id })
-                        }
-                        className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
-                      >
-                        <LinkIcon className="h-4 w-4" />
-                        Link {repairLabel}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLinkModal({ open: true, threadId: selectedThread.id })
+                          }
+                          className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
+                        >
+                          <LinkIcon className="h-4 w-4" />
+                          Link {repairLabel}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => createRepairFromThread(selectedThread.id)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
+                        >
+                          Create {repairLabel}
+                        </button>
+                      </div>
                     )}
                   </div>
                   <div className="hidden md:block">
@@ -1121,16 +1421,25 @@ function ConversationsPageContent() {
                         </button>
                       )
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setLinkModal({ open: true, threadId: selectedThread.id })
-                        }
-                        className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
-                      >
-                        <LinkIcon className="h-4 w-4" />
-                        Link {repairLabel}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLinkModal({ open: true, threadId: selectedThread.id })
+                          }
+                          className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
+                        >
+                          <LinkIcon className="h-4 w-4" />
+                          Link {repairLabel}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => createRepairFromThread(selectedThread.id)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300"
+                        >
+                          Create {repairLabel}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1343,6 +1652,15 @@ function ConversationsPageContent() {
           onClose={() => setLinkModal({ open: false, threadId: null })}
           onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)}
           onCreate={() => createRepairFromThread(linkModal.threadId!)}
+        />
+      ) : null}
+      {createRepairThread ? (
+        <AddRepairModal
+          initialValues={createRepairInitialValues}
+          stageOptions={stageOptions}
+          repairLabel={repairLabel}
+          onClose={() => setCreateRepairThreadId(null)}
+          onSubmit={handleCreateRepairFromThread}
         />
       ) : null}
 
