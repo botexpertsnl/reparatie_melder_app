@@ -1068,15 +1068,18 @@ function WorkItemsPageContent() {
                     )}
                     style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
                   >
-                    <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,9rem)_auto] items-center gap-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
-                      <div className="shrink-0">
-                        <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
-                      </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,11rem)_auto] sm:gap-4">
                       <div className="min-w-0">
                         <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
                         <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
+                        <div className="mt-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-white sm:hidden">
+                          {repair.customerName}
+                        </div>
                       </div>
-                      <div className="min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:text-sm">
+                      <div className="shrink-0 justify-self-start sm:justify-self-end">
+                        <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
+                      </div>
+                      <div className="hidden min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:block sm:text-sm">
                         {repair.customerName}
                       </div>
                       <div className="relative flex items-center" data-action-menu="true">
