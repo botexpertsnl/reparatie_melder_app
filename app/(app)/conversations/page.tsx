@@ -829,11 +829,11 @@ function ConversationsPageContent() {
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
 
-  const updateConversationOpenState = (threadId: string, open: boolean) => {
+  const updateConversationOpenState = useCallback((threadId: string, open: boolean) => {
     updateThreads((prev) =>
       prev.map((thread) => (thread.id === threadId ? { ...thread, open } : thread))
     );
-  };
+  }, [updateThreads]);
 
   const sendMessage = ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
     if (!selectedThread || !message.trim()) return;
@@ -845,7 +845,7 @@ function ConversationsPageContent() {
               ...thread,
               preview: message.trim(),
               updatedAt: "Now",
-              open: closeConversation ? false : true,
+              open: closeConversation ? false : thread.open,
               messages: [
                 ...thread.messages,
                 {
@@ -865,7 +865,16 @@ function ConversationsPageContent() {
 
   const handleConversationStatusButtonClick = () => {
     if (!selectedThread) return;
-    updateConversationOpenState(selectedThread.id, !selectedThread.open);
+    if (selectedThread.open) {
+      updateConversationOpenState(selectedThread.id, false);
+      return;
+    }
+
+    updateConversationOpenState(selectedThread.id, true);
+    setStatusFilter("open");
+    setSelectedThreadId(selectedThread.id);
+    setMobileActivePane("chat");
+    setIsMobileRepairDrawerOpen(false);
   };
 
   const cancelScheduledTemplateMessage = useCallback((threadId: string, messageId: string) => {
@@ -985,7 +994,7 @@ function ConversationsPageContent() {
               ...thread,
               preview: `📷 ${file.name}`,
               updatedAt: "Now",
-              open: true,
+              open: thread.open,
               messages: [
                 ...thread.messages,
                 {
