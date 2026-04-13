@@ -807,22 +807,21 @@ function ConversationsPageContent() {
   }, [normalizedSearchQuery, sortDirection, statusFilter, threads]);
 
   useEffect(() => {
-    if (visibleThreads.length === 0) {
-      if (selectedThreadId) {
-        setSelectedThreadId("");
-      }
-      return;
-    }
-
     if (!selectedThreadId) {
       setSelectedThreadId(visibleThreads[0]?.id ?? "");
       return;
     }
 
+    const selectedThreadInAll = threads.find((thread) => thread.id === selectedThreadId);
+    const selectedThreadIsHiddenByStatusFilter = Boolean(
+      selectedThreadInAll && selectedThreadInAll.open !== (statusFilter === "open")
+    );
+    if (selectedThreadIsHiddenByStatusFilter) return;
     if (visibleThreads.some((thread) => thread.id === selectedThreadId)) return;
+    if (selectedThreadInAll) return;
 
     setSelectedThreadId(visibleThreads[0]?.id ?? "");
-  }, [selectedThreadId, visibleThreads]);
+  }, [selectedThreadId, statusFilter, threads, visibleThreads]);
 
   useEffect(() => {
     if (!messageWindowRef.current) return;
@@ -876,6 +875,15 @@ function ConversationsPageContent() {
     setMobileActivePane("chat");
     setIsMobileRepairDrawerOpen(false);
   };
+
+  const handleQuickCloseConversation = useCallback((threadId: string) => {
+    updateConversationOpenState(threadId, false);
+    if (statusFilter === "open" && selectedThreadId === threadId) {
+      setSelectedThreadId("");
+      setMobileActivePane("chat");
+      setIsMobileRepairDrawerOpen(false);
+    }
+  }, [selectedThreadId, statusFilter, updateConversationOpenState]);
 
   const cancelScheduledTemplateMessage = useCallback((threadId: string, messageId: string) => {
     updateThreads((prev) =>
@@ -1275,15 +1283,23 @@ function ConversationsPageContent() {
 
           <div className="space-y-1 px-3 pb-3">
             {visibleThreads.map((thread) => (
-              <button
+              <div
                 key={thread.id}
-                type="button"
                 onClick={() => {
                   setSelectedThreadId(thread.id);
                   setMobileActivePane("chat");
                   setIsMobileRepairDrawerOpen(false);
                 }}
-                className={`w-full rounded-xl border p-3 text-left ${
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  setSelectedThreadId(thread.id);
+                  setMobileActivePane("chat");
+                  setIsMobileRepairDrawerOpen(false);
+                }}
+                role="button"
+                tabIndex={0}
+                className={`relative w-full rounded-xl border p-3 pr-10 text-left ${
                   selectedThreadId === thread.id
                     ? ""
                     : "border-transparent hover:bg-white/5"
@@ -1312,7 +1328,22 @@ function ConversationsPageContent() {
                       }`
                     : "No repair linked"}
                 </p>
-              </button>
+                {thread.open ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleQuickCloseConversation(thread.id);
+                    }}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    className="absolute bottom-2 right-2 rounded-md border border-[#2f3c52] p-1 text-slate-400 transition hover:border-[#455979] hover:text-slate-200"
+                    aria-label={`Close conversation with ${thread.customerName || thread.customerPhone}`}
+                    title="Close conversation"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
             ))}
             {visibleThreads.length === 0 ? (
               <p className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-4 text-sm text-slate-400">
