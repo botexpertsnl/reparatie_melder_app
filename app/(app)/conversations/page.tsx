@@ -876,12 +876,17 @@ function ConversationsPageContent() {
     setIsMobileRepairDrawerOpen(false);
   };
 
-  const handleQuickCloseConversation = useCallback((threadId: string) => {
-    updateConversationOpenState(threadId, false);
-    if (statusFilter === "open" && selectedThreadId === threadId) {
-      setSelectedThreadId("");
-      setMobileActivePane("chat");
-      setIsMobileRepairDrawerOpen(false);
+  const handleQuickToggleConversation = useCallback((threadId: string, shouldOpen: boolean) => {
+    updateConversationOpenState(threadId, shouldOpen);
+    if (selectedThreadId === threadId) {
+      const willMoveOutOfFilteredList =
+        (statusFilter === "open" && !shouldOpen) ||
+        (statusFilter === "closed" && shouldOpen);
+      if (willMoveOutOfFilteredList) {
+        setSelectedThreadId("");
+        setMobileActivePane("chat");
+        setIsMobileRepairDrawerOpen(false);
+      }
     }
   }, [selectedThreadId, statusFilter, updateConversationOpenState]);
 
@@ -1328,21 +1333,19 @@ function ConversationsPageContent() {
                       }`
                     : "No repair linked"}
                 </p>
-                {thread.open ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleQuickCloseConversation(thread.id);
-                    }}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    className="absolute bottom-2 right-2 rounded-md border border-[#2f3c52] p-1 text-slate-400 transition hover:border-[#455979] hover:text-slate-200"
-                    aria-label={`Close conversation with ${thread.customerName || thread.customerPhone}`}
-                    title="Close conversation"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleQuickToggleConversation(thread.id, !thread.open);
+                  }}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
+                  aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
+                  title={thread.open ? "Close conversation" : "Reopen conversation"}
+                >
+                  {thread.open ? <X className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+                </button>
               </div>
             ))}
             {visibleThreads.length === 0 ? (
