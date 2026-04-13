@@ -602,6 +602,11 @@ function WorkItemsPageContent() {
       selectedRepair ? conversations.find((thread) => thread.linkedRepairId === selectedRepair.id) ?? null : null,
     [conversations, selectedRepair]
   );
+  const pendingStageSourceRepair = useMemo(
+    () =>
+      pendingStageConfirmation ? repairs.find((repair) => repair.id === pendingStageConfirmation.repairId) ?? null : null,
+    [pendingStageConfirmation, repairs]
+  );
   const repairsInFilterScope = useMemo(
     () => repairs.filter((repair) => matchesRepairSearch(repair, searchQuery)),
     [repairs, searchQuery]
@@ -1426,11 +1431,21 @@ function WorkItemsPageContent() {
             </>
           )}
         >
+          {pendingStageSourceRepair ? (
+            <div className="mb-3 flex items-center gap-2">
+              <StageBadge
+                stage={pendingStageSourceRepair.stage}
+                stageColor={stageColorByName.get(pendingStageSourceRepair.stage)}
+              />
+              <span className="text-sm text-slate-500">→</span>
+              <StageBadge
+                stage={pendingStageConfirmation.nextStage}
+                stageColor={stageColorByName.get(pendingStageConfirmation.nextStage)}
+              />
+            </div>
+          ) : null}
           <p className="text-sm text-slate-700">
             Are you sure you want to move this repair to another workflow stage?
-          </p>
-          <p className="mt-2 text-sm text-slate-600">
-            This may trigger workflow-related follow-up behavior if applicable.
           </p>
         </ModalShell>
       ) : null}

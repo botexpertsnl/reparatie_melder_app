@@ -32,6 +32,25 @@ type RepairDetailsPanelProps = {
   historyItems?: StoredRepairHistoryItem[];
 };
 
+function WorkflowStageBadge({ label, color }: { label: string; color?: string }) {
+  return (
+    <span
+      className="inline-flex rounded-xl border px-2 py-0.5 text-xs font-semibold md:px-3 md:py-1 md:text-sm"
+      style={
+        color
+          ? {
+            color,
+            borderColor: `${color}66`,
+            backgroundColor: `${color}1A`
+          }
+          : undefined
+      }
+    >
+      {label}
+    </span>
+  );
+}
+
 function formatHistoryDateTime(atIso: string) {
   const parsed = new Date(atIso);
   if (Number.isNaN(parsed.getTime())) return "--";
@@ -126,6 +145,7 @@ export function RepairDetailsPanel({
   const hasEmptyVariableValues = templateConfirmation
     ? (templateConfirmation.template.variables ?? []).some((_, index) => !(templateConfirmation.variableValues[index] ?? "").trim())
     : false;
+  const currentStageColor = workflowStages.find((stage) => stage.name === repair.stage)?.color;
   const repairHistoryTimeline = useMemo(
     () => [...historyItems].sort((a, b) => new Date(b.atIso).getTime() - new Date(a.atIso).getTime()),
     [historyItems]
@@ -372,11 +392,13 @@ export function RepairDetailsPanel({
             </>
           )}
         >
+          <div className="mb-3 flex items-center gap-2">
+            <WorkflowStageBadge label={repair.stage} color={currentStageColor} />
+            <span className="text-sm text-slate-500">→</span>
+            <WorkflowStageBadge label={pendingStageConfirmation.name} color={pendingStageConfirmation.color} />
+          </div>
           <p className="text-sm text-slate-700">
             Are you sure you want to move this repair to another workflow stage?
-          </p>
-          <p className="mt-2 text-sm text-slate-600">
-            This may trigger workflow-related follow-up behavior if applicable.
           </p>
         </ModalShell>
       ) : null}
