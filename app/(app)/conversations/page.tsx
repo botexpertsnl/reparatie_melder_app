@@ -49,6 +49,7 @@ import {
   writeStoredRepairHistory,
   type StoredRepairHistoryItem
 } from "@/lib/repair-history-store";
+import { useMobileRowSwipe } from "@/lib/use-mobile-row-swipe";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
@@ -489,6 +490,87 @@ function QuickReplyPickerModal({
   );
 }
 
+function ConversationListRow({
+  thread,
+  isSelected,
+  repairs,
+  isMobileSwipeEnabled,
+  onOpenConversation,
+  onToggleConversationOpenState,
+}: {
+  thread: StoredConversation;
+  isSelected: boolean;
+  repairs: StoredRepair[];
+  isMobileSwipeEnabled: boolean;
+  onOpenConversation: () => void;
+  onToggleConversationOpenState: () => void;
+}) {
+  const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
+    enabled: isMobileSwipeEnabled,
+    onSwipeOpen: onOpenConversation,
+  });
+
+  return (
+    <div
+      onClick={onOpenConversation}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onOpenConversation();
+      }}
+      role="button"
+      tabIndex={0}
+      className={`w-full rounded-xl border p-3 text-left ${
+        isSelected
+          ? ""
+          : "border-transparent hover:bg-white/5"
+      }`}
+      style={{
+        ...(isSelected
+          ? {
+              borderColor: "var(--border-strong)",
+              background: "var(--surface-3)",
+            }
+          : {}),
+        ...swipeStyle,
+      }}
+      {...swipeHandlers}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-medium text-slate-200">
+          {thread.customerName || thread.customerPhone}
+        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">{thread.updatedAt}</span>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleConversationOpenState();
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
+            aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
+            title={thread.open ? "Close conversation" : "Reopen conversation"}
+            data-swipe-ignore="true"
+          >
+            {thread.open ? <X className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+          </button>
+        </div>
+      </div>
+      <p className="mt-1 text-sm text-slate-300">{truncateMessagePreview(thread.preview)}</p>
+      <p className="mt-1 text-xs italic text-slate-500">
+        {thread.linkedRepairId
+          ? `🔗 ${
+              repairs.find((r) => r.id === thread.linkedRepairId)?.title ??
+              "Repair linked"
+            }`
+          : "No repair linked"}
+      </p>
+    </div>
+  );
+}
+
 function ConversationsPageContent() {
   const searchParams = useSearchParams();
   const repairLabel = useTenantRepairLabel();
@@ -542,6 +624,10 @@ function ConversationsPageContent() {
   const [mobileActivePane, setMobileActivePane] = useState<"list" | "chat">(
     "list"
   );
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 767px)").matches;
+  });
   const [linkModal, setLinkModal] = useState<LinkModalState>({
     open: false,
     threadId: null,
@@ -828,8 +914,17 @@ function ConversationsPageContent() {
   }, [selectedThreadId, selectedThread?.messages.length]);
 
   useEffect(() => {
-    const isMobileViewport =
-      typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+    const mobileViewportQuery = window.matchMedia("(max-width: 767px)");
+    const handleViewportChange = (event: MediaQueryListEvent) => setIsMobileViewport(event.matches);
+    setIsMobileViewport(mobileViewportQuery.matches);
+    mobileViewportQuery.addEventListener("change", handleViewportChange);
+
+    return () => {
+      mobileViewportQuery.removeEventListener("change", handleViewportChange);
+    };
+  }, []);
+
+  useEffect(() => {
     const enableSwipeMenu = isMobileViewport && mobileActivePane === "list" && !isMobileRepairDrawerOpen;
     window.dispatchEvent(
       new CustomEvent("mobile-menu:gesture-context", {
@@ -844,7 +939,7 @@ function ConversationsPageContent() {
         })
       );
     };
-  }, [isMobileRepairDrawerOpen, mobileActivePane]);
+  }, [isMobileRepairDrawerOpen, isMobileViewport, mobileActivePane]);
 
   const updateConversationOpenState = useCallback((threadId: string, open: boolean) => {
     updateThreads((prev) =>
@@ -1298,69 +1393,23 @@ function ConversationsPageContent() {
 
           <div className="subtle-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
             {visibleThreads.map((thread) => (
-              <div
+              <ConversationListRow
                 key={thread.id}
-                onClick={() => {
+                thread={thread}
+                isSelected={selectedThreadId === thread.id}
+                repairs={repairs}
+                isMobileSwipeEnabled={isMobileViewport}
+                onOpenConversation={() => {
                   setSelectedThreadId(thread.id);
                   setMobileActivePane("chat");
                   setIsMobileRepairDrawerOpen(false);
                 }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" && event.key !== " ") return;
-                  event.preventDefault();
-                  setSelectedThreadId(thread.id);
-                  setMobileActivePane("chat");
-                  setIsMobileRepairDrawerOpen(false);
+                onToggleConversationOpenState={() => {
+                  handleQuickToggleConversation(thread.id, !thread.open, {
+                    fromListRowCloseButton: thread.open,
+                  });
                 }}
-                role="button"
-                tabIndex={0}
-                className={`w-full rounded-xl border p-3 text-left ${
-                  selectedThreadId === thread.id
-                    ? ""
-                    : "border-transparent hover:bg-white/5"
-                }`}
-                style={
-                  selectedThreadId === thread.id
-                    ? {
-                        borderColor: "var(--border-strong)",
-                        background: "var(--surface-3)",
-                      }
-                    : undefined
-                }
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-medium text-slate-200">
-                    {thread.customerName || thread.customerPhone}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-500">{thread.updatedAt}</span>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleQuickToggleConversation(thread.id, !thread.open, {
-                          fromListRowCloseButton: thread.open,
-                        });
-                      }}
-                      onMouseDown={(event) => event.stopPropagation()}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
-                      aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
-                      title={thread.open ? "Close conversation" : "Reopen conversation"}
-                    >
-                      {thread.open ? <X className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
-                    </button>
-                  </div>
-                </div>
-                <p className="mt-1 text-sm text-slate-300">{truncateMessagePreview(thread.preview)}</p>
-                <p className="mt-1 text-xs italic text-slate-500">
-                  {thread.linkedRepairId
-                    ? `🔗 ${
-                        repairs.find((r) => r.id === thread.linkedRepairId)?.title ??
-                        "Repair linked"
-                      }`
-                    : "No repair linked"}
-                </p>
-              </div>
+              />
             ))}
             {visibleThreads.length === 0 ? (
               <p className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-4 text-sm text-slate-400">

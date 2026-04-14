@@ -40,6 +40,7 @@ import {
   resolveStageTemplateAutomation,
   stageTransitionHasModalFlow
 } from "@/lib/repair-stage-transition";
+import { useMobileRowSwipe } from "@/lib/use-mobile-row-swipe";
 
 type RepairItem = StoredRepair;
 const UNKNOWN_STAGE = "Unknown";
@@ -359,6 +360,116 @@ function StageIndicatorDot({
       style={{ backgroundColor: stageColor }}
       aria-hidden="true"
     />
+  );
+}
+
+function RepairListRow({
+  repair,
+  isSelected,
+  stageColorByName,
+  isMobileSwipeEnabled,
+  openMenuId,
+  onOpenRepair,
+  onToggleMenu,
+  onEditRepair,
+  onDeleteRepair,
+}: {
+  repair: RepairItem;
+  isSelected: boolean;
+  stageColorByName: Map<string, string>;
+  isMobileSwipeEnabled: boolean;
+  openMenuId: string | null;
+  onOpenRepair: () => void;
+  onToggleMenu: () => void;
+  onEditRepair: () => void;
+  onDeleteRepair: () => void;
+}) {
+  const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
+    enabled: isMobileSwipeEnabled,
+    onSwipeOpen: onOpenRepair,
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={onOpenRepair}
+      className={clsx(
+        "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
+        isSelected
+          ? "bg-[var(--surface-3)]"
+          : "border-transparent hover:bg-white/5"
+      )}
+      style={{
+        ...(isSelected ? { borderColor: "var(--border-strong)" } : {}),
+        ...swipeStyle,
+      }}
+      {...swipeHandlers}
+    >
+      <div className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
+        <div className="min-w-0">
+          <div className="flex w-full items-center">
+            <span className="sm:hidden">
+              <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+            </span>
+            <span className="hidden sm:inline-flex">
+              <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
+            </span>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
+          <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
+          <div className="mt-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-white sm:hidden">
+            {repair.customerName}
+          </div>
+        </div>
+        <div className="hidden min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:block sm:text-sm">
+          {repair.customerName}
+        </div>
+        <div className="relative flex items-center" data-action-menu="true">
+          <button
+            data-action-menu="true"
+            data-swipe-ignore="true"
+            className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleMenu();
+            }}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          {openMenuId === repair.id ? (
+            <div
+              data-action-menu="true"
+              className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
+            >
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEditRepair();
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteRepair();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -1152,84 +1263,24 @@ function WorkItemsPageContent() {
             >
               <div className="space-y-1 p-3">
                 {filteredRepairs.map((repair) => (
-                  <button
+                  <RepairListRow
                     key={repair.id}
-                    type="button"
-                    onClick={() => handleRepairSelection(repair.id)}
-                    className={clsx(
-                      "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
-                      selectedRepairId === repair.id
-                        ? "bg-[var(--surface-3)]"
-                        : "border-transparent hover:bg-white/5"
-                    )}
-                    style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
-                  >
-                    <div className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
-                      <div className="min-w-0">
-                        <div className="flex w-full items-center">
-                          <span className="sm:hidden">
-                            <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
-                          </span>
-                          <span className="hidden sm:inline-flex">
-                            <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
-                          </span>
-                        </div>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
-                        <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
-                        <div className="mt-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-white sm:hidden">
-                          {repair.customerName}
-                        </div>
-                      </div>
-                      <div className="hidden min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:block sm:text-sm">
-                        {repair.customerName}
-                      </div>
-                      <div className="relative flex items-center" data-action-menu="true">
-                        <button
-                          data-action-menu="true"
-                          className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setOpenMenuId((prev) => (prev === repair.id ? null : repair.id));
-                          }}
-                        >
-                          <MoreHorizontal className="h-5 w-5" />
-                        </button>
-                        {openMenuId === repair.id ? (
-                          <div
-                            data-action-menu="true"
-                            className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
-                          >
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setEditingRepairId(repair.id);
-                                setOpenMenuId(null);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setDeletingRepairId(repair.id);
-                                setOpenMenuId(null);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </button>
+                    repair={repair}
+                    isSelected={selectedRepairId === repair.id}
+                    stageColorByName={stageColorByName}
+                    isMobileSwipeEnabled={isMobileViewport}
+                    openMenuId={openMenuId}
+                    onOpenRepair={() => handleRepairSelection(repair.id)}
+                    onToggleMenu={() => setOpenMenuId((prev) => (prev === repair.id ? null : repair.id))}
+                    onEditRepair={() => {
+                      setEditingRepairId(repair.id);
+                      setOpenMenuId(null);
+                    }}
+                    onDeleteRepair={() => {
+                      setDeletingRepairId(repair.id);
+                      setOpenMenuId(null);
+                    }}
+                  />
                 ))}
                 {filteredRepairs.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-10 text-center text-sm text-slate-400">
