@@ -54,6 +54,13 @@ body {
   scrollbar-width: none; /* Firefox */
 }
 
+@media (max-width: 768px) {
+  html,
+  body {
+    overscroll-behavior-x: none;
+  }
+}
+
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
