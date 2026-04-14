@@ -880,18 +880,31 @@ function ConversationsPageContent() {
     reopenConversation(selectedThread.id);
   };
 
-  const handleQuickToggleConversation = useCallback((threadId: string, shouldOpen: boolean) => {
+  const handleQuickToggleConversation = useCallback((
+    threadId: string,
+    shouldOpen: boolean,
+    options?: { fromListRowCloseButton?: boolean }
+  ) => {
     if (shouldOpen) {
       reopenConversation(threadId);
       return;
     }
 
+    const isMobileViewport =
+      typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+    const shouldStayInListViewOnMobile =
+      isMobileViewport && options?.fromListRowCloseButton === true;
+
     updateConversationOpenState(threadId, false);
     if (selectedThreadId === threadId) {
       const willMoveOutOfFilteredList = statusFilter === "open";
       if (willMoveOutOfFilteredList) {
-        setSelectedThreadId("");
-        setMobileActivePane("chat");
+        if (!shouldStayInListViewOnMobile) {
+          setSelectedThreadId("");
+          setMobileActivePane("chat");
+        } else {
+          setMobileActivePane("list");
+        }
         setIsMobileRepairDrawerOpen(false);
       }
     }
@@ -1223,7 +1236,7 @@ function ConversationsPageContent() {
         onTouchEnd={handleListTouchEnd}
       >
         <div
-          className={`min-h-0 flex-1 transition-opacity duration-200 ${
+          className={`min-h-0 flex flex-1 flex-col transition-opacity duration-200 ${
             listCollapsed ? "pointer-events-none opacity-0" : "opacity-100"
           }`}
         >
@@ -1293,7 +1306,7 @@ function ConversationsPageContent() {
             </div>
           </div>
 
-          <div className="space-y-1 px-3 pb-3">
+          <div className="subtle-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
             {visibleThreads.map((thread) => (
               <div
                 key={thread.id}
@@ -1335,7 +1348,9 @@ function ConversationsPageContent() {
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        handleQuickToggleConversation(thread.id, !thread.open);
+                        handleQuickToggleConversation(thread.id, !thread.open, {
+                          fromListRowCloseButton: thread.open,
+                        });
                       }}
                       onMouseDown={(event) => event.stopPropagation()}
                       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
