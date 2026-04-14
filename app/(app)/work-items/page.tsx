@@ -338,6 +338,30 @@ function StageBadge({
   );
 }
 
+function StageIndicatorDot({
+  stage,
+  stageColor
+}: {
+  stage: RepairItem["stage"];
+  stageColor?: string;
+}) {
+  if (stage === UNKNOWN_STAGE) {
+    return <span className="inline-flex h-2.5 w-2.5 rounded-full bg-slate-400 shadow-[0_0_0_1px_rgba(15,23,42,0.45)]" aria-hidden="true" />;
+  }
+
+  if (!stageColor) {
+    return <span className="inline-flex h-2.5 w-2.5 rounded-full bg-blue-400 shadow-[0_0_0_1px_rgba(15,23,42,0.45)]" aria-hidden="true" />;
+  }
+
+  return (
+    <span
+      className="inline-flex h-2.5 w-2.5 rounded-full shadow-[0_0_0_1px_rgba(15,23,42,0.45)]"
+      style={{ backgroundColor: stageColor }}
+      aria-hidden="true"
+    />
+  );
+}
+
 function AddRepairModal({
   mode,
   initialValues,
@@ -1102,10 +1126,15 @@ function WorkItemsPageContent() {
                     )}
                     style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
                   >
-                    <div className="grid grid-cols-[minmax(6.75rem,8rem)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
-                      <div className="min-w-0 pr-1 sm:pr-0">
-                        <div className="w-full">
-                          <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
+                    <div className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
+                      <div className="min-w-0">
+                        <div className="flex w-full items-center">
+                          <span className="sm:hidden">
+                            <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+                          </span>
+                          <span className="hidden sm:inline-flex">
+                            <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
+                          </span>
                         </div>
                       </div>
                       <div className="min-w-0">
