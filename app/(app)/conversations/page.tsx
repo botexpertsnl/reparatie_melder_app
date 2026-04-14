@@ -555,7 +555,6 @@ function ConversationsPageContent() {
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const touchStartRef = useRef<TouchGesture | null>(null);
   const repairDrawerTouchStartRef = useRef<TouchGesture | null>(null);
-  const listTouchStartRef = useRef<TouchGesture | null>(null);
 
   const formatScheduledTemplateLabel = useCallback((scheduledForIso?: string, cancelled = false) => {
     if (!scheduledForIso) return null;
@@ -827,6 +826,25 @@ function ConversationsPageContent() {
     if (!messageWindowRef.current) return;
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
+
+  useEffect(() => {
+    const isMobileViewport =
+      typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+    const enableSwipeMenu = isMobileViewport && mobileActivePane === "list" && !isMobileRepairDrawerOpen;
+    window.dispatchEvent(
+      new CustomEvent("mobile-menu:gesture-context", {
+        detail: { enabled: enableSwipeMenu }
+      })
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("mobile-menu:gesture-context", {
+          detail: { enabled: false }
+        })
+      );
+    };
+  }, [isMobileRepairDrawerOpen, mobileActivePane]);
 
   const updateConversationOpenState = useCallback((threadId: string, open: boolean) => {
     updateThreads((prev) =>
@@ -1191,32 +1209,6 @@ function ConversationsPageContent() {
     setIsMobileRepairDrawerOpen(false);
   };
 
-  const handleListTouchStart = (event: TouchEvent<HTMLElement>) => {
-    const firstTouch = event.touches[0];
-    if (!firstTouch) return;
-    listTouchStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
-  };
-
-  const handleListTouchEnd = (event: TouchEvent<HTMLElement>) => {
-    const touchStart = listTouchStartRef.current;
-    listTouchStartRef.current = null;
-    if (!touchStart || mobileActivePane !== "list") return;
-
-    const firstChangedTouch = event.changedTouches[0];
-    if (!firstChangedTouch) return;
-
-    const deltaX = firstChangedTouch.clientX - touchStart.x;
-    const deltaY = firstChangedTouch.clientY - touchStart.y;
-    const minHorizontalSwipe = 70;
-    const maxVerticalMovement = 50;
-
-    if (Math.abs(deltaX) < minHorizontalSwipe || Math.abs(deltaY) > maxVerticalMovement || deltaX < 0) {
-      return;
-    }
-
-    window.dispatchEvent(new Event("mobile-menu:open"));
-  };
-
   return (
     <div
       className={`fixed inset-x-0 bottom-0 top-[69px] overflow-hidden md:static md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] md:grid md:gap-0 md:transition-[grid-template-columns] md:duration-300 ${
@@ -1232,8 +1224,6 @@ function ConversationsPageContent() {
           borderColor: "var(--border)",
           background: "var(--surface-2)",
         }}
-        onTouchStart={handleListTouchStart}
-        onTouchEnd={handleListTouchEnd}
       >
         <div
           className={`min-h-0 flex flex-1 flex-col transition-opacity duration-200 ${

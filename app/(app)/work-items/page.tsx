@@ -753,6 +753,23 @@ function WorkItemsPageContent() {
   }, [selectedRepair]);
 
   useEffect(() => {
+    const enableSwipeMenu = isMobileViewport && !isMobileRepairDrawerOpen;
+    window.dispatchEvent(
+      new CustomEvent("mobile-menu:gesture-context", {
+        detail: { enabled: enableSwipeMenu }
+      })
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("mobile-menu:gesture-context", {
+          detail: { enabled: false }
+        })
+      );
+    };
+  }, [isMobileRepairDrawerOpen, isMobileViewport]);
+
+  useEffect(() => {
     const refreshConversations = () => setConversations(readStoredConversations(defaultConversations));
     refreshConversations();
     window.addEventListener("conversations:changed", refreshConversations);
