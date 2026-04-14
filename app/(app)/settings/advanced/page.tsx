@@ -553,8 +553,8 @@ function StageModal({
                 {values.templateId && actionableButtons.length > 0 ? (
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
                     <div className="text-sm font-semibold text-slate-800">Button actions after customer selection</div>
-                    <p className="mt-1 text-sm text-slate-500">For each button, choose whether to send a quick reply, move to another stage, or both.</p>
-                    <p className="mt-1 text-xs text-slate-500">When this reply is received from the customer, the selected action will be triggered automatically.</p>
+                    <p className="mt-0.5 text-sm text-slate-500">For each button, choose whether to send a quick reply, move to another stage, or both.</p>
+                    <p className="mt-0.5 text-xs text-slate-500">When this reply is received from the customer, the selected action will be triggered automatically.</p>
                     <div className="mt-3 space-y-3">
                       {values.templateButtonActions.map((action) => {
                         const nextStageOptions = stageOptions.filter((stage) => stage.id !== currentStageId);
@@ -692,7 +692,7 @@ function StageModal({
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
                     <div>
                       <div className="text-sm font-semibold text-slate-800">Moment of sending</div>
-                      <div className="mt-1 text-sm text-slate-500">
+                      <div className="mt-0.5 text-sm text-slate-500">
                         Choose when the template message should be triggered after the repair is moved to this stage.
                       </div>
                       <div className="mt-3 space-y-2">
