@@ -426,11 +426,11 @@ function StageModal({
           }}
         >
           <div>
-            <label htmlFor="stage-name" className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Name *</label>
+            <label htmlFor="stage-name" className="mb-2 block text-sm font-medium text-slate-700">Name *</label>
             <input
               id="stage-name"
               className={clsx(
-                "w-full rounded-xl border bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none ring-0 placeholder:text-[var(--text-secondary)] focus:border-[#30b5a5]",
+                "w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-[#30b5a5]",
                 stageNameTooLong ? "border-red-400" : "border-[#bfc9d8]"
               )}
               placeholder="e.g. Waiting for Customer"
@@ -438,17 +438,17 @@ function StageModal({
               onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
             />
             {stageNameLimitReached ? (
-              <p className={clsx("mt-2 text-xs", stageNameTooLong ? "text-red-500" : "text-[var(--text-secondary)]")}>
+              <p className={clsx("mt-2 text-xs", stageNameTooLong ? "text-red-500" : "text-slate-500")}>
                 Stage title can be up to {STAGE_NAME_MAX_LENGTH} characters. Shorten the title to save this stage.
               </p>
             ) : null}
           </div>
 
           <div>
-            <label htmlFor="stage-description" className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Description *</label>
+            <label htmlFor="stage-description" className="mb-2 block text-sm font-medium text-slate-700">Description *</label>
             <textarea
               id="stage-description"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none ring-0 placeholder:text-[var(--text-secondary)] focus:border-[#30b5a5]"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-[#30b5a5]"
               placeholder="What does this stage represent?"
               value={values.description}
               onChange={(event) => setValues((prev) => ({ ...prev, description: event.target.value }))}
@@ -456,7 +456,7 @@ function StageModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Color</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Color</label>
             <div className="flex flex-wrap gap-3">
               {colorOptions.map((color) => {
                 const selected = values.color === color;
@@ -478,8 +478,8 @@ function StageModal({
           <div className="rounded-xl border border-[#d7dce3] bg-white p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm font-semibold text-[var(--text-primary)]">Automatic template message</div>
-                <div className="mt-1 text-sm text-[var(--text-secondary)]">Send a predefined WhatsApp template when this stage is set.</div>
+                <div className="text-sm font-semibold text-slate-700">Automatic template message</div>
+                <div className="mt-1 text-sm text-slate-500">Send a predefined WhatsApp template when this stage is set.</div>
               </div>
               <button
                 type="button"
@@ -504,10 +504,10 @@ function StageModal({
             {values.templateAutomationEnabled ? (
               <div className="mt-4 space-y-3 border-t border-[#e5e9ef] pt-4">
                 <div>
-                  <label htmlFor="template-message" className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Template message</label>
+                  <label htmlFor="template-message" className="mb-2 block text-sm font-medium text-slate-700">Template message</label>
                   <select
                     id="template-message"
-                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none ring-0 focus:border-[#30b5a5]"
+                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
                     value={values.templateId}
                     onChange={(event) =>
                       setValues((prev) => {
@@ -539,22 +539,22 @@ function StageModal({
                 </div>
 
                 <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Template preview</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Template preview</div>
                   {selectedTemplate ? (
                     <div className="mt-2 rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
-                      <div className="text-sm leading-6 text-[var(--text-primary)]">{renderStageTemplatePreviewTokens(selectedTemplate)}</div>
+                      <div className="text-sm leading-6 text-slate-700">{renderStageTemplatePreviewTokens(selectedTemplate)}</div>
                       {renderStageTemplatePreviewButtons(selectedTemplate)}
                     </div>
                   ) : (
-                    <p className="mt-2 min-h-[60px] text-sm text-[var(--text-secondary)]">Select a template to preview its message.</p>
+                    <p className="mt-2 min-h-[60px] text-sm text-slate-500">Select a template to preview its message.</p>
                   )}
                 </div>
 
                 {values.templateId && actionableButtons.length > 0 ? (
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
-                    <div className="text-sm font-semibold text-[var(--text-primary)]">Button actions after customer selection</div>
-                    <p className="mt-0.5 text-sm text-[var(--text-secondary)]">For each button, choose whether to send a quick reply, move to another stage, or both.</p>
-                    <p className="mt-0.5 text-xs text-[var(--text-secondary)]">When this reply is received from the customer, the selected action will be triggered automatically.</p>
+                    <div className="text-sm font-semibold text-slate-700">Button actions after customer selection</div>
+                    <p className="mt-0.5 text-sm text-slate-500">For each button, choose whether to send a quick reply, move to another stage, or both.</p>
+                    <p className="mt-0.5 text-xs text-slate-500">When this reply is received from the customer, the selected action will be triggered automatically.</p>
                     <div className="mt-3 space-y-3">
                       {values.templateButtonActions.map((action) => {
                         const nextStageOptions = stageOptions.filter((stage) => stage.id !== currentStageId);
@@ -569,10 +569,10 @@ function StageModal({
                           .join(" • ");
                         return (
                           <div key={action.buttonId} className="rounded-lg border border-[#d7dce3] bg-white p-3">
-                            <div className="text-sm font-semibold text-[var(--text-primary)]">
-                              Button: <span className="text-[var(--text-primary)]">{action.buttonText || "Button"}</span>
+                            <div className="text-sm font-semibold text-slate-700">
+                              Button: <span className="text-slate-700">{action.buttonText || "Button"}</span>
                             </div>
-                            {actionSummary ? <p className="mt-1 text-xs text-[var(--text-secondary)]">{actionSummary}</p> : null}
+                            {actionSummary ? <p className="mt-1 text-xs text-slate-500">{actionSummary}</p> : null}
                             {conflict ? (
                               <p className="mt-1 text-xs font-medium text-red-600">
                                 A button action for &lsquo;{action.buttonText}&rsquo; already exists in another workflow or template for this tenant. Only one automatic action can be linked to the same button reply text.
@@ -581,7 +581,7 @@ function StageModal({
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                               <div className="rounded-md border border-[#dfe6f0] bg-[#fafcff] p-3">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-medium text-[var(--text-primary)]">Send quick reply</span>
+                                  <span className="text-sm font-medium text-slate-700">Send quick reply</span>
                                   <button
                                     type="button"
                                     className={clsx("relative inline-flex h-6 w-11 items-center rounded-full transition", action.sendQuickReplyEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
@@ -606,10 +606,10 @@ function StageModal({
                                 </div>
                                 {action.sendQuickReplyEnabled ? (
                                   <div className="mt-2">
-                                    <label htmlFor={`button-quick-reply-${action.buttonId}`} className="mb-1 block text-xs font-medium text-[var(--text-primary)]">Quick reply</label>
+                                    <label htmlFor={`button-quick-reply-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-700">Quick reply</label>
                                     <select
                                       id={`button-quick-reply-${action.buttonId}`}
-                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[#30b5a5]"
+                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
                                       value={action.quickReplyId ?? ""}
                                       onChange={(event) =>
                                         setValues((prev) => ({
@@ -625,14 +625,14 @@ function StageModal({
                                         </option>
                                       ))}
                                     </select>
-                                    {currentQuickReply ? <p className="mt-1 text-xs text-[var(--text-secondary)]">Preview: {currentQuickReply.body}</p> : null}
+                                    {currentQuickReply ? <p className="mt-1 text-xs text-slate-500">Preview: {currentQuickReply.body}</p> : null}
                                   </div>
                                 ) : null}
                               </div>
 
                               <div className="rounded-md border border-[#dfe6f0] bg-[#fafcff] p-3">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-medium text-[var(--text-primary)]">Move to stage</span>
+                                  <span className="text-sm font-medium text-slate-700">Move to stage</span>
                                   <button
                                     type="button"
                                     className={clsx("relative inline-flex h-6 w-11 items-center rounded-full transition", action.moveToStageEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
@@ -657,10 +657,10 @@ function StageModal({
                                 </div>
                                 {action.moveToStageEnabled ? (
                                   <div className="mt-2">
-                                    <label htmlFor={`button-stage-${action.buttonId}`} className="mb-1 block text-xs font-medium text-[var(--text-primary)]">Target stage</label>
+                                    <label htmlFor={`button-stage-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-700">Target stage</label>
                                     <select
                                       id={`button-stage-${action.buttonId}`}
-                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[#30b5a5]"
+                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
                                       value={action.moveToStageId ?? ""}
                                       onChange={(event) =>
                                         setValues((prev) => ({
@@ -676,7 +676,7 @@ function StageModal({
                                         </option>
                                       ))}
                                     </select>
-                                    {currentTargetStage ? <p className="mt-1 text-xs text-[var(--text-secondary)]">Selected: {currentTargetStage.name}</p> : null}
+                                    {currentTargetStage ? <p className="mt-1 text-xs text-slate-500">Selected: {currentTargetStage.name}</p> : null}
                                   </div>
                                 ) : null}
                               </div>
@@ -691,8 +691,8 @@ function StageModal({
                 {values.templateId ? (
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
                     <div>
-                      <div className="text-sm font-semibold text-[var(--text-primary)]">Moment of sending</div>
-                      <div className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                      <div className="text-sm font-semibold text-slate-700">Moment of sending</div>
+                      <div className="mt-0.5 text-sm text-slate-500">
                         Choose when the template message should be triggered after the repair is moved to this stage.
                       </div>
                       <div className="mt-3 space-y-2">
@@ -715,8 +715,8 @@ function StageModal({
                             {!values.templateSendDelayEnabled ? <span className="h-2.5 w-2.5 rounded-full bg-[#2fb2a3]" /> : null}
                           </span>
                           <span>
-                            <span className="block text-sm font-semibold text-[var(--text-primary)]">Directly</span>
-                            <span className="mt-0.5 block text-sm text-[var(--text-secondary)]">Template message will be triggered directly after the repair is set to this stage.</span>
+                            <span className="block text-sm font-semibold text-slate-700">Directly</span>
+                            <span className="mt-0.5 block text-sm text-slate-500">Template message will be triggered directly after the repair is set to this stage.</span>
                           </span>
                         </button>
 
@@ -739,8 +739,8 @@ function StageModal({
                             {values.templateSendDelayEnabled ? <span className="h-2.5 w-2.5 rounded-full bg-[#2fb2a3]" /> : null}
                           </span>
                           <span>
-                            <span className="block text-sm font-semibold text-[var(--text-primary)]">Custom time</span>
-                            <span className="mt-0.5 block text-sm text-[var(--text-secondary)]">
+                            <span className="block text-sm font-semibold text-slate-700">Custom time</span>
+                            <span className="mt-0.5 block text-sm text-slate-500">
                               Template message will be triggered {values.templateSendDelayHours} hour(s) and {values.templateSendDelayMinutes} minute(s) after the repair is set to this stage.
                             </span>
                           </span>
@@ -751,11 +751,11 @@ function StageModal({
                     {values.templateSendDelayEnabled ? (
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div>
-                          <label htmlFor="template-delay-hours" className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Delay in hours</label>
+                          <label htmlFor="template-delay-hours" className="mb-2 block text-sm font-medium text-slate-700">Delay in hours</label>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-[var(--text-secondary)] hover:bg-slate-100"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-500 hover:bg-slate-100"
                               aria-label="Decrease delay hours"
                               onClick={() => setDelayField("templateSendDelayHours", values.templateSendDelayHours - 1)}
                             >
@@ -765,13 +765,13 @@ function StageModal({
                               id="template-delay-hours"
                               type="number"
                               min={0}
-                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none ring-0 focus:border-[#30b5a5]"
+                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
                               value={values.templateSendDelayHours}
                               onChange={(event) => setDelayField("templateSendDelayHours", Number(event.target.value) || 0)}
                             />
                             <button
                               type="button"
-                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-[var(--text-secondary)] hover:bg-slate-100"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-500 hover:bg-slate-100"
                               aria-label="Increase delay hours"
                               onClick={() => setDelayField("templateSendDelayHours", values.templateSendDelayHours + 1)}
                             >
@@ -780,11 +780,11 @@ function StageModal({
                           </div>
                         </div>
                         <div>
-                          <label htmlFor="template-delay-minutes" className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Delay in minutes</label>
+                          <label htmlFor="template-delay-minutes" className="mb-2 block text-sm font-medium text-slate-700">Delay in minutes</label>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-[var(--text-secondary)] hover:bg-slate-100"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-500 hover:bg-slate-100"
                               aria-label="Decrease delay minutes"
                               onClick={() => setDelayField("templateSendDelayMinutes", values.templateSendDelayMinutes - 1)}
                             >
@@ -795,13 +795,13 @@ function StageModal({
                               type="number"
                               min={0}
                               max={59}
-                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none ring-0 focus:border-[#30b5a5]"
+                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
                               value={values.templateSendDelayMinutes}
                               onChange={(event) => setDelayField("templateSendDelayMinutes", Number(event.target.value) || 0)}
                             />
                             <button
                               type="button"
-                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-[var(--text-secondary)] hover:bg-slate-100"
+                              className="rounded-lg border border-[#bfc9d8] bg-white p-2 text-slate-500 hover:bg-slate-100"
                               aria-label="Increase delay minutes"
                               onClick={() => setDelayField("templateSendDelayMinutes", values.templateSendDelayMinutes + 1)}
                             >
