@@ -582,6 +582,7 @@ function WorkItemsPageContent() {
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
   const [unlinkConfirmationRepairId, setUnlinkConfirmationRepairId] = useState<string | null>(null);
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [pendingTemplateStageChange, setPendingTemplateStageChange] = useState<{
     repairId: string;
     stage: StoredWorkflowStage;
@@ -696,7 +697,27 @@ function WorkItemsPageContent() {
   }, [repairs, selectedRepairId]);
 
   useEffect(() => {
-    setIsMobileRepairDrawerOpen(Boolean(selectedRepair));
+    const mobileViewportQuery = window.matchMedia("(max-width: 767px)");
+    const syncViewportMode = (matchesMobile: boolean) => {
+      setIsMobileViewport(matchesMobile);
+      if (!matchesMobile) {
+        setIsMobileRepairDrawerOpen(false);
+      }
+    };
+
+    syncViewportMode(mobileViewportQuery.matches);
+    const handleViewportChange = (event: MediaQueryListEvent) => syncViewportMode(event.matches);
+    mobileViewportQuery.addEventListener("change", handleViewportChange);
+
+    return () => {
+      mobileViewportQuery.removeEventListener("change", handleViewportChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRepair) {
+      setIsMobileRepairDrawerOpen(false);
+    }
   }, [selectedRepair]);
 
   useEffect(() => {
@@ -962,7 +983,14 @@ function WorkItemsPageContent() {
       return;
     }
 
-    setSelectedRepairId(null);
+    setIsMobileRepairDrawerOpen(false);
+  };
+
+  const handleRepairSelection = (repairId: string) => {
+    setSelectedRepairId(repairId);
+    if (isMobileViewport) {
+      setIsMobileRepairDrawerOpen(true);
+    }
   };
 
   return (
@@ -1065,7 +1093,7 @@ function WorkItemsPageContent() {
                   <button
                     key={repair.id}
                     type="button"
-                    onClick={() => setSelectedRepairId(repair.id)}
+                    onClick={() => handleRepairSelection(repair.id)}
                     className={clsx(
                       "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
                       selectedRepairId === repair.id
@@ -1174,7 +1202,7 @@ function WorkItemsPageContent() {
           className={`fixed inset-0 z-40 bg-[#02050d]/55 transition-opacity duration-300 md:hidden ${
             isMobileRepairDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
-          onClick={() => setSelectedRepairId(null)}
+          onClick={() => setIsMobileRepairDrawerOpen(false)}
           aria-hidden="true"
         >
           <div
@@ -1193,7 +1221,7 @@ function WorkItemsPageContent() {
               repair={selectedRepair}
               historyItems={selectedRepairHistory}
               itemLabel={repairLabel}
-              onClose={() => setSelectedRepairId(null)}
+              onClose={() => setIsMobileRepairDrawerOpen(false)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
               onLinkChange={() => setIsLinkConversationOpen(true)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
