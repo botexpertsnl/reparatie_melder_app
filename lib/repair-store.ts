@@ -1,6 +1,9 @@
+import { seededDummyRepairs } from "@/lib/mock-conversation-repair-seed";
+
 export type StoredRepair = {
   id: string;
   title: string;
+  subtitle?: string;
   description: string;
   customerName: string;
   customerFirstName?: string;
@@ -10,6 +13,10 @@ export type StoredRepair = {
   stage: string;
   priority: "High" | "Medium" | "Low";
   status: "Open";
+  isDummy?: boolean;
+  dummyTag?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 const STORAGE_KEY = "statusflow.repairs";
@@ -40,7 +47,8 @@ export const defaultRepairs: StoredRepair[] = [
     stage: "New",
     priority: "High",
     status: "Open"
-  }
+  },
+  ...seededDummyRepairs
 ];
 
 export function readStoredRepairs(fallback: StoredRepair[]): StoredRepair[] {

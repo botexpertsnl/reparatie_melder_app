@@ -1,3 +1,5 @@
+import { seededDummyConversations } from "@/lib/mock-conversation-repair-seed";
+
 export type StoredConversationMessage = {
   id: string;
   role: "customer" | "agent";
@@ -16,6 +18,9 @@ export type StoredConversation = {
   open: boolean;
   linkedRepairId?: string;
   messages: StoredConversationMessage[];
+  isDummy?: boolean;
+  dummyTag?: string;
+  createdAt?: string;
 };
 
 const STORAGE_KEY = "statusflow.conversations";
@@ -39,7 +44,8 @@ export const defaultConversations: StoredConversation[] = [
     updatedAt: "09:12",
     open: true,
     messages: [{ id: "m_2", role: "customer", text: "Hallo, kunnen jullie mijn scherm fixen?", at: "09:12" }]
-  }
+  },
+  ...seededDummyConversations
 ];
 
 export function dedupeConversationsById(items: StoredConversation[]): StoredConversation[] {
