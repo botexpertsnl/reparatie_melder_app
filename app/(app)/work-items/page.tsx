@@ -1492,7 +1492,7 @@ function WorkItemsPageContent() {
                 stage={pendingStageSourceRepair.stage}
                 stageColor={stageColorByName.get(pendingStageSourceRepair.stage)}
               />
-              <span className="text-sm text-slate-500">→</span>
+              <span className="text-sm text-slate-900">→</span>
               <StageBadge
                 stage={pendingStageConfirmation.nextStage}
                 stageColor={stageColorByName.get(pendingStageConfirmation.nextStage)}

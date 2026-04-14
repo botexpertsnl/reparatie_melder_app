@@ -394,7 +394,7 @@ export function RepairDetailsPanel({
         >
           <div className="mb-3 flex items-center gap-2">
             <WorkflowStageBadge label={repair.stage} color={currentStageColor} />
-            <span className="text-sm text-slate-500">→</span>
+            <span className="text-sm text-slate-900">→</span>
             <WorkflowStageBadge label={pendingStageConfirmation.name} color={pendingStageConfirmation.color} />
           </div>
           <p className="text-sm text-slate-700">
