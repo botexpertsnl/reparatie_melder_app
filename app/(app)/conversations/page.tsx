@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
-import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import clsx from "clsx";
 import {
@@ -67,7 +66,6 @@ const fallbackQuickReplies = [
   "Can you share your serial number?",
   "Your repair is ready for pickup. Please visit us during opening hours."
 ];
-const SELECTED_THREAD_STORAGE_KEY = "statusflow.selected-thread-id";
 const TEMPLATE_BUTTONS_MARKER = "\n\nButtons:\n";
 const MESSAGE_PREVIEW_MAX_LENGTH = 78;
 const FIRST_NAME_MAX_LENGTH = 25;
@@ -575,7 +573,6 @@ function ConversationListRow({
 }
 
 function ConversationsPageContent() {
-  const searchParams = useSearchParams();
   const repairLabel = useTenantRepairLabel();
 
   const [threads, setThreads] = useState<StoredConversation[]>(() =>
@@ -590,16 +587,7 @@ function ConversationsPageContent() {
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
   );
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(
-    () => {
-      if (typeof window === "undefined") return readStoredConversations(defaultConversations)[0]?.id ?? "";
-      return (
-        window.localStorage.getItem(SELECTED_THREAD_STORAGE_KEY) ??
-        readStoredConversations(defaultConversations)[0]?.id ??
-        ""
-      );
-    }
-  );
+  const [selectedThreadId, setSelectedThreadId] = useState<string>("");
   const [message, setMessage] = useState("");
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>(() => {
     if (typeof window === "undefined") {
@@ -664,7 +652,6 @@ function ConversationsPageContent() {
     return `${cancelled ? "Cancelled sending" : "Scheduled send"}: ${formatter.format(scheduledDate)}`;
   }, []);
 
-  const threadIdParam = searchParams.get("threadId");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   const updateThreads = useCallback(
@@ -756,28 +743,9 @@ function ConversationsPageContent() {
   }, [updateThreads]);
 
   useEffect(() => {
-    if (!threadIdParam) return;
-
-    if (threads.some((thread) => thread.id === threadIdParam)) {
-      setSelectedThreadId(threadIdParam);
-      setShowRepairPanel(true);
-      setMobileActivePane("chat");
-      setIsMobileRepairDrawerOpen(false);
-    }
-  }, [threadIdParam, threads]);
-
-  useEffect(() => {
-    if (!selectedThreadId) {
-      window.localStorage.removeItem(SELECTED_THREAD_STORAGE_KEY);
-      return;
-    }
-
-    window.localStorage.setItem(SELECTED_THREAD_STORAGE_KEY, selectedThreadId);
-  }, [selectedThreadId]);
-
-  useEffect(() => {
     const handleConversationNavClick = () => {
       setListCollapsed(false);
+      setSelectedThreadId("");
       setMobileActivePane("list");
       setIsMobileRepairDrawerOpen(false);
     };
@@ -1742,7 +1710,13 @@ function ConversationsPageContent() {
                 />
               </div>
             </>
-          ) : null}
+          ) : (
+            <div className="flex h-full items-center justify-center p-6">
+              <p className="text-sm text-slate-400">
+                Select a conversation to view messages.
+              </p>
+            </div>
+          )}
         </div>
 
         {showRepairColumn && linkedRepair ? (
