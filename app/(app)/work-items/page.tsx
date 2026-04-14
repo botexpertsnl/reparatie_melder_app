@@ -607,6 +607,7 @@ function WorkItemsPageContent() {
   const [unlinkConfirmationRepairId, setUnlinkConfirmationRepairId] = useState<string | null>(null);
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [areMobileFiltersOpen, setAreMobileFiltersOpen] = useState(true);
   const [pendingTemplateStageChange, setPendingTemplateStageChange] = useState<{
     repairId: string;
     stage: StoredWorkflowStage;
@@ -726,6 +727,7 @@ function WorkItemsPageContent() {
       setIsMobileViewport(matchesMobile);
       if (!matchesMobile) {
         setIsMobileRepairDrawerOpen(false);
+        setAreMobileFiltersOpen(true);
       }
     };
 
@@ -1027,80 +1029,93 @@ function WorkItemsPageContent() {
       >
         <div className="flex min-h-0 flex-col pb-6 pt-0 md:pb-8 md:pt-0">
           <div className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3">
               <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
-              <div className="flex w-full sm:w-auto">
+              <div className="flex shrink-0">
                 <button
                   onClick={() => setIsAddRepairOpen(true)}
-                  className="inline-flex h-11 items-center justify-center gap-3 whitespace-nowrap rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
+                  className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[var(--surface-3)] px-4 text-sm font-semibold text-[var(--text-primary)] md:h-11 md:gap-3 md:px-5"
                 >
                   <Plus className="h-5 w-5" />
                   New {repairLabel}
                 </button>
               </div>
             </div>
-            <label
-              className="flex h-11 w-full max-w-56 items-center gap-3 rounded-xl border px-4 text-sm text-slate-300"
-              style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-            >
-              <Search className="h-5 w-5 text-slate-500" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
-                placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
-                aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
-              />
-            </label>
-            <div className="flex items-start gap-2">
-              <div className="flex flex-1 flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={selectActiveTaskFilters}
-                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
-                >
-                  Active tasks
-                </button>
-                {filterStages.map((stageName) => {
-                  const isActive = selectedStageFilters.includes(stageName);
-                  return (
-                    <button
-                      key={stageName}
-                      type="button"
-                      onClick={() => toggleStageFilter(stageName)}
-                      className={clsx(
-                        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                        isActive ? "text-white" : "text-slate-300"
-                      )}
-                      style={{
-                        borderColor: isActive ? (stageColorByName.get(stageName) ?? "var(--text-primary)") : "var(--border)",
-                        background: isActive ? `${stageColorByName.get(stageName) ?? "#30b5a5"}24` : "var(--surface-1)"
-                      }}
-                    >
-                      <span>{stageName}</span>
-                      <span
-                        className={clsx(
-                          "rounded-full px-2 py-0.5 text-[11px]",
-                          isActive ? "bg-white/20 text-white" : "bg-slate-700/70 text-slate-200"
-                        )}
-                      >
-                        {stageCounts.get(stageName) ?? 0}
-                      </span>
-                    </button>
-                  );
-                })}
-                {selectedStageFilters.length > 0 ? (
+            <div className="md:hidden">
+              <button
+                type="button"
+                onClick={() => setAreMobileFiltersOpen((prev) => !prev)}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 text-xs font-semibold text-slate-200"
+              >
+                {areMobileFiltersOpen ? "Close filters" : "Open filters"}
+              </button>
+            </div>
+            <div className={clsx("space-y-4", isMobileViewport && !areMobileFiltersOpen ? "hidden" : "block")}>
+              <label
+                className="flex h-11 w-full max-w-56 items-center gap-3 rounded-xl border px-4 text-sm text-slate-300"
+                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+              >
+                <Search className="h-5 w-5 text-slate-500" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                  placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
+                  aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
+                />
+              </label>
+              <div className="flex items-start gap-2">
+                <div className="flex flex-1 flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={clearAllStageFilters}
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                    aria-label="Clear selected labels"
-                    title="Clear selected labels"
+                    onClick={selectActiveTaskFilters}
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    Active tasks
                   </button>
-                ) : null}
+                  {filterStages.map((stageName) => {
+                    const isActive = selectedStageFilters.includes(stageName);
+                    return (
+                      <button
+                        key={stageName}
+                        type="button"
+                        onClick={() => toggleStageFilter(stageName)}
+                        className={clsx(
+                          "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                          isActive ? "text-white" : "text-slate-300"
+                        )}
+                        style={{
+                          borderColor: isActive
+                            ? (stageColorByName.get(stageName) ?? "var(--text-primary)")
+                            : "var(--border)",
+                          background: isActive ? `${stageColorByName.get(stageName) ?? "#30b5a5"}24` : "var(--surface-1)"
+                        }}
+                      >
+                        <span>{stageName}</span>
+                        <span
+                          className={clsx(
+                            "rounded-full px-2 py-0.5 text-[11px]",
+                            isActive ? "bg-white/20 text-white" : "bg-slate-700/70 text-slate-200"
+                          )}
+                        >
+                          {stageCounts.get(stageName) ?? 0}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {selectedStageFilters.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={clearAllStageFilters}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                      aria-label="Clear selected labels"
+                      title="Clear selected labels"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
