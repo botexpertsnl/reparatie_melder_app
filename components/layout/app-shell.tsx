@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import {
   MessageSquareText,
   LayoutGrid,
@@ -36,6 +36,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [superAdmin, setSuperAdminState] = useState(false);
   const [impersonatingTenant, setImpersonatingTenant] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [allowContextualSwipeOpen, setAllowContextualSwipeOpen] = useState(false);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const refreshOpenCount = () => {
@@ -118,6 +120,74 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       desktopQuery.removeEventListener("change", closeOnDesktop);
     };
   }, []);
+
+  useEffect(() => {
+    const handleGestureContextChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
+      setAllowContextualSwipeOpen(Boolean(detail?.enabled));
+    };
+
+    window.addEventListener("mobile-menu:gesture-context", handleGestureContextChange);
+    return () => {
+      window.removeEventListener("mobile-menu:gesture-context", handleGestureContextChange);
+    };
+  }, []);
+
+  const supportsSwipeToOpenOnPath =
+    pathname === "/dashboard" ||
+    pathname === "/templates" ||
+    pathname === "/quick-replies" ||
+    pathname === "/customers" ||
+    (pathname === "/work-items" && allowContextualSwipeOpen) ||
+    (pathname === "/conversations" && allowContextualSwipeOpen);
+
+  const isInteractiveTarget = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    if (
+      target.closest(
+        "button, a, input, select, textarea, label, [role='button'], [data-swipe-menu-block='true']"
+      )
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleAppTouchStart = (event: TouchEvent<HTMLElement>) => {
+    if (isMenuOpen || !supportsSwipeToOpenOnPath) return;
+    const firstTouch = event.touches[0];
+    if (!firstTouch) return;
+    if (firstTouch.clientX > 24) {
+      swipeStartRef.current = null;
+      return;
+    }
+    if (isInteractiveTarget(event.target)) {
+      swipeStartRef.current = null;
+      return;
+    }
+    swipeStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
+  };
+
+  const handleAppTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    if (isMenuOpen || !supportsSwipeToOpenOnPath) return;
+    const swipeStart = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!swipeStart) return;
+
+    const changedTouch = event.changedTouches[0];
+    if (!changedTouch) return;
+
+    const deltaX = changedTouch.clientX - swipeStart.x;
+    const deltaY = changedTouch.clientY - swipeStart.y;
+    const minHorizontalSwipe = 70;
+    const maxVerticalMovement = 48;
+
+    if (deltaX < minHorizontalSwipe || Math.abs(deltaY) > maxVerticalMovement) {
+      return;
+    }
+
+    setIsMenuOpen(true);
+  };
 
   const navSections: NavSection[] = [
     {
@@ -444,7 +514,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto px-5 py-6 min-[769px]:px-10 min-[769px]:py-8">{children}</main>
+        <main
+          className="min-h-0 flex-1 overflow-y-auto px-5 py-6 min-[769px]:px-10 min-[769px]:py-8"
+          onTouchStart={handleAppTouchStart}
+          onTouchEnd={handleAppTouchEnd}
+        >
+          {children}
+        </main>
       </div>
 
       <MobileMenu
