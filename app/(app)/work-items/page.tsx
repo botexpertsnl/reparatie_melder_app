@@ -1053,7 +1053,7 @@ function WorkItemsPageContent() {
                 aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
               />
             </label>
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2">
               <div className="flex flex-1 flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -1090,18 +1090,18 @@ function WorkItemsPageContent() {
                     </button>
                   );
                 })}
+                {selectedStageFilters.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={clearAllStageFilters}
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+                    aria-label="Clear selected labels"
+                    title="Clear selected labels"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
               </div>
-              {selectedStageFilters.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={clearAllStageFilters}
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                  aria-label="Clear selected labels"
-                  title="Clear selected labels"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
             </div>
           </div>
 
