@@ -606,8 +606,14 @@ function WorkItemsPageContent() {
   const [isLinkConversationOpen, setIsLinkConversationOpen] = useState(false);
   const [unlinkConfirmationRepairId, setUnlinkConfirmationRepairId] = useState<string | null>(null);
   const [isMobileRepairDrawerOpen, setIsMobileRepairDrawerOpen] = useState(false);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [areMobileFiltersOpen, setAreMobileFiltersOpen] = useState(true);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 767px)").matches;
+  });
+  const [areMobileFiltersOpen, setAreMobileFiltersOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !window.matchMedia("(max-width: 767px)").matches;
+  });
   const [pendingTemplateStageChange, setPendingTemplateStageChange] = useState<{
     repairId: string;
     stage: StoredWorkflowStage;
