@@ -1,5 +1,8 @@
+"use client";
+
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import clsx from "clsx";
 
 type ModalShellProps = {
@@ -25,7 +28,16 @@ export function ModalShell({
   closeLabel = "Close dialog",
   closeOnBackdrop = false
 }: ModalShellProps) {
-  return (
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  if (!isMounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-[#02050d]/80 p-2 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={closeOnBackdrop ? (event) => {
@@ -44,6 +56,7 @@ export function ModalShell({
 
         {footer ? <div className="flex items-center justify-end gap-3 border-t border-[#e2e8f0] bg-[#f4f6fa] px-6 py-4">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
