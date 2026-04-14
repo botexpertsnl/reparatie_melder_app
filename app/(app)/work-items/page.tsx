@@ -1074,8 +1074,8 @@ function WorkItemsPageContent() {
                     )}
                     style={selectedRepairId === repair.id ? { borderColor: "var(--border-strong)" } : undefined}
                   >
-                    <div className="grid grid-cols-[minmax(10rem,12.5rem)_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
-                      <div className="min-w-0">
+                    <div className="grid grid-cols-[minmax(6.75rem,8rem)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
+                      <div className="min-w-0 pr-1 sm:pr-0">
                         <div className="w-full">
                           <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
                         </div>
