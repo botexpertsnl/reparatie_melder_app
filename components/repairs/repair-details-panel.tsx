@@ -20,9 +20,11 @@ type RepairDetailsPanelProps = {
   repair: StoredRepair;
   itemLabel?: string;
   onClose?: () => void;
+  onEdit?: () => void;
   onLinkChange?: () => void;
   onLinkAriaLabel?: string;
   isLinkActive?: boolean;
+  useIconOnlyChangeLinkButton?: boolean;
   linkedConversationHref?: string;
   className?: string;
   onStageChange?: (
@@ -68,9 +70,11 @@ export function RepairDetailsPanel({
   repair,
   itemLabel = "Repair",
   onClose,
+  onEdit,
   onLinkChange,
   onLinkAriaLabel = "Change linked repair",
   isLinkActive = true,
+  useIconOnlyChangeLinkButton = false,
   linkedConversationHref,
   className,
   onStageChange,
@@ -175,7 +179,7 @@ export function RepairDetailsPanel({
       <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <h3 className="text-2xl font-semibold text-white">{repair.title}</h3>
         <div className="mt-2 text-sm text-slate-400">{repair.customerName} · {repair.assetName}</div>
-        {onLinkChange || linkedConversationHref ? (
+        {onEdit || onLinkChange || linkedConversationHref ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {linkedConversationHref ? (
               <a
@@ -186,15 +190,27 @@ export function RepairDetailsPanel({
                 Open conversation
               </a>
             ) : null}
+            {onEdit ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex items-center gap-2 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
+              >
+                Edit
+              </button>
+            ) : null}
             {onLinkChange ? (
               <button
                 type="button"
                 onClick={onLinkChange}
                 className="inline-flex items-center gap-1.5 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
                 aria-label={onLinkAriaLabel}
+                title={useIconOnlyChangeLinkButton && linkedConversationHref ? onLinkAriaLabel : undefined}
               >
                 <LinkIcon className={`h-3.5 w-3.5 ${isLinkActive ? "text-[#69f0df]" : "text-slate-500"}`} />
-                {linkedConversationHref ? "Change link" : "Link conversation"}
+                {useIconOnlyChangeLinkButton && linkedConversationHref ? null : (
+                  linkedConversationHref ? "Change link" : "Link conversation"
+                )}
               </button>
             ) : null}
           </div>

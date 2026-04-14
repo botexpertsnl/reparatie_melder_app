@@ -269,12 +269,14 @@ function LinkRepairModal({
 }
 
 function AddRepairModal({
+  mode = "create",
   initialValues,
   stageOptions,
   repairLabel,
   onClose,
   onSubmit
 }: {
+  mode?: "create" | "edit";
   initialValues: NewRepairFormValues;
   stageOptions: string[];
   repairLabel: string;
@@ -292,10 +294,11 @@ function AddRepairModal({
   const isPhoneValid = isSupportedCountryPhoneValid(formValues.customerPhone);
   const showPhoneError = Boolean(normalizedPhone) && !isPhoneValid && (hasTriedSubmit || isPhoneFieldTouched);
   const canSubmit = normalizedPhone && isPhoneValid && formValues.repairTitle.trim();
+  const isEditMode = mode === "edit";
 
   return (
     <ModalShell
-      title={`New ${repairLabel}`}
+      title={isEditMode ? `Edit ${repairLabel}` : `New ${repairLabel}`}
       onClose={onClose}
       maxWidthClassName="max-w-2xl"
       closeLabel="Close repair dialog"
@@ -317,7 +320,7 @@ function AddRepairModal({
             )}
             disabled={!canSubmit}
           >
-            Create {repairLabel}
+            {isEditMode ? `Save ${repairLabel}` : `Create ${repairLabel}`}
           </button>
         </>
       )}
@@ -633,6 +636,7 @@ function ConversationsPageContent() {
     threadId: null,
   });
   const [createRepairThreadId, setCreateRepairThreadId] = useState<string | null>(null);
+  const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
@@ -839,6 +843,10 @@ function ConversationsPageContent() {
   const createRepairThread = useMemo(
     () => (createRepairThreadId ? threads.find((thread) => thread.id === createRepairThreadId) ?? null : null),
     [createRepairThreadId, threads]
+  );
+  const editingRepair = useMemo(
+    () => (editingRepairId ? repairs.find((repair) => repair.id === editingRepairId) ?? null : null),
+    [editingRepairId, repairs]
   );
   const createRepairInitialValues = useMemo<NewRepairFormValues>(() => ({
     customerFirstName: "",
@@ -1128,6 +1136,57 @@ function ConversationsPageContent() {
     setShowRepairPanel(true);
     setLinkModal({ open: false, threadId: null });
     setCreateRepairThreadId(null);
+  };
+
+  const toFormValues = (repair: StoredRepair): NewRepairFormValues => ({
+    customerFirstName: repair.customerFirstName ?? "",
+    customerLastName: repair.customerLastName ?? "",
+    customerPhone: repair.customerPhone,
+    assetName: repair.assetName,
+    repairTitle: repair.title,
+    description: repair.description,
+    repairStage: repair.stage
+  });
+
+  const handleEditRepair = (repairId: string, payload: NewRepairFormValues) => {
+    const repairBeforeEdit = repairs.find((repair) => repair.id === repairId);
+    if (!repairBeforeEdit) return;
+
+    const customerFirstName = payload.customerFirstName.trim();
+    const customerLastName = payload.customerLastName.trim();
+    const customerName = `${customerFirstName} ${customerLastName}`.trim();
+    const resolvedCustomerName = customerName || repairBeforeEdit.customerName || payload.customerPhone;
+
+    const updatedRepairs = repairs.map((repair) =>
+      repair.id === repairId
+        ? {
+            ...repair,
+            title: payload.repairTitle,
+            description: payload.description,
+            customerName: resolvedCustomerName,
+            customerFirstName,
+            customerLastName,
+            customerPhone: payload.customerPhone,
+            assetName: payload.assetName,
+            stage: payload.repairStage
+          }
+        : repair
+    );
+    setRepairs(updatedRepairs);
+    writeStoredRepairs(updatedRepairs);
+
+    updateThreads((prev) =>
+      prev.map((thread) =>
+        thread.linkedRepairId === repairId
+          ? {
+              ...thread,
+              customerName: resolvedCustomerName,
+              customerPhone: payload.customerPhone
+            }
+          : thread
+      )
+    );
+    setEditingRepairId(null);
   };
 
   const handleImageSelected = (file: File | null) => {
@@ -1699,6 +1758,7 @@ function ConversationsPageContent() {
               historyItems={linkedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setShowRepairPanel(false)}
+              onEdit={() => setEditingRepairId(linkedRepair.id)}
               onStageChange={(stageName, options) =>
                 updateRepairStage(linkedRepair.id, stageName, {
                   ...options,
@@ -1739,6 +1799,7 @@ function ConversationsPageContent() {
               historyItems={linkedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setIsMobileRepairDrawerOpen(false)}
+              onEdit={() => setEditingRepairId(linkedRepair.id)}
               onStageChange={(stageName, options) =>
                 updateRepairStage(linkedRepair.id, stageName, {
                   ...options,
@@ -1767,6 +1828,16 @@ function ConversationsPageContent() {
           repairLabel={repairLabel}
           onClose={() => setCreateRepairThreadId(null)}
           onSubmit={handleCreateRepairFromThread}
+        />
+      ) : null}
+      {editingRepair ? (
+        <AddRepairModal
+          mode="edit"
+          initialValues={toFormValues(editingRepair)}
+          stageOptions={stageOptions}
+          repairLabel={repairLabel}
+          onClose={() => setEditingRepairId(null)}
+          onSubmit={(values) => handleEditRepair(editingRepair.id, values)}
         />
       ) : null}
 

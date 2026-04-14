@@ -1302,10 +1302,12 @@ function WorkItemsPageContent() {
               historyItems={selectedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
+              onEdit={() => setEditingRepairId(selectedRepair.id)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
               onLinkChange={() => setIsLinkConversationOpen(true)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
+              useIconOnlyChangeLinkButton
               linkedConversationHref={
                 selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined
               }
@@ -1340,10 +1342,12 @@ function WorkItemsPageContent() {
               historyItems={selectedRepairHistory}
               itemLabel={repairLabel}
               onClose={() => setIsMobileRepairDrawerOpen(false)}
+              onEdit={() => setEditingRepairId(selectedRepair.id)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
               onLinkChange={() => setIsLinkConversationOpen(true)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
               isLinkActive={Boolean(selectedRepairConversation)}
+              useIconOnlyChangeLinkButton
               linkedConversationHref={
                 selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined
               }
