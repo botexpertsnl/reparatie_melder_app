@@ -1156,12 +1156,12 @@ function WorkItemsPageContent() {
   return (
     <>
       <div
-        className={`-mx-5 -my-6 grid h-[calc(100dvh-69px)] transition-[grid-template-columns] duration-300 md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] ${
+        className={`fixed inset-x-0 bottom-0 top-[69px] grid h-full overflow-hidden transition-[grid-template-columns] duration-300 md:static md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] ${
           selectedRepair ? "grid-cols-[1fr] md:grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
         }`}
         style={{ background: "var(--bg)" }}
       >
-        <div className="flex min-h-0 flex-col pb-6 pt-0 md:pb-8 md:pt-0">
+        <div className="flex min-h-0 h-full flex-col pb-0 pt-0 md:pb-8 md:pt-0">
           <div className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5">
             <div className="flex items-center justify-between gap-3">
               <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
@@ -1262,12 +1262,12 @@ function WorkItemsPageContent() {
 
           <section className="min-h-0 flex-1 overflow-hidden">
             <div
-              className={`h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${
+              className={`subtle-scrollbar h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${
                 selectedRepair ? "md:border-r-0" : ""
               }`}
               style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
             >
-              <div className="space-y-1 p-3">
+              <div className="space-y-1 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:pb-3">
                 {filteredRepairs.map((repair) => (
                   <RepairListRow
                     key={repair.id}
