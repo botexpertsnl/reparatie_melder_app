@@ -1828,7 +1828,7 @@ function ConversationsPageContent() {
 
       {showMobileRepairDrawer && linkedRepair ? (
         <div
-          className={`fixed inset-0 z-40 bg-[#02050d]/55 transition-opacity duration-300 md:hidden ${
+          className={`fixed inset-0 z-[70] bg-[#02050d]/55 transition-opacity duration-300 md:hidden ${
             isMobileRepairDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           onClick={() => setIsMobileRepairDrawerOpen(false)}
