@@ -83,6 +83,7 @@ const FIRST_NAME_MAX_LENGTH = 25;
 const LAST_NAME_MAX_LENGTH = 25;
 const REPAIR_TITLE_MAX_LENGTH = 50;
 const ASSET_NAME_MAX_LENGTH = 50;
+const ISO_LIKE_TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2}T/;
 
 function normalizePhoneInput(value: string) {
   const trimmed = value.trim();
@@ -147,6 +148,16 @@ function truncateMessagePreview(preview?: string | null) {
     return normalizedPreview;
   }
   return `${normalizedPreview.slice(0, MESSAGE_PREVIEW_MAX_LENGTH)}...`;
+}
+
+function resolveInboundReceivedAt(message: StoredConversationMessage) {
+  if (ISO_LIKE_TIMESTAMP_REGEX.test(message.at)) {
+    const parsed = new Date(message.at);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return new Date();
 }
 
 function parseTemplateMessageContent(text: string) {
@@ -617,6 +628,7 @@ function ConversationsPageContent() {
   });
   const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false);
   const processedInboundIdsRef = useRef<Set<string>>(new Set());
+  const hasPrimedInboundMessageIdsRef = useRef(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"open" | "closed">("open");
@@ -1219,6 +1231,18 @@ function ConversationsPageContent() {
   }, [repairHistory, repairs, threads, updateThreads]);
 
   useEffect(() => {
+    if (hasPrimedInboundMessageIdsRef.current) return;
+    threads.forEach((thread) => {
+      thread.messages.forEach((message) => {
+        if (message.role === "customer") {
+          processedInboundIdsRef.current.add(message.id);
+        }
+      });
+    });
+    hasPrimedInboundMessageIdsRef.current = true;
+  }, [threads]);
+
+  useEffect(() => {
     const tenantId = getLocalTenantId();
     const repository = new LocalWorkflowActionRepository(workflowStages);
     const activeTenantName = getImpersonatingTenant() ?? "AutoGarage De Vries";
@@ -1232,7 +1256,7 @@ function ConversationsPageContent() {
 
       const cooldownState = readBusinessHoursCooldownForConversation(thread.id, activeTenantName);
       const cooldownWindowMs = getCooldownWindowMs(tenantSettings.businessHours);
-      const receivedAt = new Date();
+      const receivedAt = resolveInboundReceivedAt(lastMessage);
       const autoReplyDecision = shouldSendBusinessHoursAutoReply({
         settings: tenantSettings.businessHours,
         receivedAt,
