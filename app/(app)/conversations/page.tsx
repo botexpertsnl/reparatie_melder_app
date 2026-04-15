@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import clsx from "clsx";
 import {
@@ -642,6 +643,7 @@ function ConversationsPageContent() {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 767px)").matches;
   });
+  const [isClientMounted, setIsClientMounted] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState>({
     open: false,
     threadId: null,
@@ -911,6 +913,10 @@ function ConversationsPageContent() {
     if (!messageWindowRef.current) return;
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
+
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
 
   useEffect(() => {
     const mobileViewportQuery = window.matchMedia("(max-width: 767px)");
@@ -1826,47 +1832,50 @@ function ConversationsPageContent() {
         ) : null}
       </section>
 
-      {showMobileRepairDrawer && linkedRepair ? (
-        <div
-          className={`fixed inset-0 z-[70] bg-[#02050d]/55 transition-opacity duration-300 md:hidden ${
-            isMobileRepairDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
-          onClick={() => setIsMobileRepairDrawerOpen(false)}
-          aria-hidden="true"
-        >
-          <div
-            className={`absolute inset-y-0 right-0 w-[calc(100%-3.25rem)] max-w-[28rem] min-w-[18rem] transform border-l shadow-[-16px_0_36px_rgba(0,0,0,0.36)] transition-transform duration-300 ease-out ${
-              isMobileRepairDrawerOpen ? "translate-x-0" : "translate-x-full"
-            }`}
-            style={{
-              borderColor: "var(--border)",
-              background: "var(--surface-1)",
-            }}
-            onClick={(event) => event.stopPropagation()}
-            onTouchStart={handleRepairDrawerTouchStart}
-            onTouchEnd={handleRepairDrawerTouchEnd}
-          >
-            <div className="pointer-events-none absolute inset-y-0 -left-3 flex items-center">
-              <span className="h-12 w-1 rounded-full bg-white/30" aria-hidden="true" />
-            </div>
-            <RepairDetailsPanel
-              repair={linkedRepair}
-              historyItems={linkedRepairHistory}
-              itemLabel={repairLabel}
-              mobileDrawerHeader
-              onClose={() => setIsMobileRepairDrawerOpen(false)}
-              onEdit={() => setEditingRepairId(linkedRepair.id)}
-              onStageChange={(stageName, options) =>
-                updateRepairStage(linkedRepair.id, stageName, {
-                  ...options,
-                  actor: { type: "user", name: activeUsername }
-                })
-              }
-              className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
-            />
-          </div>
-        </div>
-      ) : null}
+      {showMobileRepairDrawer && linkedRepair && isClientMounted
+        ? createPortal(
+            <div
+              className={`fixed inset-0 z-[120] bg-[#02050d]/55 transition-opacity duration-300 md:hidden ${
+                isMobileRepairDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
+              }`}
+              onClick={() => setIsMobileRepairDrawerOpen(false)}
+              aria-hidden="true"
+            >
+              <div
+                className={`absolute inset-y-0 right-0 w-[calc(100%-3.25rem)] max-w-[28rem] min-w-[18rem] transform border-l shadow-[-16px_0_36px_rgba(0,0,0,0.36)] transition-transform duration-300 ease-out ${
+                  isMobileRepairDrawerOpen ? "translate-x-0" : "translate-x-full"
+                }`}
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-1)",
+                }}
+                onClick={(event) => event.stopPropagation()}
+                onTouchStart={handleRepairDrawerTouchStart}
+                onTouchEnd={handleRepairDrawerTouchEnd}
+              >
+                <div className="pointer-events-none absolute inset-y-0 -left-3 flex items-center">
+                  <span className="h-12 w-1 rounded-full bg-white/30" aria-hidden="true" />
+                </div>
+                <RepairDetailsPanel
+                  repair={linkedRepair}
+                  historyItems={linkedRepairHistory}
+                  itemLabel={repairLabel}
+                  mobileDrawerHeader
+                  onClose={() => setIsMobileRepairDrawerOpen(false)}
+                  onEdit={() => setEditingRepairId(linkedRepair.id)}
+                  onStageChange={(stageName, options) =>
+                    updateRepairStage(linkedRepair.id, stageName, {
+                      ...options,
+                      actor: { type: "user", name: activeUsername }
+                    })
+                  }
+                  className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
+                />
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
 
       {linkModal.open && linkModal.threadId ? (
         <LinkRepairModal
