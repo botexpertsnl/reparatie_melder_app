@@ -49,6 +49,17 @@ import {
   type StoredRepairHistoryItem
 } from "@/lib/repair-history-store";
 import { useMobileRowSwipe } from "@/lib/use-mobile-row-swipe";
+import { readTenantSettings } from "@/lib/tenant-settings-store";
+import { getImpersonatingTenant } from "@/lib/impersonation-store";
+import {
+  getCooldownWindowMs,
+  shouldSendBusinessHoursAutoReply,
+  type BusinessHoursReplyType
+} from "@/lib/business-hours";
+import {
+  readBusinessHoursCooldownForConversation,
+  writeBusinessHoursCooldownForConversation
+} from "@/lib/business-hours-cooldown-store";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
@@ -1210,12 +1221,58 @@ function ConversationsPageContent() {
   useEffect(() => {
     const tenantId = getLocalTenantId();
     const repository = new LocalWorkflowActionRepository(workflowStages);
+    const activeTenantName = getImpersonatingTenant() ?? "AutoGarage De Vries";
+    const tenantSettings = readTenantSettings(activeTenantName);
 
     threads.forEach((thread) => {
       const lastMessage = thread.messages[thread.messages.length - 1];
       if (!lastMessage || lastMessage.role !== "customer") return;
       if (processedInboundIdsRef.current.has(lastMessage.id)) return;
       processedInboundIdsRef.current.add(lastMessage.id);
+
+      const cooldownState = readBusinessHoursCooldownForConversation(thread.id, activeTenantName);
+      const cooldownWindowMs = getCooldownWindowMs(tenantSettings.businessHours);
+      const receivedAt = new Date();
+      const autoReplyDecision = shouldSendBusinessHoursAutoReply({
+        settings: tenantSettings.businessHours,
+        receivedAt,
+        isInsideCooldownWindow: (replyType: BusinessHoursReplyType) => {
+          const lastSentIso = cooldownState[replyType];
+          if (!lastSentIso) return false;
+          const elapsedMs = receivedAt.getTime() - new Date(lastSentIso).getTime();
+          return elapsedMs < cooldownWindowMs;
+        }
+      });
+
+      if (autoReplyDecision.shouldSend) {
+        updateThreads((prev) =>
+          prev.map((candidate) => {
+            if (candidate.id !== thread.id) return candidate;
+
+            return {
+              ...candidate,
+              preview: autoReplyDecision.message,
+              updatedAt: "Now",
+              messages: [
+                ...candidate.messages,
+                {
+                  id: `m_${Date.now()}_auto`,
+                  role: "agent",
+                  text: autoReplyDecision.message,
+                  at: "Now"
+                }
+              ]
+            };
+          })
+        );
+
+        writeBusinessHoursCooldownForConversation({
+          conversationId: thread.id,
+          replyType: autoReplyDecision.replyType,
+          sentAtIso: receivedAt.toISOString(),
+          tenantName: activeTenantName
+        });
+      }
 
       const inbound = createNormalizedInboundMessage({
         tenantId,
@@ -1259,7 +1316,7 @@ function ConversationsPageContent() {
         }
       }
     });
-  }, [repairs, threads, updateRepairStage, workflowStages]);
+  }, [repairs, threads, updateRepairStage, updateThreads, workflowStages]);
 
   const showRepairColumn = showRepairPanel && Boolean(linkedRepair);
   const showMobileRepairDrawer = Boolean(selectedThread && linkedRepair);

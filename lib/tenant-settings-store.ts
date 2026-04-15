@@ -9,6 +9,43 @@ export type TenantSettings = {
   customerLabel: string;
   identifierLabel: string;
   retentionPeriod: string;
+  businessHours: BusinessHoursSettings;
+};
+
+export type BusinessHoursDayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+export type BusinessHoursDayConfig = {
+  isOpen: boolean;
+  openTime: string;
+  closeTime: string;
+};
+
+export type BusinessHoursSettings = {
+  timezone: "Europe/Amsterdam";
+  days: Record<BusinessHoursDayKey, BusinessHoursDayConfig>;
+  insideReplyEnabled: boolean;
+  insideReplyMessage: string;
+  outsideReplyEnabled: boolean;
+  outsideReplyMessage: string;
+  cooldownHours: number;
+};
+
+export const defaultBusinessHoursSettings: BusinessHoursSettings = {
+  timezone: "Europe/Amsterdam",
+  days: {
+    monday: { isOpen: true, openTime: "09:00", closeTime: "17:00" },
+    tuesday: { isOpen: true, openTime: "09:00", closeTime: "17:00" },
+    wednesday: { isOpen: true, openTime: "09:00", closeTime: "17:00" },
+    thursday: { isOpen: true, openTime: "09:00", closeTime: "17:00" },
+    friday: { isOpen: true, openTime: "09:00", closeTime: "17:00" },
+    saturday: { isOpen: false, openTime: "10:00", closeTime: "16:00" },
+    sunday: { isOpen: false, openTime: "10:00", closeTime: "16:00" }
+  },
+  insideReplyEnabled: false,
+  insideReplyMessage: "Thanks for your message. We received it and will respond as soon as possible.",
+  outsideReplyEnabled: false,
+  outsideReplyMessage: "Thanks for your message. We're currently closed, but we'll get back to you during business hours.",
+  cooldownHours: 8
 };
 
 const STORAGE_KEY = "statusflow.tenant-settings";
@@ -21,7 +58,8 @@ export const defaultTenantSettings: TenantSettings = {
   assetLabel: "Device",
   customerLabel: "Customer",
   identifierLabel: "Serial Number",
-  retentionPeriod: "2 weeks"
+  retentionPeriod: "2 weeks",
+  businessHours: defaultBusinessHoursSettings
 };
 
 function readAllTenantSettings() {
@@ -44,7 +82,21 @@ function writeAllTenantSettings(payload: Record<string, TenantSettings>) {
 
 export function readTenantSettings(tenantName: string, fallback: TenantSettings = defaultTenantSettings): TenantSettings {
   const all = readAllTenantSettings();
-  return all[tenantName] ?? fallback;
+  const stored = all[tenantName];
+  if (!stored) return fallback;
+
+  return {
+    ...fallback,
+    ...stored,
+    businessHours: {
+      ...fallback.businessHours,
+      ...stored.businessHours,
+      days: {
+        ...fallback.businessHours.days,
+        ...(stored.businessHours?.days ?? {})
+      }
+    }
+  };
 }
 
 export function writeTenantSettings(tenantName: string, settings: TenantSettings) {
