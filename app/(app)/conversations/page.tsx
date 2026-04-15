@@ -1853,6 +1853,7 @@ function ConversationsPageContent() {
               repair={linkedRepair}
               historyItems={linkedRepairHistory}
               itemLabel={repairLabel}
+              mobileDrawerHeader
               onClose={() => setIsMobileRepairDrawerOpen(false)}
               onEdit={() => setEditingRepairId(linkedRepair.id)}
               onStageChange={(stageName, options) =>
