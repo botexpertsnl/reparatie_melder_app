@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -1175,16 +1175,7 @@ function WorkItemsPageContent() {
                 </button>
               </div>
             </div>
-            <div className="md:hidden">
-              <button
-                type="button"
-                onClick={() => setAreMobileFiltersOpen((prev) => !prev)}
-                className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 text-xs font-semibold text-slate-200"
-              >
-                {areMobileFiltersOpen ? "Close filters" : "Open filters"}
-              </button>
-            </div>
-            <div className={clsx("space-y-4", isMobileViewport && !areMobileFiltersOpen ? "hidden" : "block")}>
+            <div className="space-y-4">
               <label
                 className="flex h-11 w-full max-w-56 items-center gap-3 rounded-xl border px-4 text-sm text-slate-300"
                 style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
@@ -1199,7 +1190,22 @@ function WorkItemsPageContent() {
                   aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
                 />
               </label>
-              <div className="flex items-start gap-2">
+              <div className="md:hidden">
+                <button
+                  type="button"
+                  onClick={() => setAreMobileFiltersOpen((prev) => !prev)}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 text-xs font-semibold text-slate-200"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  {areMobileFiltersOpen ? "Close filters" : "Open filters"}
+                </button>
+              </div>
+              <div
+                className={clsx(
+                  "flex items-start gap-2",
+                  isMobileViewport && !areMobileFiltersOpen ? "hidden" : "flex"
+                )}
+              >
                 <div className="flex flex-1 flex-wrap items-center gap-2">
                   <button
                     type="button"
