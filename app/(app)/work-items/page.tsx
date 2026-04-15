@@ -1347,6 +1347,7 @@ function WorkItemsPageContent() {
               repair={selectedRepair}
               historyItems={selectedRepairHistory}
               itemLabel={repairLabel}
+              mobileDrawerHeader
               onClose={() => setIsMobileRepairDrawerOpen(false)}
               onEdit={() => setEditingRepairId(selectedRepair.id)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}

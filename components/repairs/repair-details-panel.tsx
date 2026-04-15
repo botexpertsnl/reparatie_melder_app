@@ -20,6 +20,7 @@ type RepairDetailsPanelProps = {
   repair: StoredRepair;
   itemLabel?: string;
   onClose?: () => void;
+  mobileDrawerHeader?: boolean;
   onEdit?: () => void;
   onLinkChange?: () => void;
   onLinkAriaLabel?: string;
@@ -70,6 +71,7 @@ export function RepairDetailsPanel({
   repair,
   itemLabel = "Repair",
   onClose,
+  mobileDrawerHeader = false,
   onEdit,
   onLinkChange,
   onLinkAriaLabel = "Change linked repair",
@@ -160,24 +162,42 @@ export function RepairDetailsPanel({
         className={`relative flex h-full max-h-full min-h-0 flex-col border-l px-5 py-5 ${className ?? ""}`}
         style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
       >
-      <div className="mb-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 text-xl font-semibold text-white">
-          <Wrench className="h-5 w-5 text-[#25d3c4]" />
-          {itemLabel} Details
+      {mobileDrawerHeader ? (
+        <div className="mb-3 pt-2 shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-2xl font-semibold text-white">{repair.title}</h3>
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-[#182236] hover:text-white"
+                aria-label="Hide repair details"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
-        {onClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-[#182236] hover:text-white"
-            aria-label="Hide repair details"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        ) : null}
-      </div>
+      ) : (
+        <div className="mb-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 text-xl font-semibold text-white">
+            <Wrench className="h-5 w-5 text-[#25d3c4]" />
+            {itemLabel} Details
+          </div>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-[#182236] hover:text-white"
+              aria-label="Hide repair details"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <h3 className="text-2xl font-semibold text-white">{repair.title}</h3>
+        {mobileDrawerHeader ? null : <h3 className="text-2xl font-semibold text-white">{repair.title}</h3>}
         <div className="mt-2 text-sm text-slate-400">{repair.customerName} · {repair.assetName}</div>
         {onEdit || onLinkChange || linkedConversationHref ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
