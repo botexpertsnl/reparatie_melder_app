@@ -98,11 +98,16 @@ body::-webkit-scrollbar {
 
 .chat-input {
   border-width: 2px !important;
+}
+
+.chat-input,
+.mobile-no-zoom {
   font-size: 16px !important;
 }
 
 @media (min-width: 768px) {
-  .chat-input {
+  .chat-input,
+  .mobile-no-zoom {
     font-size: 0.875rem !important;
   }
 }

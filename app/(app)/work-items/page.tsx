@@ -244,7 +244,7 @@ function LinkConversationModal({
           <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
             <Search className="h-4 w-4 text-slate-500" />
             <input
-              className="w-full bg-transparent text-sm outline-none"
+              className="w-full bg-transparent text-sm mobile-no-zoom outline-none"
               placeholder="Search conversations..."
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -555,7 +555,7 @@ function AddRepairModal({
               <input
                 id="repair-customer-first-name"
                 maxLength={FIRST_NAME_MAX_LENGTH}
-                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
                 placeholder="e.g. John"
                 value={formValues.customerFirstName}
                 onChange={(event) =>
@@ -573,7 +573,7 @@ function AddRepairModal({
               <input
                 id="repair-customer-last-name"
                 maxLength={LAST_NAME_MAX_LENGTH}
-                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
                 placeholder="e.g. Doe"
                 value={formValues.customerLastName}
                 onChange={(event) =>
@@ -592,7 +592,7 @@ function AddRepairModal({
             <input
               id="repair-customer-phone"
               className={clsx(
-                "w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ring-0",
+                "w-full rounded-xl border bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0",
                 showPhoneError ? "border-red-400 focus:border-red-500" : "border-[#bfc9d8] focus:border-[#30b5a5]"
               )}
               placeholder="+31 6 12345678"
@@ -612,7 +612,7 @@ function AddRepairModal({
             <input
               id="repair-asset"
               maxLength={ASSET_NAME_MAX_LENGTH}
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
               placeholder="e.g. iPhone 14 Pro"
               value={formValues.assetName}
               onChange={(event) =>
@@ -627,7 +627,7 @@ function AddRepairModal({
             <input
               id="repair-title"
               maxLength={REPAIR_TITLE_MAX_LENGTH}
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
               placeholder="e.g. Screen replacement"
               value={formValues.repairTitle}
               onChange={(event) =>
@@ -639,12 +639,12 @@ function AddRepairModal({
             <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">
               Description
             </label>
-            <textarea
-              id="repair-description"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
-              placeholder="Describe the issue and any diagnostics."
-              value={formValues.description}
-              onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
+          <textarea
+            id="repair-description"
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
+            placeholder="Describe the issue and any diagnostics."
+            value={formValues.description}
+            onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
             />
           </div>
 
@@ -652,10 +652,10 @@ function AddRepairModal({
             <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">
               Stage
             </label>
-            <select
-              id="repair-stage"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#30b5a5]"
-              value={formValues.repairStage}
+          <select
+            id="repair-stage"
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
+            value={formValues.repairStage}
               onChange={(event) =>
                 setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))
               }
@@ -1224,7 +1224,7 @@ function WorkItemsPageContent() {
                     type="search"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    className="w-full bg-transparent text-sm leading-5 text-white outline-none placeholder:text-slate-400 md:placeholder:text-slate-500"
+                    className="w-full bg-transparent text-sm mobile-no-zoom leading-5 text-white outline-none placeholder:text-slate-400 md:placeholder:text-slate-500"
                     placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
                     aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
                   />
@@ -1611,7 +1611,7 @@ function WorkItemsPageContent() {
                         return { ...prev, variableValues: nextValues };
                       })
                     }
-                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]"
+                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none focus:border-[#30b5a5]"
                   />
                 </div>
               ))}
