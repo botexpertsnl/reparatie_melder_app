@@ -81,7 +81,7 @@ const fallbackQuickReplies = [
   "Your repair is ready for pickup. Please visit us during opening hours."
 ];
 const TEMPLATE_BUTTONS_MARKER = "\n\nButtons:\n";
-const MESSAGE_PREVIEW_MAX_LENGTH = 78;
+const MESSAGE_PREVIEW_MAX_LENGTH = 46;
 const FIRST_NAME_MAX_LENGTH = 25;
 const LAST_NAME_MAX_LENGTH = 25;
 const REPAIR_TITLE_MAX_LENGTH = 50;
@@ -150,7 +150,7 @@ function truncateMessagePreview(preview?: string | null) {
   if (normalizedPreview.length <= MESSAGE_PREVIEW_MAX_LENGTH) {
     return normalizedPreview;
   }
-  return `${normalizedPreview.slice(0, MESSAGE_PREVIEW_MAX_LENGTH)}...`;
+  return `${normalizedPreview.slice(0, MESSAGE_PREVIEW_MAX_LENGTH)}…`;
 }
 
 function resolveInboundReceivedAt(message: StoredConversationMessage) {
