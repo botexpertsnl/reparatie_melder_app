@@ -923,7 +923,11 @@ function ConversationsPageContent() {
     () => new Map(visibleThreads.map((thread, index) => [thread.id, index])),
     [visibleThreads]
   );
-  const threadVirtualizer = useFixedSizeVirtualList({
+  const {
+    totalSize: threadListTotalSize,
+    virtualItems: threadVirtualItems,
+    scrollToIndex: scrollThreadListToIndex,
+  } = useFixedSizeVirtualList({
     count: visibleThreads.length,
     scrollRef: threadListParentRef,
     itemSize: 92,
@@ -956,8 +960,8 @@ function ConversationsPageContent() {
     if (!selectedThreadId) return;
     const selectedIndex = visibleThreadIndexById.get(selectedThreadId);
     if (selectedIndex === undefined) return;
-    threadVirtualizer.scrollToIndex(selectedIndex);
-  }, [selectedThreadId, threadVirtualizer, visibleThreadIndexById]);
+    scrollThreadListToIndex(selectedIndex);
+  }, [scrollThreadListToIndex, selectedThreadId, visibleThreadIndexById]);
 
   useEffect(() => {
     setIsClientMounted(true);
@@ -1561,9 +1565,9 @@ function ConversationsPageContent() {
             ) : (
                 <div
                   className="relative"
-                  style={{ height: `${threadVirtualizer.totalSize}px` }}
+                  style={{ height: `${threadListTotalSize}px` }}
                 >
-                {threadVirtualizer.virtualItems.map((virtualRow) => {
+                {threadVirtualItems.map((virtualRow) => {
                   const thread = visibleThreads[virtualRow.index];
                   if (!thread) return null;
 
