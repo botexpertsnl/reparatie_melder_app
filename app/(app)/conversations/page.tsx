@@ -1057,8 +1057,15 @@ function ConversationsPageContent() {
 
     const baseHeight = 44;
     const expandedHeight = 88;
-    inputElement.style.height = `${baseHeight}px`;
-    const nextHeight = inputElement.scrollHeight > baseHeight ? expandedHeight : baseHeight;
+    const hasMessageContent = message.trim().length > 0;
+
+    if (!hasMessageContent) {
+      inputElement.style.height = `${baseHeight}px`;
+      return;
+    }
+
+    inputElement.style.height = "auto";
+    const nextHeight = Math.min(Math.max(inputElement.scrollHeight, baseHeight), expandedHeight);
     inputElement.style.height = `${nextHeight}px`;
   }, [message]);
 
