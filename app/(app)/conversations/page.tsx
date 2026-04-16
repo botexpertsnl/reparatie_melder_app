@@ -1066,6 +1066,7 @@ function ConversationsPageContent() {
     () => threads.find((thread) => thread.id === selectedThreadId) ?? null,
     [threads, selectedThreadId]
   );
+  const shouldShowCameraButton = !isMessageInputFocused && message.length === 0;
 
   const linkedRepair = selectedThread
     ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null
@@ -2175,13 +2176,16 @@ function ConversationsPageContent() {
                         className="input chat-input flex-1 resize-none transition-all"
                         placeholder="Type a message..."
                         value={message}
-                        onChange={(event) => setMessage(event.target.value)}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setMessage(nextValue.trim().length === 0 ? "" : nextValue);
+                        }}
                         onFocus={() => setIsMessageInputFocused(true)}
                         onBlur={() => setIsMessageInputFocused(false)}
                         rows={1}
                         style={{ minHeight: "44px", maxHeight: "88px" }}
                       />
-                      {isMessageInputFocused ? null : (
+                      {shouldShowCameraButton ? (
                         <button
                           type="button"
                           onClick={() => imageInputRef.current?.click()}
@@ -2190,7 +2194,7 @@ function ConversationsPageContent() {
                         >
                           <Camera className="h-4 w-4" />
                         </button>
-                      )}
+                      ) : null}
                     </>
                   )}
                   {isOutsideMetaWindow ? null : (
