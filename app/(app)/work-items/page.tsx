@@ -1357,7 +1357,7 @@ function WorkItemsPageContent() {
           <section className="min-h-0 flex-1 overflow-hidden">
             <div
               ref={repairsListParentRef}
-              className={`subtle-scrollbar h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${
+              className={`subtle-scrollbar min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden border [touch-action:pan-y] [-webkit-overflow-scrolling:touch] ${
                 selectedRepair ? "md:border-r-0" : ""
               }`}
               style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
