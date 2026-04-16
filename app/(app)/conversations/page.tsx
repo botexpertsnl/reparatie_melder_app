@@ -826,7 +826,6 @@ function ConversationsPageContent() {
   const [isTemplateMessageModalOpen, setIsTemplateMessageModalOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templateVariableValues, setTemplateVariableValues] = useState<string[]>([]);
-  const [metaWindowResetByThreadId, setMetaWindowResetByThreadId] = useState<Record<string, number>>({});
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const processedInboundIdsRef = useRef<Set<string>>(new Set());
   const hasPrimedInboundMessageIdsRef = useRef(false);
@@ -1112,11 +1111,9 @@ function ConversationsPageContent() {
   const isOutsideMetaWindow = useMemo(() => {
     const lastIncomingAt = getMessageTimestamp(lastCustomerMessage);
     const lastInboundTimestamp = lastIncomingAt?.getTime() ?? 0;
-    const manualResetTimestamp = selectedThread ? metaWindowResetByThreadId[selectedThread.id] ?? 0 : 0;
-    const referenceTimestamp = Math.max(lastInboundTimestamp, manualResetTimestamp);
-    if (referenceTimestamp <= 0) return false;
-    return nowTimestamp - referenceTimestamp > 24 * 60 * 60 * 1000;
-  }, [lastCustomerMessage, metaWindowResetByThreadId, nowTimestamp, selectedThread]);
+    if (lastInboundTimestamp <= 0) return false;
+    return nowTimestamp - lastInboundTimestamp > 24 * 60 * 60 * 1000;
+  }, [lastCustomerMessage, nowTimestamp]);
   const createRepairInitialValues = useMemo<NewRepairFormValues>(() => ({
     customerFirstName: "",
     customerLastName: "",
@@ -1359,16 +1356,16 @@ function ConversationsPageContent() {
     );
 
     setIsTemplateMessageModalOpen(false);
-    setMetaWindowResetByThreadId((prev) => ({
-      ...prev,
-      [selectedThread.id]: Date.now(),
-    }));
   }, [activeTemplates, selectedTemplateId, selectedThread, templateVariableValues, updateThreads]);
 
   const handleConversationStatusButtonClick = () => {
     if (!selectedThread) return;
     if (selectedThread.open) {
       updateConversationOpenState(selectedThread.id, false);
+      if (isMobileViewport) {
+        setMobileActivePane("list");
+        setIsMobileRepairDrawerOpen(false);
+      }
       return;
     }
 
