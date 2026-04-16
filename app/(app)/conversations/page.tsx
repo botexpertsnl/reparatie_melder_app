@@ -1482,9 +1482,11 @@ function ConversationsPageContent() {
       style={{ background: "var(--bg)" }}
     >
       <aside
-        className={`${
-          mobileActivePane === "chat" ? "hidden md:flex" : "flex"
-        } min-h-0 h-full flex-col border-r`}
+        className={`absolute inset-y-0 left-0 right-0 z-20 flex min-h-0 h-full flex-col border-r transform transition-transform duration-300 ease-out md:static md:z-auto md:transform-none md:transition-none ${
+          mobileActivePane === "chat"
+            ? "pointer-events-none -translate-x-full md:pointer-events-auto"
+            : "pointer-events-auto translate-x-0"
+        }`}
         style={{
           borderColor: "var(--border)",
           background: "var(--surface-2)",
@@ -1629,9 +1631,11 @@ function ConversationsPageContent() {
       </aside>
 
       <section
-        className={`${
-          mobileActivePane === "list" ? "hidden md:grid" : "grid"
-        } relative min-h-0 h-full min-w-0 overflow-hidden ${
+        className={`absolute inset-y-0 left-0 right-0 z-30 grid min-h-0 h-full min-w-0 overflow-hidden transform transition-transform duration-300 ease-out md:static md:z-auto md:transform-none md:transition-none ${
+          mobileActivePane === "list"
+            ? "pointer-events-none translate-x-full md:pointer-events-auto"
+            : "pointer-events-auto translate-x-0"
+        } ${
           showRepairColumn
             ? "grid-cols-[1fr] md:grid-cols-[1fr_380px]"
             : "grid-cols-[1fr]"
