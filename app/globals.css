@@ -59,6 +59,13 @@ body {
   body {
     overscroll-behavior-x: none;
   }
+
+  /* Prevent iOS Safari focus zoom when form controls use sub-16px text. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 html::-webkit-scrollbar,
