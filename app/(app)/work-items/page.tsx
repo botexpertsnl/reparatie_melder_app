@@ -1426,7 +1426,9 @@ function WorkItemsPageContent() {
               isLinkActive={Boolean(selectedRepairConversation)}
               useIconOnlyChangeLinkButton
               linkedConversationHref={
-                selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined
+                selectedRepairConversation
+                  ? `/conversations?threadId=${selectedRepairConversation.id}&open=repair`
+                  : undefined
               }
               className="h-full min-h-0 py-5 pl-6 pr-5"
             />
@@ -1467,7 +1469,9 @@ function WorkItemsPageContent() {
               isLinkActive={Boolean(selectedRepairConversation)}
               useIconOnlyChangeLinkButton
               linkedConversationHref={
-                selectedRepairConversation ? `/conversations?threadId=${selectedRepairConversation.id}` : undefined
+                selectedRepairConversation
+                  ? `/conversations?threadId=${selectedRepairConversation.id}&open=repair`
+                  : undefined
               }
               className="h-full min-h-0 max-w-full overflow-hidden px-4 py-4"
             />

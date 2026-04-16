@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import {
   Search,
@@ -598,8 +598,12 @@ function ConversationListRow({
 }
 
 function ConversationsPageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedThreadId = searchParams.get("threadId");
+  const requestedThreadOpenSource = searchParams.get("open");
+  const shouldOpenRequestedThreadOnce = requestedThreadOpenSource === "repair";
   const repairLabel = useTenantRepairLabel();
 
   const [threads, setThreads] = useState<StoredConversation[]>(() =>
@@ -663,6 +667,7 @@ function ConversationsPageContent() {
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const touchStartRef = useRef<TouchGesture | null>(null);
   const repairDrawerTouchStartRef = useRef<TouchGesture | null>(null);
+  const hasHandledInitialLinkedConversationRef = useRef(false);
 
   const formatScheduledTemplateLabel = useCallback((scheduledForIso?: string, cancelled = false) => {
     if (!scheduledForIso) return null;
@@ -791,27 +796,31 @@ function ConversationsPageContent() {
   }, []);
 
   useEffect(() => {
-    if (!requestedThreadId) return;
+    if (hasHandledInitialLinkedConversationRef.current) return;
+
+    if (!requestedThreadId || !shouldOpenRequestedThreadOnce) {
+      hasHandledInitialLinkedConversationRef.current = true;
+      return;
+    }
 
     const linkedThread = threads.find((thread) => thread.id === requestedThreadId);
-    if (!linkedThread) return;
-
-    if (selectedThreadId !== linkedThread.id) {
-      setSelectedThreadId(linkedThread.id);
+    if (!linkedThread) {
+      hasHandledInitialLinkedConversationRef.current = true;
+      return;
     }
 
-    if (statusFilter === "open" && !linkedThread.open) {
-      setStatusFilter("closed");
-    } else if (statusFilter === "closed" && linkedThread.open) {
-      setStatusFilter("open");
+    setSelectedThreadId(linkedThread.id);
+    setStatusFilter(linkedThread.open ? "open" : "closed");
+
+    if (isMobileViewport) {
+      setMobileActivePane("chat");
+      setListCollapsed(false);
+      setIsMobileRepairDrawerOpen(false);
     }
 
-    if (!isMobileViewport) return;
-
-    setMobileActivePane("chat");
-    setListCollapsed(false);
-    setIsMobileRepairDrawerOpen(false);
-  }, [isMobileViewport, requestedThreadId, selectedThreadId, statusFilter, threads]);
+    hasHandledInitialLinkedConversationRef.current = true;
+    router.replace(pathname, { scroll: false });
+  }, [isMobileViewport, pathname, requestedThreadId, router, shouldOpenRequestedThreadOnce, threads]);
 
   useEffect(() => {
     const refreshQuickReplies = () => {
@@ -935,10 +944,7 @@ function ConversationsPageContent() {
   });
 
   useEffect(() => {
-    if (!selectedThreadId) {
-      setSelectedThreadId(visibleThreads[0]?.id ?? "");
-      return;
-    }
+    if (!selectedThreadId) return;
 
     const selectedThreadInAll = threads.find((thread) => thread.id === selectedThreadId);
     const selectedThreadIsHiddenByStatusFilter = Boolean(
@@ -948,7 +954,7 @@ function ConversationsPageContent() {
     if (visibleThreads.some((thread) => thread.id === selectedThreadId)) return;
     if (selectedThreadInAll) return;
 
-    setSelectedThreadId(visibleThreads[0]?.id ?? "");
+    setSelectedThreadId("");
   }, [selectedThreadId, statusFilter, threads, visibleThreads]);
 
   useEffect(() => {

@@ -232,16 +232,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const resolveConversationHref = () => {
-    const selectedRepairId = window.localStorage.getItem("statusflow.selected-repair-id");
-    if (!selectedRepairId) return "/conversations";
-    const linkedConversation = readStoredConversations(defaultConversations).find(
-      (thread) => thread.linkedRepairId === selectedRepairId
-    );
-    if (!linkedConversation) return "/conversations";
-    return `/conversations?threadId=${linkedConversation.id}`;
-  };
-
   const resolveRepairHref = () => {
     const selectedThreadId = window.localStorage.getItem("statusflow.selected-thread-id");
     if (!selectedThreadId) return "/work-items";
@@ -259,7 +249,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const handleNavLinkClick = (href: string) => {
     if (href === "/conversations") {
       window.dispatchEvent(new Event("conversations:nav-click"));
-      router.push(resolveConversationHref());
+      router.push("/conversations");
       return;
     }
 
