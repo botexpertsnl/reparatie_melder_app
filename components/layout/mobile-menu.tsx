@@ -15,13 +15,21 @@ export type NavSection = {
 
 type MobileMenuProps = {
   isOpen: boolean;
+  openingProgress?: number;
   sections: NavSection[];
   pathname: string;
   onClose: () => void;
   onNavigate: (href: string) => void;
 };
 
-export function MobileMenu({ isOpen, sections, pathname, onClose, onNavigate }: MobileMenuProps) {
+export function MobileMenu({
+  isOpen,
+  openingProgress = 0,
+  sections,
+  pathname,
+  onClose,
+  onNavigate
+}: MobileMenuProps) {
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
 
@@ -59,11 +67,15 @@ export function MobileMenu({ isOpen, sections, pathname, onClose, onNavigate }: 
     onClose();
   };
 
+  const clampedProgress = Math.min(1, Math.max(0, openingProgress));
+  const effectiveProgress = isOpen ? 1 : clampedProgress;
+  const isDraggingOpen = !isOpen && clampedProgress > 0;
+
   return (
     <div
       className={clsx(
         "fixed inset-0 z-50 max-[768px]:block min-[769px]:hidden",
-        isOpen ? "pointer-events-auto" : "pointer-events-none"
+        isOpen || isDraggingOpen ? "pointer-events-auto" : "pointer-events-none"
       )}
       aria-hidden={!isOpen}
       onTouchStart={handleTouchStart}
@@ -72,19 +84,24 @@ export function MobileMenu({ isOpen, sections, pathname, onClose, onNavigate }: 
       <button
         type="button"
         className={clsx(
-          "absolute inset-0 bg-black/45 transition-opacity duration-300",
-          isOpen ? "opacity-100" : "opacity-0"
+          "absolute inset-0 bg-black/45",
+          isDraggingOpen ? "transition-none" : "transition-opacity duration-300"
         )}
+        style={{ opacity: effectiveProgress }}
         onClick={onClose}
         aria-label="Close menu"
       />
 
       <aside
         className={clsx(
-          "absolute left-0 top-0 h-full w-[84%] max-w-[320px] border-r px-5 py-6 shadow-2xl transition-transform duration-300",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          "absolute left-0 top-0 h-full w-[84%] max-w-[320px] border-r px-5 py-6 shadow-2xl",
+          isDraggingOpen ? "transition-none" : "transition-transform duration-300"
         )}
-        style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+        style={{
+          borderColor: "var(--border)",
+          background: "var(--surface-1)",
+          transform: `translateX(${(effectiveProgress - 1) * 100}%)`
+        }}
       >
         <div className="mb-8 flex items-center gap-3">
           <div className="rounded-xl bg-[#25d3c4] p-2.5 text-[#04243a]">
