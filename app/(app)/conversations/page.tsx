@@ -190,6 +190,39 @@ function getMessageTimestamp(message: StoredConversationMessage | null) {
   return parsedFromId;
 }
 
+function getThreadLatestMessageTimestamp(thread: StoredConversation) {
+  const lastMessage = thread.messages[thread.messages.length - 1] ?? null;
+  return getMessageTimestamp(lastMessage);
+}
+
+function formatConversationListUpdatedLabel(thread: StoredConversation, nowTimestamp: number) {
+  const latestMessageTimestamp = getThreadLatestMessageTimestamp(thread);
+  if (!latestMessageTimestamp) return thread.updatedAt;
+
+  const now = new Date(nowTimestamp);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  if (latestMessageTimestamp >= todayStart) {
+    return new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(latestMessageTimestamp);
+  }
+
+  if (latestMessageTimestamp >= yesterdayStart) {
+    return "yesterday";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(latestMessageTimestamp).replaceAll("/", "-");
+}
+
 function parseTemplateMessageContent(text: string) {
   const markerIndex = text.indexOf(TEMPLATE_BUTTONS_MARKER);
   if (markerIndex < 0) {
@@ -670,6 +703,7 @@ function TemplateMessageModal({
 
 function ConversationListRow({
   thread,
+  updatedAtLabel,
   isSelected,
   repairs,
   isMobileSwipeEnabled,
@@ -677,6 +711,7 @@ function ConversationListRow({
   onToggleConversationOpenState,
 }: {
   thread: StoredConversation;
+  updatedAtLabel: string;
   isSelected: boolean;
   repairs: StoredRepair[];
   isMobileSwipeEnabled: boolean;
@@ -716,7 +751,7 @@ function ConversationListRow({
           {thread.customerName || thread.customerPhone}
         </span>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">{thread.updatedAt}</span>
+          <span className="text-xs text-slate-500">{updatedAtLabel}</span>
           <button
             type="button"
             onClick={(event) => {
@@ -1084,28 +1119,32 @@ function ConversationsPageContent() {
   }), [createRepairThread?.customerPhone, initialStage]);
 
   const visibleThreads = useMemo(() => {
+    const getComparableTimestamp = (thread: StoredConversation) => {
+      const latestMessageTimestamp = getThreadLatestMessageTimestamp(thread);
+      if (latestMessageTimestamp) return latestMessageTimestamp.getTime();
+
+      const updatedAtTimestamp = new Date(thread.updatedAt).getTime();
+      if (!Number.isNaN(updatedAtTimestamp)) return updatedAtTimestamp;
+
+      const createdAtTimestamp = thread.createdAt ? new Date(thread.createdAt).getTime() : Number.NaN;
+      if (!Number.isNaN(createdAtTimestamp)) return createdAtTimestamp;
+
+      return 0;
+    };
+
     const sortThreads = (left: StoredConversation, right: StoredConversation) => {
-      const leftTimestamp = Number(
-        left.messages[left.messages.length - 1]?.id.replace("m_", "") ?? 0
-      );
-      const rightTimestamp = Number(
-        right.messages[right.messages.length - 1]?.id.replace("m_", "") ?? 0
-      );
+      const leftTimestamp = getComparableTimestamp(left);
+      const rightTimestamp = getComparableTimestamp(right);
 
       if (leftTimestamp !== rightTimestamp) {
         return sortDirection === "newest"
           ? rightTimestamp - leftTimestamp
           : leftTimestamp - rightTimestamp;
       }
-      if (left.updatedAt === "Now" && right.updatedAt !== "Now") {
-        return sortDirection === "newest" ? -1 : 1;
-      }
-      if (right.updatedAt === "Now" && left.updatedAt !== "Now") {
-        return sortDirection === "newest" ? 1 : -1;
-      }
+
       return sortDirection === "newest"
-        ? right.updatedAt.localeCompare(left.updatedAt)
-        : left.updatedAt.localeCompare(right.updatedAt);
+        ? right.customerName.localeCompare(left.customerName)
+        : left.customerName.localeCompare(right.customerName);
     };
 
     const matchesSearchQuery = (thread: StoredConversation) =>
@@ -1862,6 +1901,7 @@ function ConversationsPageContent() {
                     >
                       <ConversationListRow
                         thread={thread}
+                        updatedAtLabel={formatConversationListUpdatedLabel(thread, nowTimestamp)}
                         isSelected={selectedThreadId === thread.id}
                         repairs={repairs}
                         isMobileSwipeEnabled={isMobileViewport}
