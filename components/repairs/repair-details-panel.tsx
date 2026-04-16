@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Link as LinkIcon, MessageSquare, Wrench, X } from "lucide-react";
+import { Link as LinkIcon, MessageSquare, Pencil, Wrench, X } from "lucide-react";
 import type { StoredRepairHistoryItem } from "@/lib/repair-history-store";
 import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
@@ -216,7 +216,8 @@ export function RepairDetailsPanel({
                 onClick={onEdit}
                 className="inline-flex items-center gap-2 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
               >
-                Edit
+                <Pencil className="h-3.5 w-3.5" />
+                edit
               </button>
             ) : null}
             {onLinkChange ? (
