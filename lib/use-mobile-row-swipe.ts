@@ -8,6 +8,7 @@ type UseMobileRowSwipeOptions = {
   threshold?: number;
   maxVerticalMovement?: number;
   maxPreviewOffset?: number;
+  maxPreviewOffsetRatio?: number;
   horizontalIntentRatio?: number;
 };
 
@@ -22,6 +23,7 @@ export function useMobileRowSwipe({
   threshold = DEFAULT_THRESHOLD,
   maxVerticalMovement = DEFAULT_MAX_VERTICAL_MOVEMENT,
   maxPreviewOffset = DEFAULT_MAX_PREVIEW_OFFSET,
+  maxPreviewOffsetRatio,
   horizontalIntentRatio = DEFAULT_HORIZONTAL_INTENT_RATIO,
 }: UseMobileRowSwipeOptions) {
   const touchStartRef = useRef<TouchPoint | null>(null);
@@ -80,9 +82,14 @@ export function useMobileRowSwipe({
       return;
     }
 
+    const maxPreviewOffsetForRow =
+      typeof maxPreviewOffsetRatio === "number"
+        ? Math.round(event.currentTarget.clientWidth * maxPreviewOffsetRatio)
+        : maxPreviewOffset;
+
     setIsDragging(true);
-    setPreviewOffset(Math.max(-maxPreviewOffset, deltaX));
-  }, [enabled, horizontalIntentRatio, isDragging, maxPreviewOffset]);
+    setPreviewOffset(Math.max(-maxPreviewOffsetForRow, deltaX));
+  }, [enabled, horizontalIntentRatio, isDragging, maxPreviewOffset, maxPreviewOffsetRatio]);
 
   const onTouchEnd = useCallback((event: TouchEvent<HTMLElement>) => {
     if (!enabled || blockedByInteractiveTargetRef.current) {

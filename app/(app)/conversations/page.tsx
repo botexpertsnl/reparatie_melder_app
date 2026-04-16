@@ -534,6 +534,7 @@ function ConversationListRow({
   const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
     enabled: isMobileSwipeEnabled,
     onSwipeOpen: onOpenConversation,
+    maxPreviewOffsetRatio: 0.3,
   });
 
   return (
