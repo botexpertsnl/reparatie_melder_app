@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import {
   Search,
@@ -596,6 +597,8 @@ function ConversationListRow({
 }
 
 function ConversationsPageContent() {
+  const searchParams = useSearchParams();
+  const requestedThreadId = searchParams.get("threadId");
   const repairLabel = useTenantRepairLabel();
 
   const [threads, setThreads] = useState<StoredConversation[]>(() =>
@@ -784,6 +787,29 @@ function ConversationsPageContent() {
       );
     };
   }, []);
+
+  useEffect(() => {
+    if (!requestedThreadId) return;
+
+    const linkedThread = threads.find((thread) => thread.id === requestedThreadId);
+    if (!linkedThread) return;
+
+    if (selectedThreadId !== linkedThread.id) {
+      setSelectedThreadId(linkedThread.id);
+    }
+
+    if (statusFilter === "open" && !linkedThread.open) {
+      setStatusFilter("closed");
+    } else if (statusFilter === "closed" && linkedThread.open) {
+      setStatusFilter("open");
+    }
+
+    if (!isMobileViewport) return;
+
+    setMobileActivePane("chat");
+    setListCollapsed(false);
+    setIsMobileRepairDrawerOpen(false);
+  }, [isMobileViewport, requestedThreadId, selectedThreadId, statusFilter, threads]);
 
   useEffect(() => {
     const refreshQuickReplies = () => {
