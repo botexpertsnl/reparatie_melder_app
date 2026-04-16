@@ -404,11 +404,12 @@ function RepairListRow({
       className={clsx(
         "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
         isSelected
-          ? "bg-[var(--surface-3)]"
-          : "border-transparent hover:bg-white/5"
+          ? "shadow-[0_0_0_1px_var(--border-strong)]"
+          : "hover:bg-white/5"
       )}
       style={{
-        ...(isSelected ? { borderColor: "var(--border-strong)" } : {}),
+        borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
+        background: "var(--surface-1)",
         ...swipeStyle,
       }}
       {...swipeHandlers}
@@ -1364,7 +1365,7 @@ function WorkItemsPageContent() {
               className={`subtle-scrollbar min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden border [touch-action:pan-y] [-webkit-overflow-scrolling:touch] ${
                 selectedRepair ? "md:border-r-0" : ""
               }`}
-              style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+              style={{ borderColor: "var(--border)", background: "#000000" }}
             >
               <div className="space-y-1 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:pb-3">
                 {visibleRepairs.length === 0 ? (
