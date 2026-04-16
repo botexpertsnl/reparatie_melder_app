@@ -546,7 +546,7 @@ function ConversationListRow({
       }}
       role="button"
       tabIndex={0}
-      className={`w-full rounded-xl border p-3 text-left ${
+      className={`w-full rounded-xl border p-3 text-left transition-all duration-200 ${
         isSelected
           ? ""
           : "border-transparent hover:bg-white/5"
@@ -563,7 +563,7 @@ function ConversationListRow({
       {...swipeHandlers}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="font-medium text-slate-200">
+        <span className="text-base font-semibold leading-tight text-white">
           {thread.customerName || thread.customerPhone}
         </span>
         <div className="flex items-center gap-1.5">
@@ -584,8 +584,8 @@ function ConversationListRow({
           </button>
         </div>
       </div>
-      <p className="mt-1 text-sm text-slate-300">{truncateMessagePreview(thread.preview)}</p>
-      <p className="mt-1 text-xs italic text-slate-500">
+      <p className="mt-1 text-sm text-slate-300 leading-tight">{truncateMessagePreview(thread.preview)}</p>
+      <p className="mt-1 text-xs italic text-slate-500 leading-tight">
         {thread.linkedRepairId
           ? `🔗 ${
               repairs.find((r) => r.id === thread.linkedRepairId)?.title ??
@@ -939,7 +939,7 @@ function ConversationsPageContent() {
   } = useFixedSizeVirtualList({
     count: visibleThreads.length,
     scrollRef: threadListParentRef,
-    itemSize: 92,
+    itemSize: 96,
     overscan: 8,
   });
 
