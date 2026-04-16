@@ -547,18 +547,14 @@ function ConversationListRow({
       }}
       role="button"
       tabIndex={0}
-      className={`w-full rounded-xl border p-3 text-left transition-all duration-200 ${
+      className={`relative w-full rounded-xl border p-3 text-left transition-all duration-200 ${
         isSelected
-          ? ""
-          : "border-transparent hover:bg-white/5"
+          ? "shadow-[0_0_0_1px_var(--border-strong)]"
+          : "hover:bg-white/5"
       }`}
       style={{
-        ...(isSelected
-          ? {
-              borderColor: "var(--border-strong)",
-              background: "var(--surface-3)",
-            }
-          : {}),
+        borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
+        background: "var(--surface-1)",
         ...swipeStyle,
       }}
       {...swipeHandlers}
