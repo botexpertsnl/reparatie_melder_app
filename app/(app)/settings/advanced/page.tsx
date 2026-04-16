@@ -430,7 +430,7 @@ function StageModal({
             <input
               id="stage-name"
               className={clsx(
-                "w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-[#30b5a5]",
+                "w-full rounded-xl border bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-[#30b5a5]",
                 stageNameTooLong ? "border-red-400" : "border-[#bfc9d8]"
               )}
               placeholder="e.g. Waiting for Customer"
@@ -448,7 +448,7 @@ function StageModal({
             <label htmlFor="stage-description" className="mb-2 block text-sm font-medium text-slate-700">Description *</label>
             <textarea
               id="stage-description"
-              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-[#30b5a5]"
+              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-[#30b5a5]"
               placeholder="What does this stage represent?"
               value={values.description}
               onChange={(event) => setValues((prev) => ({ ...prev, description: event.target.value }))}
@@ -507,7 +507,7 @@ function StageModal({
                   <label htmlFor="template-message" className="mb-2 block text-sm font-medium text-slate-700">Template message</label>
                   <select
                     id="template-message"
-                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
+                    className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
                     value={values.templateId}
                     onChange={(event) =>
                       setValues((prev) => {
@@ -609,7 +609,7 @@ function StageModal({
                                     <label htmlFor={`button-quick-reply-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-700">Quick reply</label>
                                     <select
                                       id={`button-quick-reply-${action.buttonId}`}
-                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
+                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none focus:border-[#30b5a5]"
                                       value={action.quickReplyId ?? ""}
                                       onChange={(event) =>
                                         setValues((prev) => ({
@@ -660,7 +660,7 @@ function StageModal({
                                     <label htmlFor={`button-stage-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-700">Target stage</label>
                                     <select
                                       id={`button-stage-${action.buttonId}`}
-                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
+                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none focus:border-[#30b5a5]"
                                       value={action.moveToStageId ?? ""}
                                       onChange={(event) =>
                                         setValues((prev) => ({
@@ -765,7 +765,7 @@ function StageModal({
                               id="template-delay-hours"
                               type="number"
                               min={0}
-                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
+                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
                               value={values.templateSendDelayHours}
                               onChange={(event) => setDelayField("templateSendDelayHours", Number(event.target.value) || 0)}
                             />
@@ -795,7 +795,7 @@ function StageModal({
                               type="number"
                               min={0}
                               max={59}
-                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
+                              className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none ring-0 focus:border-[#30b5a5]"
                               value={values.templateSendDelayMinutes}
                               onChange={(event) => setDelayField("templateSendDelayMinutes", Number(event.target.value) || 0)}
                             />

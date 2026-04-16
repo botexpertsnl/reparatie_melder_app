@@ -615,14 +615,14 @@ function TemplateModal({
             ) : null}
             <div>
               <label htmlFor="template-name" className="mb-2 block text-sm font-medium text-slate-900">Name *</label>
-              <input id="template-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 focus:border-[#30b5a5]" value={values.name} onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))} />
+              <input id="template-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900 outline-none ring-0 focus:border-[#30b5a5]" value={values.name} onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="template-category" className="mb-2 block text-sm font-medium text-slate-900">Category</label>
                 <div className="relative">
-                  <select id="template-category" disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={values.category} onChange={(event) => setValues((prev) => ({ ...prev, category: normalizeCategory(event.target.value) }))}>
+                  <select id="template-category" disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={values.category} onChange={(event) => setValues((prev) => ({ ...prev, category: normalizeCategory(event.target.value) }))}>
                     {CATEGORY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
@@ -634,7 +634,7 @@ function TemplateModal({
               <div>
                 <label htmlFor="template-language" className="mb-2 block text-sm font-medium text-slate-900">Language</label>
                 <div className="relative">
-                  <select id="template-language" disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={values.language} onChange={(event) => setValues((prev) => ({ ...prev, language: event.target.value }))}>
+                  <select id="template-language" disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={values.language} onChange={(event) => setValues((prev) => ({ ...prev, language: event.target.value }))}>
                     <option>Dutch</option>
                     <option>English</option>
                     <option>German</option>
@@ -653,7 +653,7 @@ function TemplateModal({
               <textarea
                 id="body-preview"
                 ref={bodyTextareaRef}
-                className="mt-3 min-h-28 w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#30b5a5]"
+                className="mt-3 min-h-28 w-full rounded-xl border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none focus:border-[#30b5a5]"
                 placeholder="Hello {{1}}, your repair is {{2}}."
                 value={values.body}
                 readOnly={isTemplateLocked}
@@ -733,9 +733,9 @@ function TemplateModal({
                           <button type="button" disabled={isTemplateLocked} className={clsx("text-xs font-semibold text-red-500 hover:text-red-600", isTemplateLocked ? "cursor-not-allowed opacity-40" : undefined)} onClick={() => setValues((prev) => ({ ...prev, variables: syncVariablesMetadata(prev.variables.filter((item) => item.id !== variable.id)) }))}>Remove</button>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <input ref={(node) => { variableInputRefs.current[variable.id] = node; }} readOnly={isTemplateLocked} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Variable label" value={variable.label} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, label: event.target.value }))} />
+                          <input ref={(node) => { variableInputRefs.current[variable.id] = node; }} readOnly={isTemplateLocked} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Variable label" value={variable.label} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, label: event.target.value }))} />
                           <div className="relative">
-                            <select disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={variable.mode} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, mode: event.target.value as TemplateVariable["mode"], source: event.target.value === "repair_field" ? `repair.${current.repairField}` : "manual" }))}>
+                            <select disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={variable.mode} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, mode: event.target.value as TemplateVariable["mode"], source: event.target.value === "repair_field" ? `repair.${current.repairField}` : "manual" }))}>
                               <option value="manual">Manual</option>
                               <option value="repair_field">Connect to repair</option>
                             </select>
@@ -744,10 +744,10 @@ function TemplateModal({
                         </div>
 
                         {variable.mode === "manual" ? (
-                          <input readOnly={isTemplateLocked} className={clsx("mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Manual default value" value={variable.manualValue} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, manualValue: event.target.value, source: "manual" }))} />
+                          <input readOnly={isTemplateLocked} className={clsx("mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Manual default value" value={variable.manualValue} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, manualValue: event.target.value, source: "manual" }))} />
                         ) : (
                           <div className="relative mt-3">
-                            <select disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={variable.repairField} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, repairField: event.target.value as TemplateVariable["repairField"], source: `repair.${event.target.value}` }))}>
+                            <select disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={variable.repairField} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, repairField: event.target.value as TemplateVariable["repairField"], source: `repair.${event.target.value}` }))}>
                               <option value="customerName">Customer name</option>
                               <option value="customerPhone">Customer phone</option>
                               <option value="assetName">Device name</option>
@@ -793,7 +793,7 @@ function TemplateModal({
                           <div className="relative mb-3">
                             <select
                               disabled={isTemplateLocked}
-                              className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)}
+                              className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)}
                               value={button.type}
                               onChange={(event) =>
                                 updateButton(button.id, (current) =>
@@ -810,7 +810,7 @@ function TemplateModal({
                           </div>
                         ) : null}
 
-                        <input ref={(node) => { buttonInputRefs.current[button.id] = node; }} readOnly={isTemplateLocked} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
+                        <input ref={(node) => { buttonInputRefs.current[button.id] = node; }} readOnly={isTemplateLocked} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
                         <div className="mt-1 text-xs text-slate-500">{button.text.trim().length}/20</div>
                         {emptyButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot be empty.</p> : null}
                         {tooLongButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot exceed 20 characters.</p> : null}
@@ -820,7 +820,7 @@ function TemplateModal({
                           <>
                             <input
                               readOnly={isTemplateLocked}
-                              className={clsx("mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)}
+                              className={clsx("mt-3 w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)}
                               placeholder={button.type === "URL" ? "https://example.com" : "+31123456789"}
                               value={button.type === "URL" ? button.url : button.phoneNumber}
                               onChange={(event) => updateButton(button.id, (current) => current.type === "URL" ? { ...current, url: event.target.value } : { ...current, phoneNumber: event.target.value })}
