@@ -1011,7 +1011,11 @@ function WorkItemsPageContent() {
     () => new Map(visibleRepairs.map((repair, index) => [repair.id, index])),
     [visibleRepairs]
   );
-  const repairsVirtualizer = useFixedSizeVirtualList({
+  const {
+    totalSize: repairsVirtualizerTotalSize,
+    virtualItems: repairsVirtualItems,
+    scrollToIndex: scrollRepairListToIndex
+  } = useFixedSizeVirtualList({
     count: visibleRepairs.length,
     scrollRef: repairsListParentRef,
     itemSize: 96,
@@ -1034,8 +1038,8 @@ function WorkItemsPageContent() {
     if (!selectedRepairId) return;
     const selectedIndex = filteredRepairIndexById.get(selectedRepairId);
     if (selectedIndex === undefined) return;
-    repairsVirtualizer.scrollToIndex(selectedIndex);
-  }, [filteredRepairIndexById, repairsVirtualizer, selectedRepairId]);
+    scrollRepairListToIndex(selectedIndex);
+  }, [filteredRepairIndexById, scrollRepairListToIndex, selectedRepairId]);
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
     const customerFirstName = payload.customerFirstName.trim();
@@ -1370,9 +1374,9 @@ function WorkItemsPageContent() {
                 ) : (
                   <div
                     className="relative"
-                    style={{ height: `${repairsVirtualizer.totalSize}px` }}
+                    style={{ height: `${repairsVirtualizerTotalSize}px` }}
                   >
-                    {repairsVirtualizer.virtualItems.map((virtualRow) => {
+                    {repairsVirtualItems.map((virtualRow) => {
                       const repair = visibleRepairs[virtualRow.index];
                       if (!repair) return null;
 
