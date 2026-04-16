@@ -550,11 +550,11 @@ function ConversationListRow({
       className={`relative w-full rounded-xl border p-3 text-left transition-all duration-200 ${
         isSelected
           ? "shadow-[0_0_0_1px_var(--border-strong)]"
-          : "hover:bg-[var(--surface-3)]"
+          : "hover:bg-white/5"
       }`}
       style={{
         borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
-        background: isSelected ? "var(--surface-3)" : thread.open ? "var(--surface-1)" : "var(--surface-2)",
+        background: "var(--surface-1)",
         ...swipeStyle,
       }}
       {...swipeHandlers}
@@ -1562,6 +1562,7 @@ function ConversationsPageContent() {
           <div
             ref={threadListParentRef}
             className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-3"
+            style={{ background: "#000000" }}
           >
             {visibleThreads.length === 0 ? (
               <p className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-4 text-sm text-slate-400">
