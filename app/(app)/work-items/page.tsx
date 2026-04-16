@@ -1231,7 +1231,7 @@ function WorkItemsPageContent() {
   return (
     <>
       <div
-        className={`fixed inset-x-0 bottom-0 top-[69px] grid h-full overflow-hidden transition-[grid-template-columns] duration-300 md:static md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] ${
+        className={`fixed inset-x-0 bottom-0 top-[69px] grid min-h-0 overflow-hidden transition-[grid-template-columns] duration-300 md:static md:-mx-10 md:-my-8 md:h-[calc(100vh-69px)] ${
           selectedRepair ? "grid-cols-[1fr] md:grid-cols-[1fr_380px]" : "grid-cols-[1fr]"
         }`}
         style={{ background: "var(--bg)" }}
@@ -1354,7 +1354,7 @@ function WorkItemsPageContent() {
             </div>
           </div>
 
-          <section className="min-h-0 flex-1 overflow-hidden">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div
               ref={repairsListParentRef}
               className={`subtle-scrollbar min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden border [touch-action:pan-y] [-webkit-overflow-scrolling:touch] ${
