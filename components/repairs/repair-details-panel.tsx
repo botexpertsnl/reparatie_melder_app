@@ -210,6 +210,20 @@ export function RepairDetailsPanel({
                 Open conversation
               </a>
             ) : null}
+            {!linkedConversationHref && onLinkChange ? (
+              <button
+                type="button"
+                onClick={onLinkChange}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
+                aria-label={onLinkAriaLabel}
+                title={useIconOnlyChangeLinkButton && linkedConversationHref ? onLinkAriaLabel : undefined}
+              >
+                <LinkIcon className={`h-3.5 w-3.5 ${isLinkActive ? "text-[#69f0df]" : "text-slate-500"}`} />
+                {useIconOnlyChangeLinkButton && linkedConversationHref ? null : (
+                  linkedConversationHref ? "Change link" : "Link conversation"
+                )}
+              </button>
+            ) : null}
             {onEdit ? (
               <button
                 type="button"
@@ -220,7 +234,7 @@ export function RepairDetailsPanel({
                 edit
               </button>
             ) : null}
-            {onLinkChange ? (
+            {linkedConversationHref && onLinkChange ? (
               <button
                 type="button"
                 onClick={onLinkChange}
