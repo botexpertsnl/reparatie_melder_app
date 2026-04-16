@@ -63,6 +63,8 @@ import {
   writeBusinessHoursCooldownForConversation
 } from "@/lib/business-hours-cooldown-store";
 import { useFixedSizeVirtualList } from "@/lib/use-fixed-size-virtual-list";
+import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
+import { buildTemplateMessageWithButtons, fillTemplateBody } from "@/lib/repair-stage-transition";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
@@ -160,7 +162,32 @@ function resolveInboundReceivedAt(message: StoredConversationMessage) {
       return parsed;
     }
   }
+
+  const timestampFromId = Number(message.id.replace(/^m_/, "").split("_")[0] ?? Number.NaN);
+  if (Number.isFinite(timestampFromId)) {
+    const parsedFromId = new Date(timestampFromId);
+    if (!Number.isNaN(parsedFromId.getTime())) {
+      return parsedFromId;
+    }
+  }
   return new Date();
+}
+
+function getMessageTimestamp(message: StoredConversationMessage | null) {
+  if (!message) return null;
+
+  if (ISO_LIKE_TIMESTAMP_REGEX.test(message.at)) {
+    const parsed = new Date(message.at);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  const timestampFromId = Number(message.id.replace(/^m_/, "").split("_")[0] ?? Number.NaN);
+  if (!Number.isFinite(timestampFromId)) return null;
+  const parsedFromId = new Date(timestampFromId);
+  if (Number.isNaN(parsedFromId.getTime())) return null;
+  return parsedFromId;
 }
 
 function parseTemplateMessageContent(text: string) {
@@ -516,6 +543,131 @@ function QuickReplyPickerModal({
   );
 }
 
+function TemplateMessageModal({
+  templates,
+  selectedTemplateId,
+  variableValues,
+  onClose,
+  onSelectTemplate,
+  onVariableChange,
+  onSend,
+}: {
+  templates: StoredTemplate[];
+  selectedTemplateId: string;
+  variableValues: string[];
+  onClose: () => void;
+  onSelectTemplate: (templateId: string) => void;
+  onVariableChange: (index: number, value: string) => void;
+  onSend: () => void;
+}) {
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? null;
+  const preview = selectedTemplate ? fillTemplateBody(selectedTemplate, variableValues) : "";
+  const hasMissingVariables = selectedTemplate
+    ? (selectedTemplate.variables ?? []).some((_, index) => !(variableValues[index] ?? "").trim())
+    : true;
+
+  return (
+    <ModalShell
+      title="Send template message"
+      onClose={onClose}
+      maxWidthClassName="max-w-2xl"
+      closeLabel="Close template message dialog"
+      footer={(
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSend}
+            disabled={!selectedTemplate || hasMissingVariables}
+            className="rounded-xl bg-[#2fb2a3] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2a9f91] disabled:cursor-not-allowed disabled:bg-[#9fd8d2] disabled:text-white/90"
+          >
+            Send template
+          </button>
+        </>
+      )}
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-slate-700">
+          This conversation is outside Meta&rsquo;s 24-hour reply window. You can only send a template message to restart the conversation.
+        </p>
+
+        {templates.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-[#cdd5e2] bg-white px-3 py-4 text-sm text-slate-500">
+            No templates available.
+          </p>
+        ) : (
+          <>
+            <div>
+              <label htmlFor="template-message-selector" className="mb-2 block text-sm font-medium text-slate-700">
+                Template
+              </label>
+              <select
+                id="template-message-selector"
+                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
+                value={selectedTemplateId}
+                onChange={(event) => onSelectTemplate(event.target.value)}
+              >
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {(selectedTemplate?.variables ?? []).length > 0 ? (
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold text-slate-800">Variables</h3>
+                {(selectedTemplate?.variables ?? []).map((variable, index) => (
+                  <div key={variable.id} className="space-y-1">
+                    <label className="block text-sm font-medium text-slate-700">
+                      {variable.name || variable.label || variable.key || `Variable ${index + 1}`}
+                    </label>
+                    <input
+                      type="text"
+                      value={variableValues[index] ?? ""}
+                      onChange={(event) => onVariableChange(index, event.target.value)}
+                      className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]"
+                    />
+                  </div>
+                ))}
+                {hasMissingVariables ? (
+                  <p className="text-sm font-medium text-amber-700">Fill in all variables before sending this template.</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Template preview</h3>
+              <div className="mt-2 rounded-lg border border-[#d7dce3] bg-[#f8fafc] p-3">
+                <div className="text-sm leading-6 text-slate-700">{preview}</div>
+                {(selectedTemplate?.buttons ?? []).length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-[#d7dce3] pt-3">
+                    {selectedTemplate?.buttons?.map((button) => (
+                      <span
+                        key={button.id}
+                        className="inline-flex items-center rounded-full border border-[#b8d8ff] bg-[#eef6ff] px-3 py-1 text-xs font-semibold text-[#285b9b]"
+                      >
+                        {button.text.trim() || "Button"}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </ModalShell>
+  );
+}
+
 function ConversationListRow({
   thread,
   isSelected,
@@ -615,6 +767,9 @@ function ConversationsPageContent() {
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
   );
+  const [templates, setTemplates] = useState<StoredTemplate[]>(() =>
+    readStoredTemplates(defaultStoredTemplates)
+  );
   const [selectedThreadId, setSelectedThreadId] = useState<string>("");
   const [message, setMessage] = useState("");
   const [quickReplyOptions, setQuickReplyOptions] = useState<string[]>(() => {
@@ -633,6 +788,11 @@ function ConversationsPageContent() {
     }
   });
   const [showQuickReplyPicker, setShowQuickReplyPicker] = useState(false);
+  const [isTemplateMessageModalOpen, setIsTemplateMessageModalOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateVariableValues, setTemplateVariableValues] = useState<string[]>([]);
+  const [metaWindowResetByThreadId, setMetaWindowResetByThreadId] = useState<Record<string, number>>({});
+  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const processedInboundIdsRef = useRef<Set<string>>(new Set());
   const hasPrimedInboundMessageIdsRef = useRef(false);
   const [showRepairPanel, setShowRepairPanel] = useState(true);
@@ -734,6 +894,22 @@ function ConversationsPageContent() {
       window.removeEventListener("repair-history:changed", refreshRepairHistory);
       window.removeEventListener("storage", refreshRepairHistory);
     };
+  }, []);
+
+  useEffect(() => {
+    const refreshTemplates = () => setTemplates(readStoredTemplates(defaultStoredTemplates));
+    refreshTemplates();
+    window.addEventListener("templates:changed", refreshTemplates);
+    window.addEventListener("storage", refreshTemplates);
+    return () => {
+      window.removeEventListener("templates:changed", refreshTemplates);
+      window.removeEventListener("storage", refreshTemplates);
+    };
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNowTimestamp(Date.now()), 60_000);
+    return () => window.clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -858,6 +1034,10 @@ function ConversationsPageContent() {
   const linkedRepair = selectedThread
     ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null
     : null;
+  const activeTemplates = useMemo(
+    () => templates.filter((template) => template.active),
+    [templates]
+  );
   const linkedRepairHistory = useMemo(
     () => (linkedRepair ? repairHistory.filter((item) => item.repairId === linkedRepair.id) : []),
     [linkedRepair, repairHistory]
@@ -875,6 +1055,24 @@ function ConversationsPageContent() {
     () => (editingRepairId ? repairs.find((repair) => repair.id === editingRepairId) ?? null : null),
     [editingRepairId, repairs]
   );
+  const lastCustomerMessage = useMemo(() => {
+    if (!selectedThread) return null;
+    for (let index = selectedThread.messages.length - 1; index >= 0; index -= 1) {
+      const candidate = selectedThread.messages[index];
+      if (candidate?.role === "customer") {
+        return candidate;
+      }
+    }
+    return null;
+  }, [selectedThread]);
+  const isOutsideMetaWindow = useMemo(() => {
+    const lastIncomingAt = getMessageTimestamp(lastCustomerMessage);
+    const lastInboundTimestamp = lastIncomingAt?.getTime() ?? 0;
+    const manualResetTimestamp = selectedThread ? metaWindowResetByThreadId[selectedThread.id] ?? 0 : 0;
+    const referenceTimestamp = Math.max(lastInboundTimestamp, manualResetTimestamp);
+    if (referenceTimestamp <= 0) return false;
+    return nowTimestamp - referenceTimestamp > 24 * 60 * 60 * 1000;
+  }, [lastCustomerMessage, metaWindowResetByThreadId, nowTimestamp, selectedThread]);
   const createRepairInitialValues = useMemo<NewRepairFormValues>(() => ({
     customerFirstName: "",
     customerLastName: "",
@@ -1039,6 +1237,85 @@ function ConversationsPageContent() {
 
     setMessage("");
   };
+
+  const openTemplateMessageModal = useCallback(() => {
+    const defaultTemplate = activeTemplates[0];
+    if (!defaultTemplate) {
+      setSelectedTemplateId("");
+      setTemplateVariableValues([]);
+      setIsTemplateMessageModalOpen(true);
+      return;
+    }
+
+    setSelectedTemplateId(defaultTemplate.id);
+    setTemplateVariableValues(
+      (defaultTemplate.variables ?? []).map((variable) =>
+        variable.mode === "manual" ? variable.manualValue ?? "" : ""
+      )
+    );
+    setIsTemplateMessageModalOpen(true);
+  }, [activeTemplates]);
+
+  const handleTemplateSelectionChange = useCallback((templateId: string) => {
+    const template = activeTemplates.find((item) => item.id === templateId);
+    setSelectedTemplateId(templateId);
+    setTemplateVariableValues(
+      (template?.variables ?? []).map((variable) =>
+        variable.mode === "manual" ? variable.manualValue ?? "" : ""
+      )
+    );
+  }, [activeTemplates]);
+
+  const handleTemplateVariableChange = useCallback((index: number, value: string) => {
+    setTemplateVariableValues((prev) => {
+      const nextValues = [...prev];
+      nextValues[index] = value;
+      return nextValues;
+    });
+  }, []);
+
+  const sendTemplateMessage = useCallback(() => {
+    if (!selectedThread) return;
+    const selectedTemplate = activeTemplates.find((item) => item.id === selectedTemplateId);
+    if (!selectedTemplate) return;
+    const hasMissingVariables = (selectedTemplate.variables ?? []).some(
+      (_, index) => !(templateVariableValues[index] ?? "").trim()
+    );
+    if (hasMissingVariables) return;
+
+    const templatePreview = fillTemplateBody(selectedTemplate, templateVariableValues);
+    const composedTemplateMessage = buildTemplateMessageWithButtons(
+      templatePreview,
+      selectedTemplate.buttons
+    );
+
+    updateThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === selectedThread.id
+          ? {
+              ...thread,
+              preview: templatePreview,
+              updatedAt: "Now",
+              messages: [
+                ...thread.messages,
+                {
+                  id: `m_${Date.now()}`,
+                  role: "agent",
+                  text: composedTemplateMessage,
+                  at: "Now",
+                },
+              ],
+            }
+          : thread
+      )
+    );
+
+    setIsTemplateMessageModalOpen(false);
+    setMetaWindowResetByThreadId((prev) => ({
+      ...prev,
+      [selectedThread.id]: Date.now(),
+    }));
+  }, [activeTemplates, selectedTemplateId, selectedThread, templateVariableValues, updateThreads]);
 
   const handleConversationStatusButtonClick = () => {
     if (!selectedThread) return;
@@ -1818,31 +2095,43 @@ function ConversationsPageContent() {
                 style={{ borderColor: "var(--border)" }}
               >
                 <div className="flex items-center gap-2">
-                  <textarea
-                    ref={messageInputRef}
-                    className="input chat-input resize-none"
-                    placeholder="Type a message..."
-                    value={message}
-                    onChange={(event) => setMessage(event.target.value)}
-                    rows={1}
-                    style={{ minHeight: "44px", maxHeight: "88px" }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickReplyPicker(true)}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
-                    aria-label="Select quick reply"
-                  >
-                    <MessageSquareText className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => imageInputRef.current?.click()}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
-                    aria-label="Upload or capture image"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </button>
+                  {isOutsideMetaWindow ? (
+                    <button
+                      type="button"
+                      onClick={openTemplateMessageModal}
+                      className="flex h-11 flex-1 items-center rounded-xl border border-[#253149] bg-[#0d1728] px-3 text-left text-sm text-slate-400"
+                    >
+                      Send template message
+                    </button>
+                  ) : (
+                    <>
+                      <textarea
+                        ref={messageInputRef}
+                        className="input chat-input resize-none"
+                        placeholder="Type a message..."
+                        value={message}
+                        onChange={(event) => setMessage(event.target.value)}
+                        rows={1}
+                        style={{ minHeight: "44px", maxHeight: "88px" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowQuickReplyPicker(true)}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                        aria-label="Select quick reply"
+                      >
+                        <MessageSquareText className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                        aria-label="Upload or capture image"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={handleConversationStatusButtonClick}
@@ -1851,14 +2140,16 @@ function ConversationsPageContent() {
                   >
                     {selectedThread.open ? <X className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => sendMessage()}
-                    className="inline-flex h-11 w-14 items-center justify-center rounded-xl border border-[#2ae0d0] bg-[#25d3c4] text-[#022a36] shadow-[0_6px_18px_rgba(37,211,196,0.45)] transition-all hover:-translate-y-0.5 hover:bg-[#33decf] hover:shadow-[0_10px_20px_rgba(37,211,196,0.55)]"
-                    aria-label="Send message"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
+                  {isOutsideMetaWindow ? null : (
+                    <button
+                      type="button"
+                      onClick={() => sendMessage()}
+                      className="inline-flex h-11 w-14 items-center justify-center rounded-xl border border-[#2ae0d0] bg-[#25d3c4] text-[#022a36] shadow-[0_6px_18px_rgba(37,211,196,0.45)] transition-all hover:-translate-y-0.5 hover:bg-[#33decf] hover:shadow-[0_10px_20px_rgba(37,211,196,0.55)]"
+                      aria-label="Send message"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 <input
                   ref={imageInputRef}
@@ -1990,6 +2281,17 @@ function ConversationsPageContent() {
             setMessage(value);
             setShowQuickReplyPicker(false);
           }}
+        />
+      ) : null}
+      {isTemplateMessageModalOpen ? (
+        <TemplateMessageModal
+          templates={activeTemplates}
+          selectedTemplateId={selectedTemplateId}
+          variableValues={templateVariableValues}
+          onClose={() => setIsTemplateMessageModalOpen(false)}
+          onSelectTemplate={handleTemplateSelectionChange}
+          onVariableChange={handleTemplateVariableChange}
+          onSend={sendTemplateMessage}
         />
       ) : null}
     </div>
