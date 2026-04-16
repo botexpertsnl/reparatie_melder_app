@@ -850,6 +850,7 @@ function ConversationsPageContent() {
   });
   const [createRepairThreadId, setCreateRepairThreadId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
+  const [isMessageInputFocused, setIsMessageInputFocused] = useState(false);
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
@@ -1989,7 +1990,7 @@ function ConversationsPageContent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="md:hidden">
+                  <div className="flex items-center gap-2 md:hidden">
                     {selectedThread.linkedRepairId ? (
                       <button
                         type="button"
@@ -2020,8 +2021,16 @@ function ConversationsPageContent() {
                         </button>
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={handleConversationStatusButtonClick}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 transition-colors hover:bg-[#182236]"
+                      aria-label={selectedThread.open ? "Close conversation" : "Reopen conversation"}
+                    >
+                      {selectedThread.open ? <X className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <div className="hidden md:block">
+                  <div className="hidden items-center gap-2 md:flex">
                     {selectedThread.linkedRepairId ? (
                       showRepairPanel ? null : (
                         <button
@@ -2054,6 +2063,14 @@ function ConversationsPageContent() {
                         </button>
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={handleConversationStatusButtonClick}
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 transition-colors hover:bg-[#182236]"
+                      aria-label={selectedThread.open ? "Close conversation" : "Reopen conversation"}
+                    >
+                      {selectedThread.open ? <X className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
               </header>
@@ -2145,41 +2162,37 @@ function ConversationsPageContent() {
                     </button>
                   ) : (
                     <>
-                      <textarea
-                        ref={messageInputRef}
-                        className="input chat-input resize-none"
-                        placeholder="Type a message..."
-                        value={message}
-                        onChange={(event) => setMessage(event.target.value)}
-                        rows={1}
-                        style={{ minHeight: "44px", maxHeight: "88px" }}
-                      />
                       <button
                         type="button"
                         onClick={() => setShowQuickReplyPicker(true)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
                         aria-label="Select quick reply"
                       >
                         <MessageSquareText className="h-4 w-4" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => imageInputRef.current?.click()}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
-                        aria-label="Upload or capture image"
-                      >
-                        <Camera className="h-4 w-4" />
-                      </button>
+                      <textarea
+                        ref={messageInputRef}
+                        className="input chat-input flex-1 resize-none transition-all"
+                        placeholder="Type a message..."
+                        value={message}
+                        onChange={(event) => setMessage(event.target.value)}
+                        onFocus={() => setIsMessageInputFocused(true)}
+                        onBlur={() => setIsMessageInputFocused(false)}
+                        rows={1}
+                        style={{ minHeight: "44px", maxHeight: "88px" }}
+                      />
+                      {isMessageInputFocused ? null : (
+                        <button
+                          type="button"
+                          onClick={() => imageInputRef.current?.click()}
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 hover:bg-[#182236]"
+                          aria-label="Upload or capture image"
+                        >
+                          <Camera className="h-4 w-4" />
+                        </button>
+                      )}
                     </>
                   )}
-                  <button
-                    type="button"
-                    onClick={handleConversationStatusButtonClick}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#253149] bg-[#111a2b] text-slate-300 transition-colors hover:bg-[#182236]"
-                    aria-label={selectedThread.open ? "Close conversation" : "Reopen conversation"}
-                  >
-                    {selectedThread.open ? <X className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
-                  </button>
                   {isOutsideMetaWindow ? null : (
                     <button
                       type="button"
