@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, SlidersHorizontal, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
+import { ArrowUpDown, Plus, Search, SlidersHorizontal, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -46,6 +46,7 @@ import { useFixedSizeVirtualList } from "@/lib/use-fixed-size-virtual-list";
 type RepairItem = StoredRepair;
 const UNKNOWN_STAGE = "Unknown";
 const SELECTED_REPAIR_STORAGE_KEY = "statusflow.selected-repair-id";
+type MobileRepairSortMode = "latest-change" | "latest-stage-assignment";
 
 type NewRepairFormValues = {
   customerFirstName: string;
@@ -295,6 +296,12 @@ function matchesRepairSearch(repair: RepairItem, query: string) {
   return `${repair.title} ${repair.description} ${repair.customerName} ${repair.customerPhone} ${repair.assetName} ${repair.stage}`
     .toLowerCase()
     .includes(normalizedQuery);
+}
+
+function toTimestamp(value?: string) {
+  if (!value) return 0;
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
 function StageBadge({
@@ -726,6 +733,7 @@ function WorkItemsPageContent() {
     if (typeof window === "undefined") return true;
     return !window.matchMedia("(max-width: 767px)").matches;
   });
+  const [mobileSortMode, setMobileSortMode] = useState<MobileRepairSortMode | null>(null);
   const [pendingTemplateStageChange, setPendingTemplateStageChange] = useState<{
     repairId: string;
     stage: StoredWorkflowStage;
@@ -951,12 +959,60 @@ function WorkItemsPageContent() {
       return matchesSearch && matchesStageFilter;
     });
   }, [repairs, searchQuery, selectedStageFilters]);
+  const latestHistoryTimestampByRepairId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of repairHistory) {
+      const timestamp = toTimestamp(item.atIso);
+      const currentLatest = map.get(item.repairId) ?? 0;
+      if (timestamp > currentLatest) {
+        map.set(item.repairId, timestamp);
+      }
+    }
+    return map;
+  }, [repairHistory]);
+  const latestAssignedStageTimestampByRepairId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const repair of repairs) {
+      const latestCurrentStageAssignment = repairHistory.reduce((latest, item) => {
+        if (item.repairId !== repair.id) return latest;
+        if (item.toStage !== repair.stage) return latest;
+        const timestamp = toTimestamp(item.atIso);
+        return timestamp > latest ? timestamp : latest;
+      }, 0);
+      map.set(repair.id, latestCurrentStageAssignment);
+    }
+    return map;
+  }, [repairHistory, repairs]);
+  const mobileSortedRepairs = useMemo(() => {
+    if (!mobileSortMode) return filteredRepairs;
+
+    return [...filteredRepairs].sort((repairA, repairB) => {
+      if (mobileSortMode === "latest-change") {
+        const latestChangeA = Math.max(
+          toTimestamp(repairA.updatedAt),
+          toTimestamp(repairA.createdAt),
+          latestHistoryTimestampByRepairId.get(repairA.id) ?? 0
+        );
+        const latestChangeB = Math.max(
+          toTimestamp(repairB.updatedAt),
+          toTimestamp(repairB.createdAt),
+          latestHistoryTimestampByRepairId.get(repairB.id) ?? 0
+        );
+        return latestChangeB - latestChangeA;
+      }
+
+      const latestStageAssignedA = latestAssignedStageTimestampByRepairId.get(repairA.id) ?? 0;
+      const latestStageAssignedB = latestAssignedStageTimestampByRepairId.get(repairB.id) ?? 0;
+      return latestStageAssignedB - latestStageAssignedA;
+    });
+  }, [filteredRepairs, latestAssignedStageTimestampByRepairId, latestHistoryTimestampByRepairId, mobileSortMode]);
+  const visibleRepairs = isMobileViewport ? mobileSortedRepairs : filteredRepairs;
   const filteredRepairIndexById = useMemo(
-    () => new Map(filteredRepairs.map((repair, index) => [repair.id, index])),
-    [filteredRepairs]
+    () => new Map(visibleRepairs.map((repair, index) => [repair.id, index])),
+    [visibleRepairs]
   );
   const repairsVirtualizer = useFixedSizeVirtualList({
-    count: filteredRepairs.length,
+    count: visibleRepairs.length,
     scrollRef: repairsListParentRef,
     itemSize: 96,
     overscan: 8,
@@ -1195,20 +1251,39 @@ function WorkItemsPageContent() {
               </div>
             </div>
             <div className="space-y-4">
-              <label
-                className="flex h-11 w-full max-w-56 items-center gap-3 rounded-xl border px-4 text-sm text-slate-300"
-                style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
-              >
-                <Search className="h-5 w-5 text-slate-500" />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
-                  placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
-                  aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
-                />
-              </label>
+              <div className="flex items-center gap-2.5 md:block">
+                <label
+                  className="flex min-h-10 flex-1 items-center gap-2.5 rounded-xl border px-3.5 py-2 text-slate-400 md:h-11 md:max-w-56 md:gap-3 md:px-4 md:py-0 md:text-sm md:text-slate-300"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+                >
+                  <Search className="h-[18px] w-[18px] shrink-0 text-slate-400 md:h-5 md:w-5 md:text-slate-500" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="w-full bg-transparent text-sm leading-5 text-white outline-none placeholder:text-slate-400 md:placeholder:text-slate-500"
+                    placeholder={`Search ${repairLabelPlural.toLowerCase()}...`}
+                    aria-label={`Search ${repairLabelPlural.toLowerCase()}`}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMobileSortMode((prev) =>
+                      prev === "latest-change" ? "latest-stage-assignment" : "latest-change"
+                    )
+                  }
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-slate-300 hover:bg-white/5 md:hidden"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+                  aria-label={
+                    mobileSortMode === "latest-change"
+                      ? "Sort by latest assigned stage"
+                      : "Sort by latest change"
+                  }
+                >
+                  <ArrowUpDown className="h-[18px] w-[18px]" />
+                </button>
+              </div>
               <div className="md:hidden">
                 <button
                   type="button"
@@ -1288,7 +1363,7 @@ function WorkItemsPageContent() {
               style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
             >
               <div className="space-y-1 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:pb-3">
-                {filteredRepairs.length === 0 ? (
+                {visibleRepairs.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-10 text-center text-sm text-slate-400">
                     No {repairLabelPlural.toLowerCase()} found for the current search and filters.
                   </div>
@@ -1298,7 +1373,7 @@ function WorkItemsPageContent() {
                     style={{ height: `${repairsVirtualizer.totalSize}px` }}
                   >
                     {repairsVirtualizer.virtualItems.map((virtualRow) => {
-                      const repair = filteredRepairs[virtualRow.index];
+                      const repair = visibleRepairs[virtualRow.index];
                       if (!repair) return null;
 
                       return (
