@@ -1467,17 +1467,17 @@ function ConversationsPageContent() {
         >
           <div className="p-4">
             <h1 className="text-2xl font-semibold text-white">Conversations</h1>
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-2.5">
               <label
-                className="flex flex-1 items-center gap-2 rounded-xl border px-3 py-1.5 text-slate-400"
+                className="flex min-h-10 flex-1 items-center gap-2.5 rounded-xl border px-3.5 py-2 text-slate-400"
                 style={{
                   borderColor: "var(--border)",
                   background: "var(--surface-1)",
                 }}
               >
-                <Search className="h-4 w-4" />
+                <Search className="h-[18px] w-[18px] shrink-0" />
                 <input
-                  className="w-full bg-transparent text-xs outline-none"
+                  className="w-full bg-transparent text-sm leading-5 outline-none placeholder:text-slate-400"
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
@@ -1488,7 +1488,7 @@ function ConversationsPageContent() {
                 onClick={() =>
                   setSortDirection((prev) => (prev === "newest" ? "oldest" : "newest"))
                 }
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border text-slate-300 hover:bg-white/5"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border text-slate-300 hover:bg-white/5"
                 style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
                 aria-label={
                   sortDirection === "newest"
@@ -1496,7 +1496,7 @@ function ConversationsPageContent() {
                     : "Sort by newest first"
                 }
               >
-                <ArrowUpDown className="h-4 w-4" />
+                <ArrowUpDown className="h-[18px] w-[18px]" />
               </button>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
