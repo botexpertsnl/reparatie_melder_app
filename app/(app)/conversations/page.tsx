@@ -62,6 +62,7 @@ import {
   readBusinessHoursCooldownForConversation,
   writeBusinessHoursCooldownForConversation
 } from "@/lib/business-hours-cooldown-store";
+import { useFixedSizeVirtualList } from "@/lib/use-fixed-size-virtual-list";
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
@@ -657,6 +658,7 @@ function ConversationsPageContent() {
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
   const messageWindowRef = useRef<HTMLDivElement | null>(null);
+  const threadListParentRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const touchStartRef = useRef<TouchGesture | null>(null);
@@ -917,6 +919,16 @@ function ConversationsPageContent() {
 
     return dedupeConversationsById(threads.filter(matchesConversationFilters)).sort(sortThreads);
   }, [normalizedSearchQuery, sortDirection, statusFilter, threads]);
+  const visibleThreadIndexById = useMemo(
+    () => new Map(visibleThreads.map((thread, index) => [thread.id, index])),
+    [visibleThreads]
+  );
+  const threadVirtualizer = useFixedSizeVirtualList({
+    count: visibleThreads.length,
+    scrollRef: threadListParentRef,
+    itemSize: 92,
+    overscan: 8,
+  });
 
   useEffect(() => {
     if (!selectedThreadId) {
@@ -939,6 +951,13 @@ function ConversationsPageContent() {
     if (!messageWindowRef.current) return;
     messageWindowRef.current.scrollTop = messageWindowRef.current.scrollHeight;
   }, [selectedThreadId, selectedThread?.messages.length]);
+
+  useEffect(() => {
+    if (!selectedThreadId) return;
+    const selectedIndex = visibleThreadIndexById.get(selectedThreadId);
+    if (selectedIndex === undefined) return;
+    threadVirtualizer.scrollToIndex(selectedIndex);
+  }, [selectedThreadId, threadVirtualizer, visibleThreadIndexById]);
 
   useEffect(() => {
     setIsClientMounted(true);
@@ -1531,31 +1550,50 @@ function ConversationsPageContent() {
             </div>
           </div>
 
-          <div className="subtle-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
-            {visibleThreads.map((thread) => (
-              <ConversationListRow
-                key={thread.id}
-                thread={thread}
-                isSelected={selectedThreadId === thread.id}
-                repairs={repairs}
-                isMobileSwipeEnabled={isMobileViewport}
-                onOpenConversation={() => {
-                  setSelectedThreadId(thread.id);
-                  setMobileActivePane("chat");
-                  setIsMobileRepairDrawerOpen(false);
-                }}
-                onToggleConversationOpenState={() => {
-                  handleQuickToggleConversation(thread.id, !thread.open, {
-                    fromListRowCloseButton: thread.open,
-                  });
-                }}
-              />
-            ))}
+          <div
+            ref={threadListParentRef}
+            className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-3"
+          >
             {visibleThreads.length === 0 ? (
               <p className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-4 text-sm text-slate-400">
                 No {statusFilter} conversations found.
               </p>
-            ) : null}
+            ) : (
+                <div
+                  className="relative"
+                  style={{ height: `${threadVirtualizer.totalSize}px` }}
+                >
+                {threadVirtualizer.virtualItems.map((virtualRow) => {
+                  const thread = visibleThreads[virtualRow.index];
+                  if (!thread) return null;
+
+                  return (
+                    <div
+                      key={thread.id}
+                      className="absolute left-0 top-0 w-full pb-1"
+                      style={{ transform: `translateY(${virtualRow.start}px)` }}
+                    >
+                      <ConversationListRow
+                        thread={thread}
+                        isSelected={selectedThreadId === thread.id}
+                        repairs={repairs}
+                        isMobileSwipeEnabled={isMobileViewport}
+                        onOpenConversation={() => {
+                          setSelectedThreadId(thread.id);
+                          setMobileActivePane("chat");
+                          setIsMobileRepairDrawerOpen(false);
+                        }}
+                        onToggleConversationOpenState={() => {
+                          handleQuickToggleConversation(thread.id, !thread.open, {
+                            fromListRowCloseButton: thread.open,
+                          });
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

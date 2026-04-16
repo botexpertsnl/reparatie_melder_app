@@ -41,6 +41,7 @@ import {
   stageTransitionHasModalFlow
 } from "@/lib/repair-stage-transition";
 import { useMobileRowSwipe } from "@/lib/use-mobile-row-swipe";
+import { useFixedSizeVirtualList } from "@/lib/use-fixed-size-virtual-list";
 
 type RepairItem = StoredRepair;
 const UNKNOWN_STAGE = "Unknown";
@@ -736,6 +737,7 @@ function WorkItemsPageContent() {
     nextStage: string;
   } | null>(null);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const repairsListParentRef = useRef<HTMLDivElement | null>(null);
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
@@ -949,6 +951,16 @@ function WorkItemsPageContent() {
       return matchesSearch && matchesStageFilter;
     });
   }, [repairs, searchQuery, selectedStageFilters]);
+  const filteredRepairIndexById = useMemo(
+    () => new Map(filteredRepairs.map((repair, index) => [repair.id, index])),
+    [filteredRepairs]
+  );
+  const repairsVirtualizer = useFixedSizeVirtualList({
+    count: filteredRepairs.length,
+    scrollRef: repairsListParentRef,
+    itemSize: 96,
+    overscan: 8,
+  });
 
   const toggleStageFilter = (stageName: string) => {
     setSelectedStageFilters((prev) =>
@@ -961,6 +973,13 @@ function WorkItemsPageContent() {
   const clearAllStageFilters = () => {
     setSelectedStageFilters([]);
   };
+
+  useEffect(() => {
+    if (!selectedRepairId) return;
+    const selectedIndex = filteredRepairIndexById.get(selectedRepairId);
+    if (selectedIndex === undefined) return;
+    repairsVirtualizer.scrollToIndex(selectedIndex);
+  }, [filteredRepairIndexById, repairsVirtualizer, selectedRepairId]);
 
   const handleCreateRepair = (payload: NewRepairFormValues) => {
     const customerFirstName = payload.customerFirstName.trim();
@@ -1262,37 +1281,54 @@ function WorkItemsPageContent() {
 
           <section className="min-h-0 flex-1 overflow-hidden">
             <div
+              ref={repairsListParentRef}
               className={`subtle-scrollbar h-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border ${
                 selectedRepair ? "md:border-r-0" : ""
               }`}
               style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
             >
               <div className="space-y-1 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:pb-3">
-                {filteredRepairs.map((repair) => (
-                  <RepairListRow
-                    key={repair.id}
-                    repair={repair}
-                    isSelected={selectedRepairId === repair.id}
-                    stageColorByName={stageColorByName}
-                    isMobileSwipeEnabled={isMobileViewport}
-                    openMenuId={openMenuId}
-                    onOpenRepair={() => handleRepairSelection(repair.id)}
-                    onToggleMenu={() => setOpenMenuId((prev) => (prev === repair.id ? null : repair.id))}
-                    onEditRepair={() => {
-                      setEditingRepairId(repair.id);
-                      setOpenMenuId(null);
-                    }}
-                    onDeleteRepair={() => {
-                      setDeletingRepairId(repair.id);
-                      setOpenMenuId(null);
-                    }}
-                  />
-                ))}
                 {filteredRepairs.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-[#2f3c52] px-3 py-10 text-center text-sm text-slate-400">
                     No {repairLabelPlural.toLowerCase()} found for the current search and filters.
                   </div>
-                ) : null}
+                ) : (
+                  <div
+                    className="relative"
+                    style={{ height: `${repairsVirtualizer.totalSize}px` }}
+                  >
+                    {repairsVirtualizer.virtualItems.map((virtualRow) => {
+                      const repair = filteredRepairs[virtualRow.index];
+                      if (!repair) return null;
+
+                      return (
+                        <div
+                          key={repair.id}
+                          className="absolute left-0 top-0 w-full pb-1"
+                          style={{ transform: `translateY(${virtualRow.start}px)` }}
+                        >
+                          <RepairListRow
+                            repair={repair}
+                            isSelected={selectedRepairId === repair.id}
+                            stageColorByName={stageColorByName}
+                            isMobileSwipeEnabled={isMobileViewport}
+                            openMenuId={openMenuId}
+                            onOpenRepair={() => handleRepairSelection(repair.id)}
+                            onToggleMenu={() => setOpenMenuId((prev) => (prev === repair.id ? null : repair.id))}
+                            onEditRepair={() => {
+                              setEditingRepairId(repair.id);
+                              setOpenMenuId(null);
+                            }}
+                            onDeleteRepair={() => {
+                              setDeletingRepairId(repair.id);
+                              setOpenMenuId(null);
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </section>
