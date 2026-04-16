@@ -1647,7 +1647,7 @@ function ConversationsPageContent() {
           {selectedThread ? (
             <>
               <header
-                className="fixed left-0 right-0 top-[69px] z-30 flex items-center justify-between border-b px-4 py-3 md:sticky md:top-0 md:px-5"
+                className="sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 md:px-5"
                 style={{
                   borderColor: "var(--border)",
                   background: "var(--surface-1)",
@@ -1743,7 +1743,7 @@ function ConversationsPageContent() {
 
               <div
                 ref={messageWindowRef}
-                className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto px-3 pb-4 pt-[76px] md:p-4"
+                className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto px-3 pb-4 pt-3 md:p-4"
               >
                 {selectedThread.messages.map((msg) => {
                   const parsedMessage = parseTemplateMessageContent(msg.text);
