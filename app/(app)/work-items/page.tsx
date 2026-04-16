@@ -952,7 +952,20 @@ function WorkItemsPageContent() {
       return matchesSearch && matchesStageFilter;
     });
   }, [repairs, searchQuery, selectedStageFilters]);
-  const visibleRepairs = filteredRepairs;
+  const visibleRepairs = useMemo(() => {
+    const stageOrderByName = new Map(workflowStages.map((stage, index) => [stage.name, index]));
+    const originalIndexByRepairId = new Map(repairs.map((repair, index) => [repair.id, index]));
+
+    return [...filteredRepairs].sort((leftRepair, rightRepair) => {
+      const leftStageOrder = stageOrderByName.get(leftRepair.stage) ?? Number.MAX_SAFE_INTEGER;
+      const rightStageOrder = stageOrderByName.get(rightRepair.stage) ?? Number.MAX_SAFE_INTEGER;
+      if (leftStageOrder !== rightStageOrder) return leftStageOrder - rightStageOrder;
+
+      const leftOriginalIndex = originalIndexByRepairId.get(leftRepair.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightOriginalIndex = originalIndexByRepairId.get(rightRepair.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftOriginalIndex - rightOriginalIndex;
+    });
+  }, [filteredRepairs, repairs, workflowStages]);
   const filteredRepairIndexById = useMemo(
     () => new Map(visibleRepairs.map((repair, index) => [repair.id, index])),
     [visibleRepairs]
