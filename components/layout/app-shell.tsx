@@ -37,7 +37,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [impersonatingTenant, setImpersonatingTenant] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [allowContextualSwipeOpen, setAllowContextualSwipeOpen] = useState(false);
+  const [menuOpeningProgress, setMenuOpeningProgress] = useState(0);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeGestureIntentRef = useRef<"pending" | "horizontal" | "vertical">("pending");
 
   useEffect(() => {
     const refreshOpenCount = () => {
@@ -138,6 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/templates" ||
     pathname === "/quick-replies" ||
     pathname === "/customers" ||
+    pathname === "/settings/advanced" ||
     (pathname === "/work-items" && allowContextualSwipeOpen) ||
     (pathname === "/conversations" && allowContextualSwipeOpen);
 
@@ -153,40 +156,107 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return false;
   };
 
+  const resetSwipeGesture = () => {
+    swipeStartRef.current = null;
+    swipeGestureIntentRef.current = "pending";
+    setMenuOpeningProgress(0);
+  };
+
+  const isMobileViewport = () => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 768px)").matches;
+  };
+
   const handleAppTouchStart = (event: TouchEvent<HTMLElement>) => {
-    if (isMenuOpen || !supportsSwipeToOpenOnPath) return;
+    if (isMenuOpen || !supportsSwipeToOpenOnPath || !isMobileViewport()) return;
     const firstTouch = event.touches[0];
     if (!firstTouch) return;
     if (firstTouch.clientX > 24) {
-      swipeStartRef.current = null;
+      resetSwipeGesture();
       return;
     }
     if (isInteractiveTarget(event.target)) {
-      swipeStartRef.current = null;
+      resetSwipeGesture();
       return;
     }
     swipeStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
+    swipeGestureIntentRef.current = "pending";
+    setMenuOpeningProgress(0);
+  };
+
+  const handleAppTouchMove = (event: TouchEvent<HTMLElement>) => {
+    if (isMenuOpen || !supportsSwipeToOpenOnPath || !isMobileViewport()) return;
+    const swipeStart = swipeStartRef.current;
+    if (!swipeStart) return;
+
+    const movingTouch = event.touches[0];
+    if (!movingTouch) return;
+
+    const deltaX = movingTouch.clientX - swipeStart.x;
+    const deltaY = movingTouch.clientY - swipeStart.y;
+
+    if (swipeGestureIntentRef.current === "pending") {
+      if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+        return;
+      }
+
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        swipeGestureIntentRef.current = "vertical";
+        setMenuOpeningProgress(0);
+        return;
+      }
+
+      if (deltaX <= 0) {
+        setMenuOpeningProgress(0);
+        return;
+      }
+
+      swipeGestureIntentRef.current = "horizontal";
+    }
+
+    if (swipeGestureIntentRef.current !== "horizontal") return;
+
+    if (deltaX <= 0) {
+      setMenuOpeningProgress(0);
+      return;
+    }
+
+    const drawerWidth = Math.min(window.innerWidth * 0.84, 320);
+    const progress = Math.min(1, deltaX / drawerWidth);
+    setMenuOpeningProgress(progress);
+    event.preventDefault();
   };
 
   const handleAppTouchEnd = (event: TouchEvent<HTMLElement>) => {
-    if (isMenuOpen || !supportsSwipeToOpenOnPath) return;
+    if (isMenuOpen || !supportsSwipeToOpenOnPath || !isMobileViewport()) {
+      resetSwipeGesture();
+      return;
+    }
+
     const swipeStart = swipeStartRef.current;
-    swipeStartRef.current = null;
-    if (!swipeStart) return;
+    const intent = swipeGestureIntentRef.current;
+    if (!swipeStart || intent !== "horizontal") {
+      resetSwipeGesture();
+      return;
+    }
 
     const changedTouch = event.changedTouches[0];
-    if (!changedTouch) return;
+    if (!changedTouch) {
+      resetSwipeGesture();
+      return;
+    }
 
     const deltaX = changedTouch.clientX - swipeStart.x;
     const deltaY = changedTouch.clientY - swipeStart.y;
     const minHorizontalSwipe = 70;
-    const maxVerticalMovement = 48;
+    const maxVerticalMovement = 56;
 
-    if (deltaX < minHorizontalSwipe || Math.abs(deltaY) > maxVerticalMovement) {
-      return;
+    const openedEnough = menuOpeningProgress >= 0.35;
+    if (deltaX >= minHorizontalSwipe && Math.abs(deltaY) <= maxVerticalMovement && openedEnough) {
+      setIsMenuOpen(true);
     }
 
-    setIsMenuOpen(true);
+    resetSwipeGesture();
   };
 
   const navSections: NavSection[] = [
@@ -594,7 +664,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           className="min-h-0 flex-1 overflow-y-auto px-5 py-6 min-[769px]:px-10 min-[769px]:py-8"
           onTouchStart={handleAppTouchStart}
+          onTouchMove={handleAppTouchMove}
           onTouchEnd={handleAppTouchEnd}
+          onTouchCancel={resetSwipeGesture}
         >
           {children}
         </main>
@@ -602,6 +674,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <MobileMenu
         isOpen={isMenuOpen}
+        openingProgress={menuOpeningProgress}
         sections={visibleSections}
         pathname={pathname}
         onClose={() => setIsMenuOpen(false)}
