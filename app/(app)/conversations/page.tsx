@@ -550,11 +550,11 @@ function ConversationListRow({
       className={`relative w-full rounded-xl border p-3 text-left transition-all duration-200 ${
         isSelected
           ? "shadow-[0_0_0_1px_var(--border-strong)]"
-          : "hover:bg-white/5"
+          : "hover:bg-[var(--surface-3)]"
       }`}
       style={{
         borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
-        background: "var(--surface-1)",
+        background: isSelected ? "var(--surface-3)" : thread.open ? "var(--surface-1)" : "var(--surface-2)",
         ...swipeStyle,
       }}
       {...swipeHandlers}
@@ -936,7 +936,7 @@ function ConversationsPageContent() {
   } = useFixedSizeVirtualList({
     count: visibleThreads.length,
     scrollRef: threadListParentRef,
-    itemSize: 96,
+    itemSize: 104,
     overscan: 8,
   });
 
@@ -1579,7 +1579,7 @@ function ConversationsPageContent() {
                   return (
                     <div
                       key={thread.id}
-                      className="absolute left-0 top-0 w-full pb-1"
+                      className="absolute left-0 top-0 w-full pb-2"
                       style={{ transform: `translateY(${virtualRow.start}px)` }}
                     >
                       <ConversationListRow
