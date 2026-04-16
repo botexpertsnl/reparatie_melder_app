@@ -232,6 +232,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const resolveConversationHref = () => {
+    const selectedThreadId = window.localStorage.getItem("statusflow.selected-thread-id");
+    if (!selectedThreadId) return "/conversations";
+
+    const selectedConversation = readStoredConversations(defaultConversations).find(
+      (thread) => thread.id === selectedThreadId
+    );
+
+    if (!selectedConversation) return "/conversations";
+
+    return `/conversations?threadId=${selectedConversation.id}`;
+  };
+
   const resolveRepairHref = () => {
     const selectedThreadId = window.localStorage.getItem("statusflow.selected-thread-id");
     if (!selectedThreadId) return "/work-items";
@@ -249,7 +262,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const handleNavLinkClick = (href: string) => {
     if (href === "/conversations") {
       window.dispatchEvent(new Event("conversations:nav-click"));
-      router.push("/conversations");
+      router.push(resolveConversationHref());
       return;
     }
 
@@ -273,15 +286,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       style={{ background: "var(--bg)", color: "var(--text-primary)" }}
     >
-      <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r min-[769px]:flex" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+      <aside
+        className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r min-[769px]:flex"
+        style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+      >
         <div className="border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-4">
             <div className="rounded-xl bg-[#25d3c4] p-3 text-[#04243a]">
               <MessageSquareText className="h-5 w-5" />
             </div>
             <div className={collapsed ? "hidden" : "block"}>
-              <div className="text-2xl font-semibold leading-none tracking-tight" style={{ color: "var(--text-primary)" }}>StatusFlow</div>
-              <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>Communication Platform</div>
+              <div
+                className="text-2xl font-semibold leading-none tracking-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
+                StatusFlow
+              </div>
+              <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                Communication Platform
+              </div>
             </div>
           </div>
         </div>
@@ -290,7 +313,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="space-y-8 pb-16">
             {visibleSections.map((section) => (
               <div key={section.label}>
-                <h2 className={clsx("px-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500", collapsed ? "hidden" : "block")}>{section.label}</h2>
+                <h2
+                  className={clsx(
+                    "px-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500",
+                    collapsed ? "hidden" : "block"
+                  )}
+                >
+                  {section.label}
+                </h2>
                 <ul className="mt-3 space-y-1">
                   {section.items.map((item) => {
                     const active = pathname === item.href;
@@ -305,6 +335,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               window.dispatchEvent(new Event("conversations:nav-click"));
                               event.preventDefault();
                               router.push(resolveConversationHref());
+                              return;
                             }
 
                             if (item.href === "/work-items") {
@@ -319,7 +350,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           )}
                           style={active ? { color: "#25d3c4" } : undefined}
                         >
-                          <Icon className={clsx("h-5 w-5", active ? "" : "text-slate-400")} style={active ? { color: "#25d3c4" } : undefined} />
+                          <Icon
+                            className={clsx("h-5 w-5", active ? "" : "text-slate-400")}
+                            style={active ? { color: "#25d3c4" } : undefined}
+                          />
                           {collapsed ? null : item.name}
                         </Link>
                       </li>
@@ -336,7 +370,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               "absolute bottom-4 inline-flex h-9 w-9 items-center justify-center rounded-xl border",
               collapsed ? "left-1/2 -translate-x-1/2" : "left-5"
             )}
-            style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+            style={{
+              borderColor: "var(--border)",
+              background: "var(--surface-3)",
+              color: "var(--text-secondary)"
+            }}
             aria-label="Toggle theme"
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -344,7 +382,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="border-t p-4" style={{ borderColor: "var(--border)" }}>
-          <button className="flex w-full items-center justify-center rounded-xl p-3 hover:bg-white/5" style={{ color: "var(--text-muted)" }} onClick={() => setCollapsed((prev) => !prev)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+          <button
+            className="flex w-full items-center justify-center rounded-xl p-3 hover:bg-white/5"
+            style={{ color: "var(--text-muted)" }}
+            onClick={() => setCollapsed((prev) => !prev)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
             <ChevronLeft className={clsx("h-5 w-5 transition-transform", collapsed ? "rotate-180" : "")} />
           </button>
         </div>
@@ -361,9 +404,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label="Open menu"
               onClick={() => setIsMenuOpen((prev) => !prev)}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface-3)",
+                color: "var(--text-secondary)"
+              }}
             >
-              <Menu className={clsx("h-5 w-5 transition-transform duration-200", isMenuOpen ? "rotate-90 scale-90" : "rotate-0 scale-100")} />
+              <Menu
+                className={clsx(
+                  "h-5 w-5 transition-transform duration-200",
+                  isMenuOpen ? "rotate-90 scale-90" : "rotate-0 scale-100"
+                )}
+              />
             </button>
             <div className="truncate text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
               {impersonatingTenant ?? "AutoGarage De Vries"}
@@ -378,7 +430,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   router.push(resolveConversationHref());
                 }}
                 className="inline-flex items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold"
-                style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-3)",
+                  color: "var(--text-secondary)"
+                }}
                 aria-label="View open conversations"
               >
                 <span>Open</span>
@@ -399,7 +455,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }
                 }}
                 className="inline-flex cursor-pointer items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold hover:bg-slate-700/60"
-                style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-3)",
+                  color: "var(--text-secondary)"
+                }}
                 aria-label="View approved repairs"
               >
                 <span>Approved</span>
@@ -420,7 +480,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }
                 }}
                 className="inline-flex cursor-pointer items-center gap-1.5 self-center rounded-full border px-2 py-1 text-[11px] font-semibold hover:bg-slate-700/60"
-                style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-3)",
+                  color: "var(--text-secondary)"
+                }}
                 aria-label="View not approved repairs"
               >
                 <span>Not Approved</span>
@@ -432,15 +496,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <header className="hidden h-[69px] items-center justify-end gap-3 border-b px-6 pr-8 min-[769px]:flex" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+        <header
+          className="hidden h-[69px] items-center justify-end gap-3 border-b px-6 pr-8 min-[769px]:flex"
+          style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
+        >
           <button
             type="button"
             onClick={() => {
               window.dispatchEvent(new Event("conversations:nav-click"));
-              router.push("/conversations");
+              router.push(resolveConversationHref());
             }}
             className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"
-            style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+            style={{
+              borderColor: "var(--border)",
+              background: "var(--surface-3)",
+              color: "var(--text-secondary)"
+            }}
             aria-label="Open conversations page"
           >
             <span className="text-xs tracking-[0.08em] text-slate-400">Open conversations</span>
@@ -460,7 +531,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 }
               }}
               className="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm hover:bg-slate-700/60"
-              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface-3)",
+                color: "var(--text-secondary)"
+              }}
               aria-label="View approved repairs"
             >
               <span className="text-xs tracking-[0.08em] text-slate-400">Approved</span>
@@ -481,7 +556,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 }
               }}
               className="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm hover:bg-slate-700/60"
-              style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface-3)",
+                color: "var(--text-secondary)"
+              }}
               aria-label="View not approved repairs"
             >
               <span className="text-xs tracking-[0.08em] text-slate-400">Not Approved</span>
@@ -490,7 +569,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             </div>
           ) : null}
-          <div className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-3)", color: "var(--text-secondary)" }}>
+          <div
+            className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"
+            style={{
+              borderColor: "var(--border)",
+              background: "var(--surface-3)",
+              color: "var(--text-secondary)"
+            }}
+          >
             {superAdmin ? (
               <button
                 type="button"
@@ -504,6 +590,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
+
         <main
           className="min-h-0 flex-1 overflow-y-auto px-5 py-6 min-[769px]:px-10 min-[769px]:py-8"
           onTouchStart={handleAppTouchStart}
