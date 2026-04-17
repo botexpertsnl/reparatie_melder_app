@@ -33,6 +33,7 @@ import {
   writeStoredRepairs,
   type StoredRepair,
 } from "@/lib/repair-store";
+import { ensureRepairsHaveLinkedConversations } from "@/lib/repair-conversation-linking";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
 import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
@@ -908,6 +909,12 @@ function ConversationsPageContent() {
       })
     );
   }, [updateThreads]);
+
+  useEffect(() => {
+    const ensuredResult = ensureRepairsHaveLinkedConversations(repairs, threads);
+    if (ensuredResult.createdCount === 0) return;
+    updateThreads(() => ensuredResult.conversations);
+  }, [repairs, threads, updateThreads]);
 
   useEffect(() => {
     const refreshWorkflowStages = () => setWorkflowStages(readStoredWorkflowStages(defaultWorkflowStages));
