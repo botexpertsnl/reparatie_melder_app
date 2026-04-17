@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Plus, Search, SlidersHorizontal, MessageCircle, X } from "lucide-react";
 import clsx from "clsx";
@@ -245,45 +245,45 @@ function LinkConversationModal({
       )}
     >
       <div className="space-y-4">
-          <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
-            <Search className="h-4 w-4 text-slate-500" />
-            <input
-              className="w-full bg-transparent text-sm mobile-no-zoom outline-none"
-              placeholder="Search conversations..."
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
+        <label className="flex items-center gap-2 rounded-xl border border-[#bfc9d8] bg-white px-3 py-2">
+          <Search className="h-4 w-4 text-slate-500" />
+          <input
+            className="w-full bg-transparent text-sm mobile-no-zoom outline-none"
+            placeholder="Search conversations..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
 
-          <div className="space-y-2">
-            {filtered.map((thread) => (
-              <button
-                key={thread.id}
-                type="button"
-                onClick={() => setSelectedThreadId(thread.id)}
-                className={clsx(
-                  "w-full rounded-xl border bg-white p-3 text-left hover:bg-slate-50",
-                  selectedThreadId === thread.id
-                    ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20"
-                    : "border-[#cdd5e2]"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-slate-800">{thread.customerName || thread.customerPhone}</div>
-                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
-                    {thread.open ? "Open" : "Closed"}
-                  </span>
-                </div>
-                <div className="mt-1 text-sm text-slate-600">{thread.customerPhone}</div>
-                <div className="truncate text-sm text-slate-500">{thread.preview}</div>
-              </button>
-            ))}
-            {filtered.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#bfc9d8] bg-white px-3 py-4 text-center text-sm text-slate-500">
-                No conversations found.
+        <div className="space-y-2">
+          {filtered.map((thread) => (
+            <button
+              key={thread.id}
+              type="button"
+              onClick={() => setSelectedThreadId(thread.id)}
+              className={clsx(
+                "w-full rounded-xl border bg-white p-3 text-left hover:bg-slate-50",
+                selectedThreadId === thread.id
+                  ? "border-[#2fb2a3] ring-2 ring-[#2fb2a3]/20"
+                  : "border-[#cdd5e2]"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-slate-800">{thread.customerName || thread.customerPhone}</div>
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
+                  {thread.open ? "Open" : "Closed"}
+                </span>
               </div>
-            ) : null}
-          </div>
+              <div className="mt-1 text-sm text-slate-600">{thread.customerPhone}</div>
+              <div className="truncate text-sm text-slate-500">{thread.preview}</div>
+            </button>
+          ))}
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#bfc9d8] bg-white px-3 py-4 text-center text-sm text-slate-500">
+              No conversations found.
+            </div>
+          ) : null}
+        </div>
       </div>
     </ModalShell>
   );
@@ -509,143 +509,143 @@ function AddRepairModal({
       )}
     >
       <form
-          id="repair-form"
-          className="space-y-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setHasTriedSubmit(true);
-            if (!canSubmit) return;
-            onSubmit({
-              ...formValues,
-              customerPhone: formValues.customerPhone.trim()
-            });
-          }}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="repair-customer-first-name" className="mb-2 block text-sm font-medium text-slate-700">
-                First name
-              </label>
-              <input
-                id="repair-customer-first-name"
-                maxLength={FIRST_NAME_MAX_LENGTH}
-                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
-                placeholder="e.g. John"
-                value={formValues.customerFirstName}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    customerFirstName: event.target.value.slice(0, FIRST_NAME_MAX_LENGTH)
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <label htmlFor="repair-customer-last-name" className="mb-2 block text-sm font-medium text-slate-700">
-                Last name
-              </label>
-              <input
-                id="repair-customer-last-name"
-                maxLength={LAST_NAME_MAX_LENGTH}
-                className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
-                placeholder="e.g. Doe"
-                value={formValues.customerLastName}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    customerLastName: event.target.value.slice(0, LAST_NAME_MAX_LENGTH)
-                  }))
-                }
-              />
-            </div>
-          </div>
+        id="repair-form"
+        className="space-y-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setHasTriedSubmit(true);
+          if (!canSubmit) return;
+          onSubmit({
+            ...formValues,
+            customerPhone: formValues.customerPhone.trim()
+          });
+        }}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">
-              Customer phone *
+            <label htmlFor="repair-customer-first-name" className="mb-2 block text-sm font-medium text-slate-700">
+              First name
             </label>
             <input
-              id="repair-customer-phone"
-              className={clsx(
-                "w-full rounded-xl border bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0",
-                showPhoneError ? "border-red-400 focus:border-red-500" : "border-[#bfc9d8] focus:border-[#30b5a5]"
-              )}
-              placeholder="+31 6 12345678"
-              value={formValues.customerPhone}
-              onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))}
-              onBlur={() => setIsPhoneFieldTouched(true)}
-              aria-invalid={showPhoneError}
-            />
-            {showPhoneError ? (
-              <p className="mt-1 text-sm text-red-600">Please enter a valid phone number.</p>
-            ) : null}
-          </div>
-          <div>
-            <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
-              Device / asset
-            </label>
-            <input
-              id="repair-asset"
-              maxLength={ASSET_NAME_MAX_LENGTH}
+              id="repair-customer-first-name"
+              maxLength={FIRST_NAME_MAX_LENGTH}
               className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
-              placeholder="e.g. iPhone 14 Pro"
-              value={formValues.assetName}
+              placeholder="e.g. John"
+              value={formValues.customerFirstName}
               onChange={(event) =>
-                setFormValues((prev) => ({ ...prev, assetName: event.target.value.slice(0, ASSET_NAME_MAX_LENGTH) }))
+                setFormValues((prev) => ({
+                  ...prev,
+                  customerFirstName: event.target.value.slice(0, FIRST_NAME_MAX_LENGTH)
+                }))
               }
             />
           </div>
           <div>
-            <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">
-              {repairLabel} title *
+            <label htmlFor="repair-customer-last-name" className="mb-2 block text-sm font-medium text-slate-700">
+              Last name
             </label>
             <input
-              id="repair-title"
-              maxLength={REPAIR_TITLE_MAX_LENGTH}
+              id="repair-customer-last-name"
+              maxLength={LAST_NAME_MAX_LENGTH}
               className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
-              placeholder="e.g. Screen replacement"
-              value={formValues.repairTitle}
+              placeholder="e.g. Doe"
+              value={formValues.customerLastName}
               onChange={(event) =>
-                setFormValues((prev) => ({ ...prev, repairTitle: event.target.value.slice(0, REPAIR_TITLE_MAX_LENGTH) }))
+                setFormValues((prev) => ({
+                  ...prev,
+                  customerLastName: event.target.value.slice(0, LAST_NAME_MAX_LENGTH)
+                }))
               }
             />
           </div>
-          <div>
-            <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">
-              Description
-            </label>
+        </div>
+        <div>
+          <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">
+            Customer phone *
+          </label>
+          <input
+            id="repair-customer-phone"
+            className={clsx(
+              "w-full rounded-xl border bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0",
+              showPhoneError ? "border-red-400 focus:border-red-500" : "border-[#bfc9d8] focus:border-[#30b5a5]"
+            )}
+            placeholder="+31 6 12345678"
+            value={formValues.customerPhone}
+            onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))}
+            onBlur={() => setIsPhoneFieldTouched(true)}
+            aria-invalid={showPhoneError}
+          />
+          {showPhoneError ? (
+            <p className="mt-1 text-sm text-red-600">Please enter a valid phone number.</p>
+          ) : null}
+        </div>
+        <div>
+          <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
+            Device / asset
+          </label>
+          <input
+            id="repair-asset"
+            maxLength={ASSET_NAME_MAX_LENGTH}
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
+            placeholder="e.g. iPhone 14 Pro"
+            value={formValues.assetName}
+            onChange={(event) =>
+              setFormValues((prev) => ({ ...prev, assetName: event.target.value.slice(0, ASSET_NAME_MAX_LENGTH) }))
+            }
+          />
+        </div>
+        <div>
+          <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">
+            {repairLabel} title *
+          </label>
+          <input
+            id="repair-title"
+            maxLength={REPAIR_TITLE_MAX_LENGTH}
+            className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
+            placeholder="e.g. Screen replacement"
+            value={formValues.repairTitle}
+            onChange={(event) =>
+              setFormValues((prev) => ({ ...prev, repairTitle: event.target.value.slice(0, REPAIR_TITLE_MAX_LENGTH) }))
+            }
+          />
+        </div>
+        <div>
+          <label htmlFor="repair-description" className="mb-2 block text-sm font-medium text-slate-700">
+            Description
+          </label>
           <textarea
             id="repair-description"
             className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
             placeholder="Describe the issue and any diagnostics."
             value={formValues.description}
             onChange={(event) => setFormValues((prev) => ({ ...prev, description: event.target.value }))}
-            />
-          </div>
+          />
+        </div>
 
-          <div>
-            <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">
-              Stage
-            </label>
+        <div>
+          <label htmlFor="repair-stage" className="mb-2 block text-sm font-medium text-slate-700">
+            Stage
+          </label>
           <select
             id="repair-stage"
             className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
             value={formValues.repairStage}
-              onChange={(event) =>
-                setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))
-              }
-            >
-              {selectOptions.map((stageName) => (
-                <option key={stageName}>{stageName}</option>
-              ))}
-            </select>
-          </div>
-
+            onChange={(event) =>
+              setFormValues((prev) => ({ ...prev, repairStage: event.target.value as RepairItem["stage"] }))
+            }
+          >
+            {selectOptions.map((stageName) => (
+              <option key={stageName}>{stageName}</option>
+            ))}
+          </select>
+        </div>
       </form>
     </ModalShell>
   );
 }
 
 function WorkItemsPageContent() {
+  const router = useRouter();
   const repairLabel = useTenantRepairLabel();
   const repairLabelPlural = pluralizeLabel(repairLabel);
   const searchParams = useSearchParams();
@@ -1177,6 +1177,7 @@ function WorkItemsPageContent() {
       setIsMobileRepairDrawerOpen(true);
     }
   };
+
   const openLinkedConversationFromRepair = (repair: RepairItem) => {
     const linkedConversation = linkedConversationByRepairId.get(repair.id);
     if (linkedConversation) {
