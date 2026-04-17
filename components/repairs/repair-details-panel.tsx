@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Link as LinkIcon, MessageSquare, Pencil, Wrench, X } from "lucide-react";
+import { Link as LinkIcon, MessageSquare, Pencil, Trash2, Wrench, X } from "lucide-react";
 import type { StoredRepairHistoryItem } from "@/lib/repair-history-store";
 import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
@@ -22,6 +22,7 @@ type RepairDetailsPanelProps = {
   onClose?: () => void;
   mobileDrawerHeader?: boolean;
   onEdit?: () => void;
+  onDelete?: () => void;
   onLinkChange?: () => void;
   onLinkAriaLabel?: string;
   isLinkActive?: boolean;
@@ -73,6 +74,7 @@ export function RepairDetailsPanel({
   onClose,
   mobileDrawerHeader = false,
   onEdit,
+  onDelete,
   onLinkChange,
   onLinkAriaLabel = "Change linked repair",
   isLinkActive = true,
@@ -199,7 +201,7 @@ export function RepairDetailsPanel({
       <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {mobileDrawerHeader ? null : <h3 className="text-2xl font-semibold text-white">{repair.title}</h3>}
         <div className="mt-2 text-sm text-slate-400">{repair.customerName} · {repair.assetName}</div>
-        {onEdit || onLinkChange || linkedConversationHref ? (
+        {onEdit || onDelete || onLinkChange || linkedConversationHref ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {linkedConversationHref ? (
               <a
@@ -232,6 +234,16 @@ export function RepairDetailsPanel({
               >
                 <Pencil className="h-3.5 w-3.5" />
                 edit
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-2 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-[#2b1a27]"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                delete
               </button>
             ) : null}
             {linkedConversationHref && onLinkChange ? (

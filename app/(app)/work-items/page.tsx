@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, SlidersHorizontal, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, MessageCircle, X } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -20,6 +20,10 @@ import {
   writeStoredConversations,
   type StoredConversation
 } from "@/lib/conversation-store";
+import {
+  createLinkedConversationForRepair,
+  ensureRepairsHaveLinkedConversations
+} from "@/lib/repair-conversation-linking";
 import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 import {
   appendRepairCreatedHistoryEntry,
@@ -366,24 +370,20 @@ function StageIndicatorDot({
 
 function RepairListRow({
   repair,
+  linkedConversation,
   isSelected,
   stageColorByName,
   isMobileSwipeEnabled,
-  openMenuId,
   onOpenRepair,
-  onToggleMenu,
-  onEditRepair,
-  onDeleteRepair,
+  onOpenConversation,
 }: {
   repair: RepairItem;
+  linkedConversation: StoredConversation | null;
   isSelected: boolean;
   stageColorByName: Map<string, string>;
   isMobileSwipeEnabled: boolean;
-  openMenuId: string | null;
   onOpenRepair: () => void;
-  onToggleMenu: () => void;
-  onEditRepair: () => void;
-  onDeleteRepair: () => void;
+  onOpenConversation: () => void;
 }) {
   const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
     enabled: isMobileSwipeEnabled,
@@ -436,40 +436,13 @@ function RepairListRow({
             className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
             onClick={(event) => {
               event.stopPropagation();
-              onToggleMenu();
+              onOpenConversation();
             }}
+            aria-label={`Open linked conversation for ${repair.title}`}
+            title={linkedConversation?.open ? "Open linked conversation (open)" : "Open linked conversation (closed)"}
           >
-            <MoreHorizontal className="h-5 w-5" />
+            <MessageCircle className={clsx("h-4 w-4", linkedConversation?.open ? "text-amber-300" : "text-slate-400")} />
           </button>
-          {openMenuId === repair.id ? (
-            <div
-              data-action-menu="true"
-              className="absolute right-0 top-12 z-10 w-32 rounded-xl border border-[#d7dce3] bg-[#f4f6fa] p-1 text-left shadow-xl"
-            >
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-200"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onEditRepair();
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-                Edit
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDeleteRepair();
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
     </button>
@@ -705,7 +678,6 @@ function WorkItemsPageContent() {
   const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStageFilters, setSelectedStageFilters] = useState<string[]>([]);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [deletingRepairId, setDeletingRepairId] = useState<string | null>(null);
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(() => {
@@ -918,14 +890,11 @@ function WorkItemsPageContent() {
   }, []);
 
   useEffect(() => {
-    const handle = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-action-menu='true']")) return;
-      setOpenMenuId(null);
-    };
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, []);
+    const ensuredResult = ensureRepairsHaveLinkedConversations(repairs, conversations);
+    if (ensuredResult.createdCount === 0) return;
+    setConversations(ensuredResult.conversations);
+    writeStoredConversations(ensuredResult.conversations);
+  }, [conversations, repairs]);
 
   useEffect(() => {
     setSelectedStageFilters((prev) => prev.filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0));
@@ -1018,7 +987,16 @@ function WorkItemsPageContent() {
       priority: "Medium" as const,
       status: "Open" as const
     };
+    const linkedConversation = createLinkedConversationForRepair(
+      newRepair,
+      new Set(conversations.map((thread) => thread.id))
+    );
     setRepairs((prev) => [newRepair, ...prev]);
+    setConversations((prev) => {
+      const updated = [linkedConversation, ...prev];
+      writeStoredConversations(updated);
+      return updated;
+    });
     setRepairHistory((prev) => {
       const updated = appendRepairCreatedHistoryEntry({
         historyItems: prev,
@@ -1079,6 +1057,14 @@ function WorkItemsPageContent() {
     () => conversations.filter((thread) => !thread.linkedRepairId || thread.linkedRepairId === selectedRepairId),
     [conversations, selectedRepairId]
   );
+  const linkedConversationByRepairId = useMemo(() => {
+    const mapping = new Map<string, StoredConversation>();
+    conversations.forEach((thread) => {
+      if (!thread.linkedRepairId || mapping.has(thread.linkedRepairId)) return;
+      mapping.set(thread.linkedRepairId, thread);
+    });
+    return mapping;
+  }, [conversations]);
   const unlinkConfirmationRepair = useMemo(
     () =>
       unlinkConfirmationRepairId
@@ -1190,6 +1176,22 @@ function WorkItemsPageContent() {
     if (isMobileViewport) {
       setIsMobileRepairDrawerOpen(true);
     }
+  };
+  const openLinkedConversationFromRepair = (repair: RepairItem) => {
+    const linkedConversation = linkedConversationByRepairId.get(repair.id);
+    if (linkedConversation) {
+      router.push(`/conversations?threadId=${linkedConversation.id}&open=repair`);
+      return;
+    }
+
+    const createdConversation = createLinkedConversationForRepair(
+      repair,
+      new Set(conversations.map((thread) => thread.id))
+    );
+    const updatedConversations = [createdConversation, ...conversations];
+    setConversations(updatedConversations);
+    writeStoredConversations(updatedConversations);
+    router.push(`/conversations?threadId=${createdConversation.id}&open=repair`);
   };
 
   return (
@@ -1333,20 +1335,12 @@ function WorkItemsPageContent() {
                         >
                           <RepairListRow
                             repair={repair}
+                            linkedConversation={linkedConversationByRepairId.get(repair.id) ?? null}
                             isSelected={selectedRepairId === repair.id}
                             stageColorByName={stageColorByName}
                             isMobileSwipeEnabled={isMobileViewport}
-                            openMenuId={openMenuId}
                             onOpenRepair={() => handleRepairSelection(repair.id)}
-                            onToggleMenu={() => setOpenMenuId((prev) => (prev === repair.id ? null : repair.id))}
-                            onEditRepair={() => {
-                              setEditingRepairId(repair.id);
-                              setOpenMenuId(null);
-                            }}
-                            onDeleteRepair={() => {
-                              setDeletingRepairId(repair.id);
-                              setOpenMenuId(null);
-                            }}
+                            onOpenConversation={() => openLinkedConversationFromRepair(repair)}
                           />
                         </div>
                       );
@@ -1369,6 +1363,7 @@ function WorkItemsPageContent() {
               itemLabel={repairLabel}
               onClose={() => setSelectedRepairId(null)}
               onEdit={() => setEditingRepairId(selectedRepair.id)}
+              onDelete={() => setDeletingRepairId(selectedRepair.id)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
               onLinkChange={() => setIsLinkConversationOpen(true)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
@@ -1412,6 +1407,7 @@ function WorkItemsPageContent() {
               mobileDrawerHeader
               onClose={() => setIsMobileRepairDrawerOpen(false)}
               onEdit={() => setEditingRepairId(selectedRepair.id)}
+              onDelete={() => setDeletingRepairId(selectedRepair.id)}
               onStageChange={(stageName, options) => updateRepairStage(selectedRepair.id, stageName, options)}
               onLinkChange={() => setIsLinkConversationOpen(true)}
               onLinkAriaLabel={selectedRepairConversation ? "Change linked conversation" : "Link conversation"}
