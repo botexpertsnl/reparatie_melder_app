@@ -21,7 +21,6 @@ import {
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
   dedupeConversationsById,
-  defaultConversations,
   readStoredConversations,
   writeStoredConversations,
   type StoredConversation,
@@ -831,9 +830,7 @@ function ConversationsPageContent() {
   const shouldOpenRequestedThreadOnce = requestedThreadOpenSource === "repair";
   const repairLabel = useTenantRepairLabel();
 
-  const [threads, setThreads] = useState<StoredConversation[]>(() =>
-    readStoredConversations(defaultConversations)
-  );
+  const [threads, setThreads] = useState<StoredConversation[]>(() => readStoredConversations([]));
   const [repairs, setRepairs] = useState<StoredRepair[]>(() =>
     readStoredRepairs(defaultRepairs)
   );
@@ -1022,11 +1019,9 @@ function ConversationsPageContent() {
         if (!response.ok) return;
         const payload = await response.json();
         const mapped = ((payload.data ?? []) as ApiConversationThread[]).map(mapApiThreadToStored);
-        if (mapped.length > 0) {
-          setThreads(dedupeConversationsById(mapped));
-        }
+        setThreads(dedupeConversationsById(mapped));
       } catch {
-        // keep local fallback
+        setThreads([]);
       }
     };
     void loadConversations();

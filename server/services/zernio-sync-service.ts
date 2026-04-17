@@ -13,6 +13,46 @@ import {
 import { isWithinWhatsappServiceWindow } from "@/lib/integrations/zernio/message-window-utils";
 
 const DEFAULT_PROFILE_ID = "69dac091b54d90f7e8780d93";
+const DEFAULT_AUTOGARAGE_PHONE = "+18054670673";
+
+function normalizePhoneNumber(value?: string | null) {
+  if (!value) return "";
+  return value.replace(/[^\d+]/g, "");
+}
+
+function pickResolvedWhatsappAccount(params: {
+  accounts: Array<{ id?: string; platform?: string; status?: string }>;
+  existingAccountId?: string | null;
+  existingWhatsappAccountId?: string | null;
+  phoneNumbers: Array<{ accountId?: string; phoneNumber?: string; displayNumber?: string }>;
+  existingWhatsappPhone?: string | null;
+}) {
+  const accounts = params.accounts.filter((item): item is { id: string; platform?: string; status?: string } => Boolean(item?.id));
+  if (accounts.length === 0) return null;
+
+  const existingAccountId = params.existingAccountId ?? params.existingWhatsappAccountId;
+  if (existingAccountId) {
+    const matched = accounts.find((item) => item.id === existingAccountId);
+    if (matched) return matched;
+  }
+
+  const expectedPhone = normalizePhoneNumber(params.existingWhatsappPhone) || DEFAULT_AUTOGARAGE_PHONE;
+  const matchedPhone = params.phoneNumbers.find((item) => {
+    if (!item.accountId) return false;
+    const phone = normalizePhoneNumber(item.displayNumber ?? item.phoneNumber);
+    return phone === normalizePhoneNumber(expectedPhone);
+  });
+  if (matchedPhone?.accountId) {
+    const matched = accounts.find((item) => item.id === matchedPhone.accountId);
+    if (matched) return matched;
+  }
+
+  return (
+    accounts.find((item) => (item.platform ?? "").toLowerCase() === "whatsapp" && (item.status ?? "").toLowerCase() === "connected") ??
+    accounts.find((item) => (item.platform ?? "").toLowerCase() === "whatsapp") ??
+    accounts[0]
+  );
+}
 
 function getConversationParticipant(conversation: ZernioConversation) {
   return {
@@ -44,11 +84,34 @@ export async function ensureTenantZernioChannel(tenantId: string) {
 
   const accountsResponse = await listZernioAccounts(profileId, "whatsapp");
   const accounts = accountsResponse.data ?? accountsResponse.accounts ?? [];
-  const resolvedAccount = accounts[0];
-  if (!resolvedAccount?.id) throw new Error("No WhatsApp account connected in Zernio");
-
   const phoneResponse = await listZernioPhoneNumbers();
-  const phone = (phoneResponse.data ?? []).find((item) => item.accountId === resolvedAccount.id);
+  const phoneNumbers = phoneResponse.data ?? [];
+  const resolvedAccount = pickResolvedWhatsappAccount({
+    accounts,
+    existingAccountId: existing?.zernioAccountId,
+    existingWhatsappAccountId: existing?.whatsappAccountId,
+    phoneNumbers,
+    existingWhatsappPhone: existing?.whatsappPhoneNumber
+  });
+  if (!resolvedAccount?.id) {
+    console.error("[ZERNIO_SYNC] Failed to resolve WhatsApp account", {
+      tenantId,
+      tenantName: tenant.name,
+      profileId,
+      accountsCount: accounts.length
+    });
+    throw new Error("No WhatsApp account connected in Zernio");
+  }
+
+  const phone = phoneNumbers.find((item) => item.accountId === resolvedAccount.id);
+  console.info("[ZERNIO_SYNC] Resolved WhatsApp account", {
+    tenantId,
+    tenantName: tenant.name,
+    profileId,
+    accountId: resolvedAccount.id,
+    platform: resolvedAccount.platform ?? "unknown",
+    phoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? DEFAULT_AUTOGARAGE_PHONE
+  });
 
   return prisma.tenantMessagingChannel.upsert({
     where: { tenantId_provider: { tenantId, provider: "ZERNIO" } },
@@ -57,7 +120,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
       zernioAccountId: resolvedAccount.id,
       whatsappAccountId: resolvedAccount.id,
       zernioPhoneNumberId: phone?.id,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? "+18054670673",
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? DEFAULT_AUTOGARAGE_PHONE,
       displayName: existing?.displayName ?? "WhatsApp (ZERNIO)",
       connectionStatus: "CONNECTED",
       isActive: true
@@ -69,7 +132,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
       zernioAccountId: resolvedAccount.id,
       whatsappAccountId: resolvedAccount.id,
       zernioPhoneNumberId: phone?.id,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? "+18054670673",
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? DEFAULT_AUTOGARAGE_PHONE,
       displayName: "WhatsApp (ZERNIO)",
       connectionStatus: "CONNECTED",
       isActive: true
@@ -80,6 +143,12 @@ export async function ensureTenantZernioChannel(tenantId: string) {
 export async function syncConversationFromZernio(tenantId: string, conversationId: string) {
   const channel = await ensureTenantZernioChannel(tenantId);
   if (!channel.zernioAccountId) throw new Error("Missing Zernio account ID");
+
+  console.info("[ZERNIO_SYNC] Syncing conversation", {
+    tenantId,
+    conversationId,
+    accountId: channel.zernioAccountId
+  });
 
   const detail = await getZernioConversation(conversationId, channel.zernioAccountId);
   const conversation = detail.data ?? detail.conversation;
@@ -123,6 +192,11 @@ export async function syncConversationFromZernio(tenantId: string, conversationI
 
   const msgResponse = await listZernioConversationMessages(conversation.id, channel.zernioAccountId);
   const messages = msgResponse.data ?? msgResponse.messages ?? [];
+  console.info("[ZERNIO_SYNC] Conversation message fetch complete", {
+    tenantId,
+    conversationId: conversation.id,
+    messageCount: messages.length
+  });
 
   for (const message of messages) {
     const body = getMessageBody(message);
@@ -168,6 +242,21 @@ export async function syncTenantConversations(tenantId: string) {
   });
 
   const conversations = response.data ?? response.conversations ?? [];
+  console.info("[ZERNIO_SYNC] Inbox conversations fetched", {
+    tenantId,
+    profileId: channel.zernioProfileId,
+    accountId: channel.zernioAccountId,
+    platform: "whatsapp",
+    conversationCount: conversations.length
+  });
+  if (conversations.length === 0) {
+    console.warn("[ZERNIO_SYNC] Inbox returned no conversations", {
+      tenantId,
+      profileId: channel.zernioProfileId,
+      accountId: channel.zernioAccountId,
+      diagnostic: "Verify WhatsApp Inbox add-on/capability for the account"
+    });
+  }
   for (const conversation of conversations) {
     await syncConversationFromZernio(tenantId, conversation.id);
   }
