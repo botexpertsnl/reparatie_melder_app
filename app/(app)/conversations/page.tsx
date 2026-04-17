@@ -861,6 +861,7 @@ function ConversationsPageContent() {
   const touchStartRef = useRef<TouchGesture | null>(null);
   const repairDrawerTouchStartRef = useRef<TouchGesture | null>(null);
   const hasHandledInitialLinkedConversationRef = useRef(false);
+  const repairListOriginThreadIdRef = useRef<string | null>(null);
 
   const formatScheduledTemplateLabel = useCallback((scheduledForIso?: string, cancelled = false) => {
     if (!scheduledForIso) return null;
@@ -1025,6 +1026,7 @@ function ConversationsPageContent() {
     }
 
     setSelectedThreadId(linkedThread.id);
+    repairListOriginThreadIdRef.current = linkedThread.id;
     setStatusFilter(linkedThread.open ? "open" : "closed");
 
     if (isMobileViewport) {
@@ -1367,8 +1369,15 @@ function ConversationsPageContent() {
 
   const handleConversationStatusButtonClick = () => {
     if (!selectedThread) return;
+    const shouldReturnToRepairsList = repairListOriginThreadIdRef.current === selectedThread.id;
+
     if (selectedThread.open) {
       updateConversationOpenState(selectedThread.id, false);
+      if (shouldReturnToRepairsList) {
+        repairListOriginThreadIdRef.current = null;
+        router.push("/work-items");
+        return;
+      }
       if (isMobileViewport) {
         setMobileActivePane("list");
         setIsMobileRepairDrawerOpen(false);
@@ -1378,6 +1387,16 @@ function ConversationsPageContent() {
 
     reopenConversation(selectedThread.id);
   };
+
+  const handleBackFromConversation = useCallback(() => {
+    if (selectedThread && repairListOriginThreadIdRef.current === selectedThread.id) {
+      repairListOriginThreadIdRef.current = null;
+      router.push("/work-items");
+      return;
+    }
+
+    setMobileActivePane("list");
+  }, [router, selectedThread]);
 
   const handleQuickToggleConversation = useCallback((
     threadId: string,
@@ -1986,7 +2005,7 @@ function ConversationsPageContent() {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setMobileActivePane("list")}
+                    onClick={handleBackFromConversation}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-slate-900/70 md:hidden"
                     aria-label="Back to conversations"
                   >
