@@ -11,8 +11,8 @@ export async function GET() {
   if (!channel?.zernioAccountId) return NextResponse.json({ data: [] });
 
   try {
-    const response = await listZernioPhoneNumbers(channel.zernioAccountId);
-    return NextResponse.json({ data: response.numbers });
+    const response = await listZernioPhoneNumbers();
+    return NextResponse.json({ data: (response.data ?? []).filter((item) => item.accountId === channel.zernioAccountId) });
   } catch {
     return NextResponse.json({ data: [] });
   }

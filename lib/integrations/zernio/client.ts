@@ -1,6 +1,6 @@
 import "server-only";
 
-const ZERNIO_BASE_URL = process.env.ZERNIO_BASE_URL ?? "https://api.zernio.com";
+const ZERNIO_BASE_URL = process.env.ZERNIO_BASE_URL ?? "https://zernio.com/api";
 
 export class ZernioError extends Error {
   constructor(message: string, readonly status: number, readonly payload: unknown) {

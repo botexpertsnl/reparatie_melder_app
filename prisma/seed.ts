@@ -28,7 +28,7 @@ async function main() {
   });
 
   const tenants = await Promise.all([
-    prisma.tenant.create({ data: { name: "Velocity Garage", slug: "velocity-garage", industryType: "GARAGE" } }),
+    prisma.tenant.create({ data: { name: "AutoGarage De Vries", slug: "autogarage-de-vries", industryType: "GARAGE" } }),
     prisma.tenant.create({ data: { name: "FixFast Mobile", slug: "fixfast-mobile", industryType: "DEVICE_REPAIR" } }),
     prisma.tenant.create({ data: { name: "BrightInstall", slug: "brightinstall", industryType: "INSTALLER" } })
   ]);
@@ -88,11 +88,11 @@ async function main() {
       data: {
         tenantId: tenant.id,
         provider: "ZERNIO",
-        zernioProfileId: `zernio-profile-${index + 1}`,
+        zernioProfileId: index === 0 ? "69dac091b54d90f7e8780d93" : `zernio-profile-${index + 1}`,
         zernioAccountId: `zernio-account-${index + 1}`,
         whatsappAccountId: `zernio-wa-account-${index + 1}`,
         zernioPhoneNumberId: `zernio-phone-${index + 1}`,
-        whatsappPhoneNumber: `+319700000000${index + 1}`,
+        whatsappPhoneNumber: index === 0 ? "+18054670673" : `+319700000000${index + 1}`,
         displayName: `WhatsApp (ZERNIO) - ${tenant.name}`,
         connectionStatus: "CONNECTED"
       }

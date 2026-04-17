@@ -69,6 +69,46 @@ import { buildTemplateMessageWithButtons, fillTemplateBody } from "@/lib/repair-
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
+
+
+type ApiConversationThread = {
+  id: string;
+  externalConversationId?: string | null;
+  phoneNumber: string;
+  workItemId?: string | null;
+  customer?: { fullName?: string | null; phoneNumber?: string | null } | null;
+  messages?: Array<{
+    id: string;
+    direction: "INBOUND" | "OUTBOUND";
+    body: string;
+    sentAt?: string | null;
+    receivedAt?: string | null;
+    createdAt: string;
+  }>;
+};
+
+function mapApiThreadToStored(thread: ApiConversationThread): StoredConversation {
+  const messages = (thread.messages ?? []).map((message) => ({
+    id: message.id,
+    role: message.direction === "INBOUND" ? "customer" : "agent",
+    text: message.body,
+    at: message.receivedAt ?? message.sentAt ?? message.createdAt
+  } satisfies StoredConversationMessage));
+  const last = messages[messages.length - 1];
+
+  return {
+    id: thread.id,
+    customerName: thread.customer?.fullName ?? thread.customer?.phoneNumber ?? thread.phoneNumber,
+    customerPhone: thread.customer?.phoneNumber ?? thread.phoneNumber,
+    preview: last?.text ?? "",
+    updatedAt: last?.at ?? new Date().toISOString(),
+    open: true,
+    linkedRepairId: thread.workItemId ?? undefined,
+    messages,
+    createdAt: messages[0]?.at
+  };
+}
+
 type NewRepairFormValues = {
   customerFirstName: string;
   customerLastName: string;
@@ -939,19 +979,56 @@ function ConversationsPageContent() {
   }, []);
 
   useEffect(() => {
-    const refreshTemplates = () => setTemplates(readStoredTemplates(defaultStoredTemplates));
-    refreshTemplates();
-    window.addEventListener("templates:changed", refreshTemplates);
-    window.addEventListener("storage", refreshTemplates);
+    const handleTemplateRefresh = () => {
+      void refreshTemplates();
+    };
+    const refreshTemplates = async () => {
+      try {
+        const response = await fetch("/api/templates/whatsapp", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to load templates");
+        const payload = await response.json();
+        const mapped = ((payload.data ?? []) as Array<{ id: string; name: string; category: string; language: string }>).map((template) => ({
+          id: template.id,
+          name: template.name,
+          category: template.category,
+          language: template.language,
+          body: "",
+          active: true,
+          variables: [],
+          buttons: []
+        }));
+        setTemplates(mapped.length > 0 ? mapped : readStoredTemplates(defaultStoredTemplates));
+      } catch {
+        setTemplates(readStoredTemplates(defaultStoredTemplates));
+      }
+    };
+    void refreshTemplates();
+    window.addEventListener("templates:changed", handleTemplateRefresh);
     return () => {
-      window.removeEventListener("templates:changed", refreshTemplates);
-      window.removeEventListener("storage", refreshTemplates);
+      window.removeEventListener("templates:changed", handleTemplateRefresh);
     };
   }, []);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNowTimestamp(Date.now()), 60_000);
     return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        const response = await fetch("/api/conversations", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const mapped = ((payload.data ?? []) as ApiConversationThread[]).map(mapApiThreadToStored);
+        if (mapped.length > 0) {
+          setThreads(dedupeConversationsById(mapped));
+        }
+      } catch {
+        // keep local fallback
+      }
+    };
+    void loadConversations();
   }, []);
 
   useEffect(() => {
@@ -1262,24 +1339,36 @@ function ConversationsPageContent() {
     setIsMobileRepairDrawerOpen(false);
   }, [updateConversationOpenState]);
 
-  const sendMessage = ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
+  const sendMessage = async ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
     if (!selectedThread || !message.trim()) return;
+    const body = message.trim();
+
+    const response = await fetch(`/api/conversations/${selectedThread.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: body })
+    });
+
+    if (response.status === 409) {
+      openTemplateMessageModal();
+      return;
+    }
 
     updateThreads((prev) =>
       prev.map((thread) =>
         thread.id === selectedThread.id
           ? {
               ...thread,
-              preview: message.trim(),
-              updatedAt: "Now",
+              preview: body,
+              updatedAt: new Date().toISOString(),
               open: closeConversation ? false : thread.open,
               messages: [
                 ...thread.messages,
                 {
                   id: `m_${Date.now()}`,
                   role: "agent",
-                  text: message.trim(),
-                  at: "Now",
+                  text: body,
+                  at: new Date().toISOString(),
                 },
               ],
             }
@@ -1326,7 +1415,7 @@ function ConversationsPageContent() {
     });
   }, []);
 
-  const sendTemplateMessage = useCallback(() => {
+  const sendTemplateMessage = useCallback(async () => {
     if (!selectedThread) return;
     const selectedTemplate = activeTemplates.find((item) => item.id === selectedTemplateId);
     if (!selectedTemplate) return;
@@ -1340,6 +1429,17 @@ function ConversationsPageContent() {
       templatePreview,
       selectedTemplate.buttons
     );
+    await fetch(`/api/conversations/${selectedThread.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        template: {
+          name: selectedTemplate.name,
+          language: selectedTemplate.language,
+          components: []
+        }
+      })
+    });
 
     updateThreads((prev) =>
       prev.map((thread) =>
@@ -1567,8 +1667,23 @@ function ConversationsPageContent() {
     setEditingRepairId(null);
   };
 
-  const handleImageSelected = (file: File | null) => {
+  const handleImageSelected = async (file: File | null) => {
     if (!selectedThread || !file) return;
+
+    const toDataUrl = () =>
+      new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+
+    const dataUrl = await toDataUrl();
+    await fetch(`/api/conversations/${selectedThread.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attachments: [{ url: dataUrl, filename: file.name, mimeType: file.type }] })
+    });
 
     updateThreads((prev) =>
       prev.map((thread) =>
@@ -1576,7 +1691,7 @@ function ConversationsPageContent() {
           ? {
               ...thread,
               preview: `📷 ${file.name}`,
-              updatedAt: "Now",
+              updatedAt: new Date().toISOString(),
               open: thread.open,
               messages: [
                 ...thread.messages,
@@ -1584,7 +1699,7 @@ function ConversationsPageContent() {
                   id: `m_${Date.now()}`,
                   role: "agent",
                   text: `📷 Image uploaded: ${file.name}`,
-                  at: "Now",
+                  at: new Date().toISOString(),
                 },
               ],
             }
