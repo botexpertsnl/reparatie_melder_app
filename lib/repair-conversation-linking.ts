@@ -33,7 +33,7 @@ export function createLinkedConversationForRepair(
     customerPhone: repair.customerPhone,
     preview: "",
     updatedAt: buildConversationTimestampLabel(createdAtIso),
-    open: true,
+    open: false,
     linkedRepairId: repair.id,
     messages: [],
     createdAt: createdAtIso,
