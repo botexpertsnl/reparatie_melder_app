@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const channel = await prisma.tenantMessagingChannel.findFirst({ where: { tenantId: ctx.tenantId, provider: "ZERNIO" } });
   if (!channel?.zernioAccountId) return NextResponse.json({ error: "No connected account" }, { status: 400 });
 
-  await verifyZernioPhoneNumber(channel.zernioAccountId, parsed.data.phoneNumberId);
+  await verifyZernioPhoneNumber(parsed.data.phoneNumberId);
   await prisma.tenantMessagingChannel.update({
     where: { id: channel.id },
     data: { zernioPhoneNumberId: parsed.data.phoneNumberId }

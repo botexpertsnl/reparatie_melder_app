@@ -1,23 +1,30 @@
 import "server-only";
 import { zernioFetch } from "@/lib/integrations/zernio/client";
 
-export async function sendZernioTemplate(params: {
-  whatsappAccountId: string;
-  to: string;
-  templateId: string;
+export type ZernioTemplate = {
+  id: string;
+  name: string;
+  category: string;
   language: string;
-  variables?: string[];
+  status?: string;
+  components?: Array<Record<string, unknown>>;
+};
+
+export async function listZernioWhatsappTemplates(accountId: string) {
+  return zernioFetch<{ data?: ZernioTemplate[]; templates?: ZernioTemplate[] }>(
+    `/v1/whatsapp/templates?accountId=${encodeURIComponent(accountId)}`
+  );
+}
+
+export async function createZernioWhatsappTemplate(payload: {
+  accountId: string;
+  name: string;
+  category: string;
+  language: string;
+  components: Array<Record<string, unknown>>;
 }) {
-  return zernioFetch<{ id: string }>(`/v1/whatsapp/accounts/${params.whatsappAccountId}/messages`, {
+  return zernioFetch<{ data?: ZernioTemplate; template?: ZernioTemplate; id?: string }>("/v1/whatsapp/templates", {
     method: "POST",
-    body: JSON.stringify({
-      to: params.to,
-      type: "template",
-      template: {
-        id: params.templateId,
-        language: params.language,
-        variables: params.variables ?? []
-      }
-    })
+    body: JSON.stringify(payload)
   });
 }

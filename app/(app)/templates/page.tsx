@@ -44,6 +44,8 @@ type TemplateButton =
 
 type Template = {
   id: string;
+  zernioTemplateId?: string;
+  zernioStatus?: string;
   name: string;
   category: TemplateCategory;
   language: string;
@@ -915,6 +917,40 @@ export default function TemplatesPage() {
   const editingTemplate = templates.find((template) => template.id === editingTemplateId) ?? null;
 
   useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const response = await fetch("/api/templates/whatsapp", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const zernioTemplates = ((payload.data ?? []) as Array<{ id: string; name: string; category: string; language: string; status?: string }>).map((template) => ({
+          id: `zernio_${template.id}`,
+          zernioTemplateId: template.id,
+          zernioStatus: template.status,
+          name: template.name,
+          category: normalizeCategory(template.category),
+          language: template.language,
+          body: "",
+          active: (template.status ?? "").toUpperCase() !== "REJECTED",
+          variables: [],
+          buttons: []
+        }));
+
+        if (zernioTemplates.length > 0) {
+          setTemplates((prev) => {
+            const localOnly = prev.filter((item) => !item.zernioTemplateId);
+            return [...zernioTemplates, ...localOnly];
+          });
+        }
+      } catch {
+        // keep local templates as fallback
+      }
+    };
+
+    void loadTemplates();
+  }, []);
+
+
+  useEffect(() => {
     writeStoredTemplates(templates);
   }, [templates]);
 
@@ -952,7 +988,7 @@ export default function TemplatesPage() {
     return "de";
   };
 
-  const handleCreateTemplate = (values: TemplateFormValues) => {
+  const handleCreateTemplate = async (values: TemplateFormValues) => {
     const normalizedButtons = sanitizeButtonsForSave(values.buttons);
     if (hasMixedButtonModes(normalizedButtons)) return;
     const uniqueness = validateButtonTextUniqueness({
@@ -961,8 +997,26 @@ export default function TemplatesPage() {
     });
     if (uniqueness.duplicateWithinTemplateIndexes.size > 0 || uniqueness.duplicateAcrossTemplatesIndexes.size > 0) return;
 
+    const response = await fetch("/api/templates/whatsapp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: values.name.trim(),
+        category: values.category,
+        language: toStoredLanguage(values.language),
+        body: values.body.trim(),
+        variables: values.variables,
+        buttons: normalizedButtons
+      })
+    });
+    const payload = response.ok ? await response.json() : null;
+    const zernioTemplateId = payload?.data?.template?.id ?? payload?.data?.saved?.externalTemplateId;
+    const zernioStatus = payload?.data?.template?.status ?? payload?.data?.saved?.variablesSchema?.zernioStatus ?? "PENDING";
+
     const newTemplate: Template = {
       id: `tpl_${Date.now()}`,
+      zernioTemplateId,
+      zernioStatus,
       name: values.name.trim(),
       category: values.category,
       language: toStoredLanguage(values.language),

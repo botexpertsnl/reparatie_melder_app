@@ -1,8 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { sendZernioText } from "@/lib/integrations/zernio/whatsapp";
-import { sendZernioTemplate } from "@/lib/integrations/zernio/templates";
-import { resolveTenantChannel } from "./tenant-channel-service";
+import { sendConversationMessage } from "@/server/services/zernio-sync-service";
 
 export async function sendOutboundText(params: {
   tenantId: string;
@@ -11,27 +9,15 @@ export async function sendOutboundText(params: {
   body: string;
   workItemId?: string;
 }) {
-  const channel = await resolveTenantChannel(params.tenantId);
-
-  const providerResponse = await sendZernioText({
-    whatsappAccountId: channel.whatsappAccountId,
-    to: params.phoneNumber,
-    body: params.body
+  await sendConversationMessage({
+    tenantId: params.tenantId,
+    threadId: params.threadId,
+    text: params.body
   });
 
-  return prisma.message.create({
-    data: {
-      tenantId: params.tenantId,
-      threadId: params.threadId,
-      workItemId: params.workItemId,
-      direction: "OUTBOUND",
-      type: "TEXT",
-      body: params.body,
-      status: "SENT",
-      externalMessageId: providerResponse.id,
-      sentAt: new Date(),
-      rawPayload: providerResponse
-    }
+  return prisma.message.findFirstOrThrow({
+    where: { tenantId: params.tenantId, threadId: params.threadId, direction: "OUTBOUND", body: params.body },
+    orderBy: { createdAt: "desc" }
   });
 }
 
@@ -44,27 +30,18 @@ export async function sendOutboundTemplate(params: {
   bodyPreview?: string;
   workItemId?: string;
 }) {
-  const channel = await resolveTenantChannel(params.tenantId);
-  const providerResponse = await sendZernioTemplate({
-    whatsappAccountId: channel.whatsappAccountId,
-    to: params.phoneNumber,
-    templateId: params.templateId,
-    language: params.language
+  await sendConversationMessage({
+    tenantId: params.tenantId,
+    threadId: params.threadId,
+    template: {
+      name: params.templateId,
+      language: params.language,
+      components: []
+    }
   });
 
-  return prisma.message.create({
-    data: {
-      tenantId: params.tenantId,
-      threadId: params.threadId,
-      workItemId: params.workItemId,
-      direction: "OUTBOUND",
-      type: "TEMPLATE",
-      body: params.bodyPreview ?? "Template sent",
-      status: "SENT",
-      externalTemplateId: params.templateId,
-      externalMessageId: providerResponse.id,
-      sentAt: new Date(),
-      rawPayload: providerResponse
-    }
+  return prisma.message.findFirstOrThrow({
+    where: { tenantId: params.tenantId, threadId: params.threadId, direction: "OUTBOUND", externalTemplateId: params.templateId },
+    orderBy: { createdAt: "desc" }
   });
 }

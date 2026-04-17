@@ -1,146 +1,98 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveTenantByWhatsappAccount } from "@/server/services/tenant-channel-service";
-import { normalizeToE164 } from "@/lib/phone/normalize";
-import { normalizeZernioWebhookEvent } from "@/lib/integrations/zernio/webhooks";
-import { mapZernioWebhookToInboundMessage } from "@/lib/integrations/zernio/webhook-mapper";
+import { syncConversationFromZernio } from "@/server/services/zernio-sync-service";
+
+const SUPPORTED_EVENTS = new Set([
+  "message.received",
+  "message.sent",
+  "message.delivered",
+  "message.read",
+  "message.failed",
+  "message.deleted",
+  "account.connected",
+  "account.disconnected"
+]);
+
+function isSignatureValid(rawBody: string, signature: string | null) {
+  const secret = process.env.ZERNIO_WEBHOOK_SECRET;
+  if (!secret) return true;
+  if (!signature) return false;
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
 
 export async function POST(request: NextRequest) {
-  const payload = await request.json();
+  const rawBody = await request.text();
+  const signature = request.headers.get("X-Zernio-Signature");
+  if (!isSignatureValid(rawBody, signature)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  const payload = JSON.parse(rawBody || "{}");
   const eventType = payload?.type ?? "unknown";
-  const whatsappAccountId = payload?.accountId as string | undefined;
-  const externalMessageId = (payload?.message?.id ?? payload?.messageId) as string | undefined;
+  if (!SUPPORTED_EVENTS.has(eventType)) {
+    return NextResponse.json({ ok: true, ignored: true });
+  }
+
+  const whatsappAccountId = (payload?.accountId ?? payload?.account?.id) as string | undefined;
+  const eventId = (payload?.id ?? payload?.eventId ?? payload?.webhookId) as string | undefined;
+  const eventUniqueId = eventId ?? `${eventType}:${payload?.message?.id ?? payload?.messageId ?? "no-message"}`;
+
+  const existingEvent = await prisma.webhookEvent.findFirst({
+    where: { provider: "ZERNIO", eventType, externalMessageId: eventUniqueId }
+  });
+  if (existingEvent) return NextResponse.json({ ok: true, deduplicated: true });
 
   const event = await prisma.webhookEvent.create({
     data: {
       provider: "ZERNIO",
       eventType,
       externalChannelId: whatsappAccountId,
-      externalMessageId,
+      externalMessageId: eventUniqueId,
       payload,
       processingStatus: "RECEIVED"
     }
   });
 
-  try {
-    if (!whatsappAccountId) throw new Error("Missing accountId");
-    const channel = await resolveTenantByWhatsappAccount(whatsappAccountId);
-    if (!channel?.tenantId) throw new Error("Unknown account");
+  if (!whatsappAccountId) {
+    await prisma.webhookEvent.update({ where: { id: event.id }, data: { processingStatus: "FAILED", processingError: "Missing accountId" } });
+    return NextResponse.json({ ok: true });
+  }
 
-    const tenantId = channel.tenantId;
-    const normalized = normalizeZernioWebhookEvent(payload, tenantId);
-    const inboundMessage = mapZernioWebhookToInboundMessage(normalized);
+  const channel = await resolveTenantByWhatsappAccount(whatsappAccountId);
+  if (!channel?.tenantId) {
+    await prisma.webhookEvent.update({ where: { id: event.id }, data: { processingStatus: "FAILED", processingError: "Unknown account" } });
+    return NextResponse.json({ ok: true });
+  }
 
-    if (normalized.messageId) {
-      const existingMessage = await prisma.message.findFirst({
-        where: { tenantId, externalMessageId: normalized.messageId }
-      });
-      if (existingMessage) {
-        await prisma.webhookEvent.update({
-          where: { id: event.id },
-          data: { tenantId, processingStatus: "PROCESSED", processedAt: new Date() }
-        });
-        return NextResponse.json({ ok: true, deduplicated: true });
-      }
-    }
+  const tenantId = channel.tenantId;
 
-    if (eventType === "account.connected" || eventType === "account.disconnected") {
-      await prisma.tenantMessagingChannel.update({
-        where: { id: channel.id },
-        data: { connectionStatus: eventType === "account.connected" ? "CONNECTED" : "DISCONNECTED" }
-      });
+  if (eventType === "account.connected" || eventType === "account.disconnected") {
+    await prisma.tenantMessagingChannel.update({
+      where: { id: channel.id },
+      data: { connectionStatus: eventType === "account.connected" ? "CONNECTED" : "DISCONNECTED" }
+    });
+  }
 
+  const conversationId = payload?.message?.conversationId ?? payload?.conversationId;
+  if (conversationId && eventType.startsWith("message.")) {
+    try {
+      await syncConversationFromZernio(tenantId, conversationId);
+    } catch (error) {
       await prisma.webhookEvent.update({
         where: { id: event.id },
-        data: { tenantId, processingStatus: "PROCESSED", processedAt: new Date() }
+        data: { tenantId, processingStatus: "FAILED", processingError: error instanceof Error ? error.message : "sync failed" }
       });
       return NextResponse.json({ ok: true });
     }
-
-    if (eventType !== "message.received") throw new Error(`Unsupported event type: ${eventType}`);
-
-    const phone = normalizeToE164(normalized.sender ?? "");
-    if (!phone) throw new Error("Missing sender phone");
-
-    const existingCustomer = await prisma.customer.findFirst({ where: { tenantId, phoneNumber: phone } });
-
-    const customer =
-      existingCustomer ??
-      (await prisma.customer.create({
-        data: {
-          tenantId,
-          firstName: payload?.contact?.name ?? "Unknown",
-          lastName: "",
-          fullName: payload?.contact?.name ?? "Unknown",
-          phoneNumber: phone
-        }
-      }));
-
-    const existingThread = normalized.conversationId
-      ? await prisma.conversationThread.findFirst({
-          where: { tenantId, whatsappAccountId, externalConversationId: normalized.conversationId }
-        })
-      : null;
-
-    const thread =
-      existingThread ??
-      (await prisma.conversationThread.create({
-        data: {
-          tenantId,
-          customerId: customer.id,
-          whatsappAccountId,
-          phoneNumber: phone,
-          externalConversationId: normalized.conversationId,
-          unreadCount: 0,
-          lastMessageAt: new Date()
-        }
-      }));
-
-    await prisma.conversationThread.update({
-      where: { id: thread.id },
-      data: {
-        unreadCount: { increment: 1 },
-        lastMessageAt: new Date()
-      }
-    });
-
-    await prisma.message.create({
-      data: {
-        tenantId,
-        threadId: thread.id,
-        customerId: customer.id,
-        direction: "INBOUND",
-        type: normalized.type,
-        body: normalized.body ?? "",
-        status: "DELIVERED",
-        externalMessageId: normalized.messageId,
-        receivedAt: new Date(normalized.timestamp),
-        rawPayload: normalized
-      }
-    });
-
-    console.info("[workflow-button-reply] Inbound message normalized for provider-agnostic matcher.", {
-      tenantId: inboundMessage.tenantId,
-      provider: inboundMessage.provider,
-      accountId: inboundMessage.accountId,
-      profileId: inboundMessage.profileId,
-      phoneNumberId: inboundMessage.phoneNumberId,
-      conversationId: inboundMessage.conversationId,
-      messageId: inboundMessage.messageId,
-      normalizedText: inboundMessage.messageTextNormalized
-    });
-
-    await prisma.webhookEvent.update({
-      where: { id: event.id },
-      data: { tenantId, processingStatus: "PROCESSED", processedAt: new Date() }
-    });
-
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    await prisma.webhookEvent.update({
-      where: { id: event.id },
-      data: { processingStatus: "FAILED", processingError: error instanceof Error ? error.message : "unknown" }
-    });
-    return NextResponse.json({ ok: false }, { status: 202 });
   }
+
+  await prisma.webhookEvent.update({
+    where: { id: event.id },
+    data: { tenantId, processingStatus: "PROCESSED", processedAt: new Date() }
+  });
+
+  return NextResponse.json({ ok: true });
 }

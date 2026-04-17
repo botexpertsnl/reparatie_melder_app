@@ -3,16 +3,18 @@ import { zernioFetch } from "@/lib/integrations/zernio/client";
 
 export type ZernioPhoneNumber = {
   id: string;
-  displayNumber: string;
-  verified: boolean;
+  displayNumber?: string;
+  phoneNumber?: string;
+  verified?: boolean;
+  accountId?: string;
 };
 
-export async function listZernioPhoneNumbers(accountId: string) {
-  return zernioFetch<{ numbers: ZernioPhoneNumber[] }>(`/v1/accounts/${accountId}/phone-numbers`);
+export async function listZernioPhoneNumbers() {
+  return zernioFetch<{ data?: ZernioPhoneNumber[] }>("/v1/whatsapp/phone-numbers");
 }
 
-export async function verifyZernioPhoneNumber(accountId: string, phoneNumberId: string) {
-  return zernioFetch<{ verified: boolean }>(`/v1/accounts/${accountId}/phone-numbers/${phoneNumberId}/verify`, {
+export async function verifyZernioPhoneNumber(phoneNumberId: string) {
+  return zernioFetch<{ verified: boolean }>(`/v1/whatsapp/phone-numbers/${phoneNumberId}/verify`, {
     method: "POST"
   });
 }
