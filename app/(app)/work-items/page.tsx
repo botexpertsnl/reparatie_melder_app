@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, SlidersHorizontal, MessageCircle, X } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -409,13 +409,36 @@ function RepairListRow({
       }}
       {...swipeHandlers}
     >
-      <div className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
-        <div className="min-w-0">
-          <div className="flex w-full items-center">
-            <span className="hidden sm:inline-flex">
-              <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,11rem)_minmax(10.5rem,13rem)] sm:gap-4">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex rounded-md p-1">
+            <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+          </span>
+          {linkedConversation ? (
+            <button
+              data-action-menu="true"
+              data-swipe-ignore="true"
+              className="inline-flex rounded-full p-1"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenConversation();
+              }}
+              aria-label={`Open linked conversation for ${repair.title}`}
+              title={linkedConversation.open ? "Open linked conversation (open)" : "Open linked conversation (closed)"}
+            >
+              <span
+                className={clsx(
+                  "inline-flex h-1.5 w-1.5 rounded-full transition-opacity",
+                  linkedConversation.open ? "bg-amber-300/80" : "invisible"
+                )}
+                aria-hidden="true"
+              />
+            </button>
+          ) : (
+            <span className="inline-flex p-1" aria-hidden="true">
+              <span className="inline-flex h-1.5 w-1.5 rounded-full invisible" />
             </span>
-          </div>
+          )}
         </div>
         <div className="min-w-0">
           <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
@@ -427,28 +450,10 @@ function RepairListRow({
         <div className="hidden min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:block sm:text-sm">
           {repair.customerName}
         </div>
-        <div className="relative flex flex-col items-end justify-center gap-1.5" data-action-menu="true">
-          <span className="rounded-md p-1">
-            <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+        <div className="hidden min-w-0 sm:flex sm:justify-end">
+          <span className="inline-flex">
+            <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
           </span>
-          <button
-            data-action-menu="true"
-            data-swipe-ignore="true"
-            className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-800/70"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenConversation();
-            }}
-            aria-label={`Open linked conversation for ${repair.title}`}
-            title={linkedConversation?.open ? "Open linked conversation (open)" : "Open linked conversation (closed)"}
-          >
-            <MessageCircle
-              className={clsx(
-                "h-3.5 w-3.5",
-                linkedConversation?.open ? "text-amber-300/70" : "text-slate-400/70"
-              )}
-            />
-          </button>
         </div>
       </div>
     </button>
