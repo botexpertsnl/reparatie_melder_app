@@ -4,7 +4,9 @@ type TouchPoint = { x: number; y: number };
 
 type UseMobileRowSwipeOptions = {
   enabled: boolean;
-  onSwipeOpen: () => void;
+  onSwipeOpen?: () => void;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
   allowSwipeFromInteractiveRoot?: boolean;
   threshold?: number;
   maxVerticalMovement?: number;
@@ -21,6 +23,8 @@ const DEFAULT_HORIZONTAL_INTENT_RATIO = 1.2;
 export function useMobileRowSwipe({
   enabled,
   onSwipeOpen,
+  onSwipeLeft,
+  onSwipeRight,
   allowSwipeFromInteractiveRoot = false,
   threshold = DEFAULT_THRESHOLD,
   maxVerticalMovement = DEFAULT_MAX_VERTICAL_MOVEMENT,
@@ -65,6 +69,11 @@ export function useMobileRowSwipe({
     touchStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
   }, [allowSwipeFromInteractiveRoot, enabled]);
 
+  const swipeLeftAction = onSwipeLeft ?? onSwipeOpen;
+  const swipeRightAction = onSwipeRight;
+  const allowSwipeLeft = Boolean(swipeLeftAction);
+  const allowSwipeRight = Boolean(swipeRightAction);
+
   const onTouchMove = useCallback((event: TouchEvent<HTMLElement>) => {
     if (!enabled || blockedByInteractiveTargetRef.current) return;
     const touchStart = touchStartRef.current;
@@ -82,7 +91,8 @@ export function useMobileRowSwipe({
       return;
     }
 
-    if (deltaX >= 0) {
+    const swipingLeft = deltaX < 0;
+    if ((swipingLeft && !allowSwipeLeft) || (!swipingLeft && !allowSwipeRight)) {
       if (isDragging) {
         setIsDragging(false);
         setPreviewOffset(0);
@@ -96,8 +106,13 @@ export function useMobileRowSwipe({
         : maxPreviewOffset;
 
     setIsDragging(true);
-    setPreviewOffset(Math.max(-maxPreviewOffsetForRow, deltaX));
-  }, [enabled, horizontalIntentRatio, isDragging, maxPreviewOffset, maxPreviewOffsetRatio]);
+    if (swipingLeft) {
+      setPreviewOffset(Math.max(-maxPreviewOffsetForRow, deltaX));
+      return;
+    }
+
+    setPreviewOffset(Math.min(maxPreviewOffsetForRow, deltaX));
+  }, [allowSwipeLeft, allowSwipeRight, enabled, horizontalIntentRatio, isDragging, maxPreviewOffset, maxPreviewOffsetRatio]);
 
   const onTouchEnd = useCallback((event: TouchEvent<HTMLElement>) => {
     if (!enabled || blockedByInteractiveTargetRef.current) {
@@ -117,15 +132,20 @@ export function useMobileRowSwipe({
     const absDeltaY = Math.abs(deltaY);
     const absDeltaX = Math.abs(deltaX);
     const hasHorizontalIntent = absDeltaX > absDeltaY * horizontalIntentRatio;
-    const passedThreshold = deltaX <= -threshold;
+    const passedLeftThreshold = deltaX <= -threshold;
+    const passedRightThreshold = deltaX >= threshold;
     const withinVerticalLimit = absDeltaY <= maxVerticalMovement;
 
-    if (hasHorizontalIntent && passedThreshold && withinVerticalLimit) {
-      onSwipeOpen();
+    if (hasHorizontalIntent && withinVerticalLimit) {
+      if (passedLeftThreshold) {
+        swipeLeftAction?.();
+      } else if (passedRightThreshold) {
+        swipeRightAction?.();
+      }
     }
 
     resetGesture();
-  }, [enabled, horizontalIntentRatio, maxVerticalMovement, onSwipeOpen, resetGesture, threshold]);
+  }, [enabled, horizontalIntentRatio, maxVerticalMovement, resetGesture, swipeLeftAction, swipeRightAction, threshold]);
 
   const onTouchCancel = useCallback(() => {
     resetGesture();

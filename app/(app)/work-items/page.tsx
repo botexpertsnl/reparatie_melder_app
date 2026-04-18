@@ -387,7 +387,8 @@ function RepairListRow({
 }) {
   const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
     enabled: isMobileSwipeEnabled,
-    onSwipeOpen: onOpenRepair,
+    onSwipeLeft: onOpenRepair,
+    onSwipeRight: linkedConversation ? onOpenConversation : undefined,
     allowSwipeFromInteractiveRoot: true,
     maxPreviewOffsetRatio: 0.3,
   });
