@@ -352,16 +352,16 @@ function StageIndicatorDot({
   stageColor?: string;
 }) {
   if (stage === UNKNOWN_STAGE) {
-    return <span className="inline-flex h-2.5 w-2.5 rounded-full bg-slate-400 shadow-[0_0_0_1px_rgba(15,23,42,0.45)]" aria-hidden="true" />;
+    return <span className="inline-flex h-3 w-3 rounded-full bg-slate-400 shadow-[0_0_0_1px_rgba(15,23,42,0.45)]" aria-hidden="true" />;
   }
 
   if (!stageColor) {
-    return <span className="inline-flex h-2.5 w-2.5 rounded-full bg-blue-400 shadow-[0_0_0_1px_rgba(15,23,42,0.45)]" aria-hidden="true" />;
+    return <span className="inline-flex h-3 w-3 rounded-full bg-blue-400 shadow-[0_0_0_1px_rgba(15,23,42,0.45)]" aria-hidden="true" />;
   }
 
   return (
     <span
-      className="inline-flex h-2.5 w-2.5 rounded-full shadow-[0_0_0_1px_rgba(15,23,42,0.45)]"
+      className="inline-flex h-3 w-3 rounded-full shadow-[0_0_0_1px_rgba(15,23,42,0.45)]"
       style={{ backgroundColor: stageColor }}
       aria-hidden="true"
     />
@@ -412,9 +412,6 @@ function RepairListRow({
       <div className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2.5 sm:grid-cols-[minmax(10.5rem,13rem)_minmax(0,1fr)_minmax(0,11rem)_auto] sm:gap-4">
         <div className="min-w-0">
           <div className="flex w-full items-center">
-            <span className="sm:hidden">
-              <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
-            </span>
             <span className="hidden sm:inline-flex">
               <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
             </span>
@@ -430,7 +427,10 @@ function RepairListRow({
         <div className="hidden min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:block sm:text-sm">
           {repair.customerName}
         </div>
-        <div className="relative flex items-center" data-action-menu="true">
+        <div className="relative flex flex-col items-end justify-center gap-1.5" data-action-menu="true">
+          <span className="rounded-md p-1">
+            <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+          </span>
           <button
             data-action-menu="true"
             data-swipe-ignore="true"
@@ -442,7 +442,12 @@ function RepairListRow({
             aria-label={`Open linked conversation for ${repair.title}`}
             title={linkedConversation?.open ? "Open linked conversation (open)" : "Open linked conversation (closed)"}
           >
-            <MessageCircle className={clsx("h-4 w-4", linkedConversation?.open ? "text-amber-300" : "text-slate-400")} />
+            <MessageCircle
+              className={clsx(
+                "h-3.5 w-3.5",
+                linkedConversation?.open ? "text-amber-300/70" : "text-slate-400/70"
+              )}
+            />
           </button>
         </div>
       </div>
