@@ -1888,7 +1888,7 @@ function ConversationsPageContent() {
     }
 
     if (deltaX > 0) {
-      setMobileActivePane("list");
+      handleBackFromConversation();
       setIsMobileRepairDrawerOpen(false);
       return;
     }
