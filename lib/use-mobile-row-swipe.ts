@@ -5,6 +5,7 @@ type TouchPoint = { x: number; y: number };
 type UseMobileRowSwipeOptions = {
   enabled: boolean;
   onSwipeOpen: () => void;
+  allowSwipeFromInteractiveRoot?: boolean;
   threshold?: number;
   maxVerticalMovement?: number;
   maxPreviewOffset?: number;
@@ -20,6 +21,7 @@ const DEFAULT_HORIZONTAL_INTENT_RATIO = 1.2;
 export function useMobileRowSwipe({
   enabled,
   onSwipeOpen,
+  allowSwipeFromInteractiveRoot = false,
   threshold = DEFAULT_THRESHOLD,
   maxVerticalMovement = DEFAULT_MAX_VERTICAL_MOVEMENT,
   maxPreviewOffset = DEFAULT_MAX_PREVIEW_OFFSET,
@@ -48,14 +50,20 @@ export function useMobileRowSwipe({
       "button, a, input, select, textarea, [data-swipe-ignore='true']"
     );
 
-    blockedByInteractiveTargetRef.current = Boolean(touchedInteractiveElement);
+    const isCurrentTargetInteractive =
+      touchedInteractiveElement != null &&
+      touchedInteractiveElement === event.currentTarget;
+
+    blockedByInteractiveTargetRef.current = Boolean(
+      touchedInteractiveElement && !(allowSwipeFromInteractiveRoot && isCurrentTargetInteractive)
+    );
     if (blockedByInteractiveTargetRef.current) {
       touchStartRef.current = null;
       return;
     }
 
     touchStartRef.current = { x: firstTouch.clientX, y: firstTouch.clientY };
-  }, [enabled]);
+  }, [allowSwipeFromInteractiveRoot, enabled]);
 
   const onTouchMove = useCallback((event: TouchEvent<HTMLElement>) => {
     if (!enabled || blockedByInteractiveTargetRef.current) return;
