@@ -392,9 +392,15 @@ function RepairListRow({
   });
 
   return (
-    <button
-      type="button"
+    <div
       onClick={onOpenRepair}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onOpenRepair();
+      }}
+      role="button"
+      tabIndex={0}
       className={clsx(
         "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
         isSelected
@@ -445,7 +451,7 @@ function RepairListRow({
           </button>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
