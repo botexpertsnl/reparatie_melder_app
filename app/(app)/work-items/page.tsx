@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import { ClipboardList, MessageCircle, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { defaultRepairs, readStoredRepairs, writeStoredRepairs, type StoredRepair } from "@/lib/repair-store";
@@ -385,7 +385,7 @@ function RepairListRow({
   onOpenRepair: () => void;
   onOpenConversation: () => void;
 }) {
-  const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
+  const { swipeHandlers, swipeStyle, previewOffset } = useMobileRowSwipe({
     enabled: isMobileSwipeEnabled,
     onSwipeLeft: onOpenRepair,
     onSwipeRight: linkedConversation ? onOpenConversation : undefined,
@@ -393,71 +393,96 @@ function RepairListRow({
     maxPreviewOffsetRatio: 0.3,
   });
 
+  const swipeProgress = Math.min(Math.abs(previewOffset) / 22, 1);
+  const showConversationIndicator = isMobileSwipeEnabled && previewOffset > 0;
+  const showDetailsIndicator = isMobileSwipeEnabled && previewOffset < 0;
+
   return (
-    <button
-      type="button"
-      onClick={onOpenRepair}
-      className={clsx(
-        "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
-        isSelected
-          ? "shadow-[0_0_0_1px_var(--border-strong)]"
-          : "hover:bg-white/5"
-      )}
-      style={{
-        borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
-        background: "var(--surface-1)",
-        ...swipeStyle,
-      }}
-      {...swipeHandlers}
-    >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,11rem)_minmax(10.5rem,13rem)] sm:gap-4">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex rounded-md p-1">
-            <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+    <div className="relative overflow-hidden rounded-xl">
+      {isMobileSwipeEnabled ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 flex items-center justify-between px-4 sm:hidden"
+        >
+          <span
+            className="inline-flex h-6 w-6 items-center justify-center text-slate-400 transition-opacity duration-75"
+            style={{ opacity: showConversationIndicator ? swipeProgress : 0 }}
+          >
+            <MessageCircle className="h-4 w-4" />
           </span>
-          {linkedConversation ? (
-            <button
-              data-action-menu="true"
-              data-swipe-ignore="true"
-              className="inline-flex rounded-full p-1"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenConversation();
-              }}
-              aria-label={`Open linked conversation for ${repair.title}`}
-              title={linkedConversation.open ? "Open linked conversation (open)" : "Open linked conversation (closed)"}
-            >
-              <span
-                className={clsx(
-                  "inline-flex h-1.5 w-1.5 rounded-full transition-opacity",
-                  linkedConversation.open ? "bg-amber-300/80" : "invisible"
-                )}
-                aria-hidden="true"
-              />
-            </button>
-          ) : (
-            <span className="inline-flex p-1" aria-hidden="true">
-              <span className="inline-flex h-1.5 w-1.5 rounded-full invisible" />
-            </span>
-          )}
+          <span
+            className="inline-flex h-6 w-6 items-center justify-center text-slate-400 transition-opacity duration-75"
+            style={{ opacity: showDetailsIndicator ? swipeProgress : 0 }}
+          >
+            <ClipboardList className="h-4 w-4" />
+          </span>
         </div>
-        <div className="min-w-0">
-          <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
-          <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
-          <div className="mt-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-white sm:hidden">
+      ) : null}
+      <button
+        type="button"
+        onClick={onOpenRepair}
+        className={clsx(
+          "relative z-10 w-full rounded-xl border p-3 text-left transition-all duration-200",
+          isSelected
+            ? "shadow-[0_0_0_1px_var(--border-strong)]"
+            : "hover:bg-white/5"
+        )}
+        style={{
+          borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
+          background: "var(--surface-1)",
+          ...swipeStyle,
+        }}
+        {...swipeHandlers}
+      >
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,11rem)_minmax(10.5rem,13rem)] sm:gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex rounded-md p-1">
+              <StageIndicatorDot stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} />
+            </span>
+            {linkedConversation ? (
+              <button
+                data-action-menu="true"
+                data-swipe-ignore="true"
+                className="inline-flex rounded-full p-1"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenConversation();
+                }}
+                aria-label={`Open linked conversation for ${repair.title}`}
+                title={linkedConversation.open ? "Open linked conversation (open)" : "Open linked conversation (closed)"}
+              >
+                <span
+                  className={clsx(
+                    "inline-flex h-1.5 w-1.5 rounded-full transition-opacity",
+                    linkedConversation.open ? "bg-amber-300/80" : "invisible"
+                  )}
+                  aria-hidden="true"
+                />
+              </button>
+            ) : (
+              <span className="inline-flex p-1" aria-hidden="true">
+                <span className="inline-flex h-1.5 w-1.5 rounded-full invisible" />
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
+            <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
+            <div className="mt-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-white sm:hidden">
+              {repair.customerName}
+            </div>
+          </div>
+          <div className="hidden min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:block sm:text-sm">
             {repair.customerName}
           </div>
+          <div className="hidden min-w-0 sm:flex sm:justify-end">
+            <span className="inline-flex">
+              <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
+            </span>
+          </div>
         </div>
-        <div className="hidden min-w-0 overflow-hidden text-left text-xs font-medium text-white text-ellipsis whitespace-nowrap sm:block sm:text-sm">
-          {repair.customerName}
-        </div>
-        <div className="hidden min-w-0 sm:flex sm:justify-end">
-          <span className="inline-flex">
-            <StageBadge stage={repair.stage} stageColor={stageColorByName.get(repair.stage)} compact />
-          </span>
-        </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 

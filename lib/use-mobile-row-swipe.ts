@@ -168,5 +168,6 @@ export function useMobileRowSwipe({
       onTouchCancel,
     },
     swipeStyle,
+    previewOffset,
   };
 }
