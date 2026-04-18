@@ -388,6 +388,7 @@ function RepairListRow({
   const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
     enabled: isMobileSwipeEnabled,
     onSwipeOpen: onOpenRepair,
+    allowSwipeFromInteractiveRoot: true,
     maxPreviewOffsetRatio: 0.3,
   });
 
