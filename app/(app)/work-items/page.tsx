@@ -388,19 +388,14 @@ function RepairListRow({
   const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
     enabled: isMobileSwipeEnabled,
     onSwipeOpen: onOpenRepair,
+    allowSwipeFromInteractiveRoot: true,
     maxPreviewOffsetRatio: 0.3,
   });
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onOpenRepair}
-      onKeyDown={(event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        onOpenRepair();
-      }}
-      role="button"
-      tabIndex={0}
       className={clsx(
         "relative w-full rounded-xl border p-3 text-left transition-all duration-200",
         isSelected
@@ -451,7 +446,7 @@ function RepairListRow({
           </button>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
