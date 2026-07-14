@@ -468,30 +468,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="sticky top-0 z-40 flex h-[69px] items-center justify-between gap-3 border-b px-4 min-[769px]:hidden"
           style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              aria-label="Open menu"
-              onClick={() => setIsMenuOpen((prev) => !prev)}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-              style={{
-                borderColor: "var(--border)",
-                background: "var(--surface-3)",
-                color: "var(--text-secondary)"
-              }}
-            >
-              <Menu
-                className={clsx(
-                  "h-5 w-5 transition-transform duration-200",
-                  isMenuOpen ? "rotate-90 scale-90" : "rotate-0 scale-100"
-                )}
-              />
-            </button>
-            <div className="truncate text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-              {impersonatingTenant ?? "AutoGarage De Vries"}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="Open menu"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+            style={{
+              borderColor: "var(--border)",
+              background: "var(--surface-3)",
+              color: "var(--text-secondary)"
+            }}
+          >
+            <Menu
+              className={clsx(
+                "h-5 w-5 transition-transform duration-200",
+                isMenuOpen ? "rotate-90 scale-90" : "rotate-0 scale-100"
+              )}
+            />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 overflow-x-auto">
             {openConversationCount > 0 ? (
               <button
                 type="button"
