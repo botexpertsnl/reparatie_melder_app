@@ -68,6 +68,7 @@ import { buildTemplateMessageWithButtons, fillTemplateBody } from "@/lib/repair-
 
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
+type ChatImagePreview = { url: string; alt: string };
 
 
 type ApiConversationThread = {
@@ -80,19 +81,42 @@ type ApiConversationThread = {
     id: string;
     direction: "INBOUND" | "OUTBOUND";
     body: string;
+    type?: string | null;
+    rawPayload?: unknown;
     sentAt?: string | null;
     receivedAt?: string | null;
     createdAt: string;
   }>;
 };
 
+function getAttachmentFromRawPayload(rawPayload: unknown) {
+  if (!rawPayload || typeof rawPayload !== "object") return null;
+  const attachments = (rawPayload as { attachments?: unknown }).attachments;
+  if (!Array.isArray(attachments)) return null;
+
+  const imageAttachment = attachments.find((attachment): attachment is { url?: string; filename?: string; mimeType?: string } => {
+    if (!attachment || typeof attachment !== "object") return false;
+    const mimeType = (attachment as { mimeType?: unknown }).mimeType;
+    return typeof mimeType !== "string" || mimeType.startsWith("image/");
+  });
+
+  if (!imageAttachment || typeof imageAttachment.url !== "string") return null;
+  return { url: imageAttachment.url, filename: imageAttachment.filename, mimeType: imageAttachment.mimeType };
+}
+
 function mapApiThreadToStored(thread: ApiConversationThread): StoredConversation {
-  const messages = (thread.messages ?? []).map((message) => ({
-    id: message.id,
-    role: message.direction === "INBOUND" ? "customer" : "agent",
-    text: message.body,
-    at: message.receivedAt ?? message.sentAt ?? message.createdAt
-  } satisfies StoredConversationMessage));
+  const messages = (thread.messages ?? []).map((message) => {
+    const attachment = getAttachmentFromRawPayload(message.rawPayload);
+
+    return {
+      id: message.id,
+      role: message.direction === "INBOUND" ? "customer" : "agent",
+      text: message.body || (attachment ? `📷 ${attachment.filename ?? "Image"}` : ""),
+      at: message.receivedAt ?? message.sentAt ?? message.createdAt,
+      imageUrl: attachment?.url,
+      imageAlt: attachment?.filename ?? "Conversation image"
+    } satisfies StoredConversationMessage;
+  });
   const last = messages[messages.length - 1];
 
   return {
@@ -888,6 +912,8 @@ function ConversationsPageContent() {
   const [createRepairThreadId, setCreateRepairThreadId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [isMessageInputFocused, setIsMessageInputFocused] = useState(false);
+  const [fullScreenImage, setFullScreenImage] = useState<ChatImagePreview | null>(null);
+  const [fullScreenImageDragOffset, setFullScreenImageDragOffset] = useState(0);
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
@@ -897,6 +923,7 @@ function ConversationsPageContent() {
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const touchStartRef = useRef<TouchGesture | null>(null);
   const repairDrawerTouchStartRef = useRef<TouchGesture | null>(null);
+  const fullScreenImageTouchStartRef = useRef<TouchGesture | null>(null);
   const hasHandledInitialLinkedConversationRef = useRef(false);
   const repairListOriginThreadIdRef = useRef<string | null>(null);
 
@@ -1714,12 +1741,44 @@ function ConversationsPageContent() {
                   role: "agent",
                   text: `📷 Image uploaded: ${file.name}`,
                   at: new Date().toISOString(),
+                  imageUrl: dataUrl,
+                  imageAlt: file.name,
                 },
               ],
             }
           : thread
       )
     );
+  };
+
+
+  const closeFullScreenImage = () => {
+    setFullScreenImage(null);
+    setFullScreenImageDragOffset(0);
+    fullScreenImageTouchStartRef.current = null;
+  };
+
+  const handleFullScreenImageTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    fullScreenImageTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleFullScreenImageTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    const start = fullScreenImageTouchStartRef.current;
+    if (!touch || !start) return;
+    setFullScreenImageDragOffset(touch.clientY - start.y);
+  };
+
+  const handleFullScreenImageTouchEnd = () => {
+    if (Math.abs(fullScreenImageDragOffset) > 90) {
+      closeFullScreenImage();
+      return;
+    }
+
+    setFullScreenImageDragOffset(0);
+    fullScreenImageTouchStartRef.current = null;
   };
 
   const toggleConversationList = () => {
@@ -2243,7 +2302,23 @@ function ConversationsPageContent() {
                             }
                       }
                     >
-                      <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{parsedMessage.body}</div>
+                      {msg.imageUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setFullScreenImage({ url: msg.imageUrl!, alt: msg.imageAlt ?? "Conversation image" })}
+                          className="mb-2 block overflow-hidden rounded-xl border border-white/10 bg-black/10 text-left transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#25d3c4]"
+                          aria-label="Open image full screen"
+                        >
+                          <img
+                            src={msg.imageUrl}
+                            alt={msg.imageAlt ?? "Conversation image"}
+                            className="max-h-64 w-full max-w-sm object-cover"
+                          />
+                        </button>
+                      ) : null}
+                      {parsedMessage.body ? (
+                        <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{parsedMessage.body}</div>
+                      ) : null}
                       {hasTemplateButtons ? (
                         <div className="mt-2 flex max-w-full flex-wrap gap-1.5">
                           {parsedMessage.buttons.map((buttonText, buttonIndex) => (
@@ -2491,6 +2566,40 @@ function ConversationsPageContent() {
           onSend={sendTemplateMessage}
         />
       ) : null}
+      {fullScreenImage && isClientMounted
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[160] flex items-center justify-center bg-black/95 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Full screen image preview"
+              onClick={closeFullScreenImage}
+              onTouchStart={handleFullScreenImageTouchStart}
+              onTouchMove={handleFullScreenImageTouchMove}
+              onTouchEnd={handleFullScreenImageTouchEnd}
+            >
+              <button
+                type="button"
+                className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+                onClick={closeFullScreenImage}
+                aria-label="Close full screen image"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <img
+                src={fullScreenImage.url}
+                alt={fullScreenImage.alt}
+                className="max-h-full max-w-full select-none rounded-2xl object-contain shadow-2xl transition-transform duration-150"
+                style={{ transform: `translateY(${fullScreenImageDragOffset}px)` }}
+                onClick={(event) => event.stopPropagation()}
+              />
+              <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-2 text-sm text-white/80 backdrop-blur">
+                Swipe up or down to close
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
