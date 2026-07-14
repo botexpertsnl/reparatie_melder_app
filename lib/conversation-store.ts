@@ -7,6 +7,8 @@ export type StoredConversationMessage = {
   at: string;
   scheduledForIso?: string;
   scheduledStatus?: "scheduled" | "cancelled";
+  imageUrl?: string;
+  imageAlt?: string;
 };
 
 export type StoredConversation = {
