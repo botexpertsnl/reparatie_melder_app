@@ -789,58 +789,60 @@ function ConversationListRow({
   });
 
   return (
-    <div
-      onClick={onOpenConversation}
-      onKeyDown={(event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        onOpenConversation();
-      }}
-      role="button"
-      tabIndex={0}
-      className={`relative w-full rounded-xl border p-3 text-left transition-all duration-200 ${
-        isSelected
-          ? "shadow-[0_0_0_1px_var(--border-strong)]"
-          : "hover:bg-white/5"
-      }`}
-      style={{
-        borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
-        background: "var(--surface-1)",
-        ...swipeStyle,
-      }}
-      {...swipeHandlers}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-base font-semibold leading-tight text-white">
-          {thread.customerName || thread.customerPhone}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">{updatedAtLabel}</span>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleConversationOpenState();
-            }}
-            onMouseDown={(event) => event.stopPropagation()}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
-            aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
-            title={thread.open ? "Close conversation" : "Reopen conversation"}
-            data-swipe-ignore="true"
-          >
-            {thread.open ? <X className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
-          </button>
+    <div className="relative overflow-hidden rounded-xl">
+      <div
+        onClick={onOpenConversation}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onOpenConversation();
+        }}
+        role="button"
+        tabIndex={0}
+        className={`relative w-full rounded-xl border p-3 text-left transition-all duration-200 ${
+          isSelected
+            ? "shadow-[0_0_0_1px_var(--border-strong)]"
+            : "hover:bg-white/5"
+        }`}
+        style={{
+          borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
+          background: "var(--surface-1)",
+          ...swipeStyle,
+        }}
+        {...swipeHandlers}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-base font-semibold leading-tight text-white">
+            {thread.customerName || thread.customerPhone}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500">{updatedAtLabel}</span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleConversationOpenState();
+              }}
+              onMouseDown={(event) => event.stopPropagation()}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
+              aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
+              title={thread.open ? "Close conversation" : "Reopen conversation"}
+              data-swipe-ignore="true"
+            >
+              {thread.open ? <X className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+            </button>
+          </div>
         </div>
+        <p className="mt-1 text-sm text-slate-300 leading-tight">{truncateMessagePreview(thread.preview)}</p>
+        <p className="mt-1 text-xs italic text-slate-500 leading-tight">
+          {thread.linkedRepairId
+            ? `🔗 ${
+                repairs.find((r) => r.id === thread.linkedRepairId)?.title ??
+                "Repair linked"
+              }`
+            : "No repair linked"}
+        </p>
       </div>
-      <p className="mt-1 text-sm text-slate-300 leading-tight">{truncateMessagePreview(thread.preview)}</p>
-      <p className="mt-1 text-xs italic text-slate-500 leading-tight">
-        {thread.linkedRepairId
-          ? `🔗 ${
-              repairs.find((r) => r.id === thread.linkedRepairId)?.title ??
-              "Repair linked"
-            }`
-          : "No repair linked"}
-      </p>
     </div>
   );
 }
@@ -1287,7 +1289,7 @@ function ConversationsPageContent() {
   } = useFixedSizeVirtualList({
     count: visibleThreads.length,
     scrollRef: threadListParentRef,
-    itemSize: 104,
+    itemSize: 96,
     overscan: 8,
   });
 
@@ -2078,7 +2080,7 @@ function ConversationsPageContent() {
 
           <div
             ref={threadListParentRef}
-            className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3"
+            className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto p-3"
             style={{ background: "#000000" }}
           >
             {visibleThreads.length === 0 ? (
@@ -2097,7 +2099,7 @@ function ConversationsPageContent() {
                   return (
                     <div
                       key={thread.id}
-                      className="absolute left-0 top-0 w-full pb-2"
+                      className="absolute left-0 top-0 w-full pb-1"
                       style={{ transform: `translateY(${virtualRow.start}px)` }}
                     >
                       <ConversationListRow
