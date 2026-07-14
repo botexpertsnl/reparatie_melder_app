@@ -1952,8 +1952,8 @@ function ConversationsPageContent() {
           }`}
         >
           <div className="p-4">
-            <h1 className="text-2xl font-semibold text-white">Conversations</h1>
-            <div className="mt-3 flex items-center gap-2.5">
+            <h1 className="hidden text-2xl font-semibold text-white md:block">Conversations</h1>
+            <div className="flex items-center gap-2.5 md:mt-3">
               <label
                 className="flex min-h-10 flex-1 items-center gap-2.5 rounded-xl border px-3.5 py-2 text-slate-400"
                 style={{
@@ -2019,7 +2019,7 @@ function ConversationsPageContent() {
 
           <div
             ref={threadListParentRef}
-            className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-3"
+            className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3"
             style={{ background: "#000000" }}
           >
             {visibleThreads.length === 0 ? (
