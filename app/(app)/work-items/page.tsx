@@ -1242,12 +1242,12 @@ function WorkItemsPageContent() {
       >
         <div className="flex min-h-0 h-full flex-col pb-0 pt-0 md:pb-8 md:pt-0">
           <div className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5">
-            <div className="flex items-center justify-between gap-3">
+            <div className="hidden items-center justify-between gap-3 md:flex">
               <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
               <div className="flex shrink-0">
                 <button
                   onClick={() => setIsAddRepairOpen(true)}
-                  className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[var(--surface-3)] px-4 text-sm font-semibold text-[var(--text-primary)] md:h-11 md:gap-3 md:px-5"
+                  className="inline-flex h-11 items-center justify-center gap-3 whitespace-nowrap rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
                 >
                   <Plus className="h-5 w-5" />
                   New {repairLabel}
@@ -1280,6 +1280,15 @@ function WorkItemsPageContent() {
                   aria-controls="repairs-stage-filters"
                 >
                   <SlidersHorizontal className="h-[18px] w-[18px]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddRepairOpen(true)}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-slate-300 hover:bg-white/5 md:hidden"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+                  aria-label={`New ${repairLabel.toLowerCase()}`}
+                >
+                  <Plus className="h-[18px] w-[18px]" />
                 </button>
               </div>
               <div
