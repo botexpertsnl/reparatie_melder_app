@@ -34,7 +34,7 @@ import {
 } from "@/lib/repair-store";
 import { ensureRepairsHaveLinkedConversations } from "@/lib/repair-conversation-linking";
 import { RepairDetailsPanel } from "@/components/repairs/repair-details-panel";
-import { useTenantRepairLabel } from "@/lib/use-tenant-terminology";
+import { useTenantAssetLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 import { defaultWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { createNormalizedInboundMessage } from "@/lib/integrations/providers/normalized-inbound-message";
 import { findMatchingWorkflowButtonAction } from "@/lib/workflows/button-reply-matcher";
@@ -324,6 +324,7 @@ function LinkRepairModal({
   onSelect: (repairId: string) => void;
   onCreate: () => void;
 }) {
+  const assetLabel = useTenantAssetLabel();
   const [query, setQuery] = useState("");
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
 
@@ -398,14 +399,17 @@ function LinkRepairModal({
                   : "border-[#cdd5e2]"
               )}
             >
-              <div className="flex items-center justify-between">
-                <div className="font-semibold">{repair.title}</div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{assetLabel}</div>
+                  <div className="font-semibold">{repair.assetName}</div>
+                </div>
                 <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
                   {repair.stage}
                 </span>
               </div>
               <div className="text-sm text-slate-600">
-                {repair.customerName} · {repair.assetName}
+                {[repair.customerName, repair.title].filter(Boolean).join(" · ")}
               </div>
             </button>
           ))}
@@ -430,6 +434,7 @@ function AddRepairModal({
   onClose: () => void;
   onSubmit: (payload: NewRepairFormValues) => void;
 }) {
+  const assetLabel = useTenantAssetLabel();
   const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [isPhoneFieldTouched, setIsPhoneFieldTouched] = useState(false);
@@ -440,7 +445,7 @@ function AddRepairModal({
   const normalizedPhone = normalizePhoneInput(formValues.customerPhone);
   const isPhoneValid = isSupportedCountryPhoneValid(formValues.customerPhone);
   const showPhoneError = Boolean(normalizedPhone) && !isPhoneValid && (hasTriedSubmit || isPhoneFieldTouched);
-  const canSubmit = normalizedPhone && isPhoneValid && formValues.repairTitle.trim();
+  const canSubmit = normalizedPhone && isPhoneValid && formValues.assetName.trim();
   const isEditMode = mode === "edit";
 
   return (
@@ -545,13 +550,14 @@ function AddRepairModal({
         </div>
         <div>
           <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
-            Device / asset
+            {assetLabel} *
           </label>
           <input
             id="repair-asset"
+            required
             maxLength={ASSET_NAME_MAX_LENGTH}
             className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
-            placeholder="e.g. iPhone 14 Pro"
+            placeholder={`Enter ${assetLabel.toLowerCase()}`}
             value={formValues.assetName}
             onChange={(event) =>
               setFormValues((prev) => ({ ...prev, assetName: event.target.value.slice(0, ASSET_NAME_MAX_LENGTH) }))
@@ -560,7 +566,7 @@ function AddRepairModal({
         </div>
         <div>
           <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">
-            {repairLabel} title *
+            {repairLabel} title
           </label>
           <input
             id="repair-title"

@@ -24,7 +24,7 @@ import {
   createLinkedConversationForRepair,
   ensureRepairsHaveLinkedConversations
 } from "@/lib/repair-conversation-linking";
-import { pluralizeLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
+import { pluralizeLabel, useTenantAssetLabel, useTenantRepairLabel } from "@/lib/use-tenant-terminology";
 import {
   appendRepairCreatedHistoryEntry,
   applyRepairStageChange,
@@ -448,7 +448,7 @@ function RepairListRow({
                   event.stopPropagation();
                   onOpenConversation();
                 }}
-                aria-label={`Open linked conversation for ${repair.title}`}
+                aria-label={`Open linked conversation for ${repair.assetName}`}
                 title={linkedConversation.open ? "Open linked conversation (open)" : "Open linked conversation (closed)"}
               >
                 <span
@@ -466,8 +466,10 @@ function RepairListRow({
             )}
           </div>
           <div className="min-w-0">
-            <div className="truncate text-base font-semibold leading-tight text-white">{repair.title}</div>
-            <div className="mt-1 truncate text-sm text-slate-500">{repair.assetName} · {repair.description}</div>
+            <div className="truncate text-base font-semibold leading-tight text-white">{repair.assetName}</div>
+            <div className="mt-1 truncate text-sm text-slate-500">
+              {[repair.title, repair.description].filter(Boolean).join(" · ") || "No additional details"}
+            </div>
             <div className="mt-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-white sm:hidden">
               {repair.customerName}
             </div>
@@ -501,6 +503,7 @@ function AddRepairModal({
   onClose: () => void;
   onSubmit: (payload: NewRepairFormValues) => void;
 }) {
+  const assetLabel = useTenantAssetLabel();
   const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [isPhoneFieldTouched, setIsPhoneFieldTouched] = useState(false);
@@ -514,7 +517,7 @@ function AddRepairModal({
   const canSubmit =
     normalizedPhone &&
     isPhoneValid &&
-    formValues.repairTitle.trim();
+    formValues.assetName.trim();
 
   return (
     <ModalShell
@@ -618,13 +621,14 @@ function AddRepairModal({
         </div>
         <div>
           <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
-            Device / asset
+            {assetLabel} *
           </label>
           <input
             id="repair-asset"
+            required
             maxLength={ASSET_NAME_MAX_LENGTH}
             className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0 focus:border-[#30b5a5]"
-            placeholder="e.g. iPhone 14 Pro"
+            placeholder={`Enter ${assetLabel.toLowerCase()}`}
             value={formValues.assetName}
             onChange={(event) =>
               setFormValues((prev) => ({ ...prev, assetName: event.target.value.slice(0, ASSET_NAME_MAX_LENGTH) }))
@@ -633,7 +637,7 @@ function AddRepairModal({
         </div>
         <div>
           <label htmlFor="repair-title" className="mb-2 block text-sm font-medium text-slate-700">
-            {repairLabel} title *
+            {repairLabel} title
           </label>
           <input
             id="repair-title"
@@ -715,6 +719,7 @@ function WorkItemsPageContent() {
   const [isAddRepairOpen, setIsAddRepairOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStageFilters, setSelectedStageFilters] = useState<string[]>([]);
+  const [stageFiltersInitialized, setStageFiltersInitialized] = useState(false);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [deletingRepairId, setDeletingRepairId] = useState<string | null>(null);
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(() => {
@@ -733,10 +738,7 @@ function WorkItemsPageContent() {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 767px)").matches;
   });
-  const [areMobileFiltersOpen, setAreMobileFiltersOpen] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return !window.matchMedia("(max-width: 767px)").matches;
-  });
+  const [areMobileFiltersOpen, setAreMobileFiltersOpen] = useState(false);
   const [pendingTemplateStageChange, setPendingTemplateStageChange] = useState<{
     repairId: string;
     stage: StoredWorkflowStage;
@@ -749,6 +751,7 @@ function WorkItemsPageContent() {
   } | null>(null);
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const repairsListParentRef = useRef<HTMLDivElement | null>(null);
+  const hasInitializedStageFiltersRef = useRef(false);
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
@@ -794,6 +797,14 @@ function WorkItemsPageContent() {
       .filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0);
     return [...visibleConfiguredStages, ...stageNamesFromRepairs];
   }, [stageCounts, visibleWorkflowStages]);
+  const activeStageFilters = useMemo(
+    () =>
+      filterStages.filter((stageName) => {
+        const normalizedStage = stageName.trim().toLowerCase();
+        return normalizedStage !== "completed" && normalizedStage !== "cancelled" && normalizedStage !== "canceled";
+      }),
+    [filterStages]
+  );
 
   useEffect(() => {
     writeStoredRepairs(repairs);
@@ -855,9 +866,9 @@ function WorkItemsPageContent() {
     const mobileViewportQuery = window.matchMedia("(max-width: 767px)");
     const syncViewportMode = (matchesMobile: boolean) => {
       setIsMobileViewport(matchesMobile);
+      setAreMobileFiltersOpen(!matchesMobile);
       if (!matchesMobile) {
         setIsMobileRepairDrawerOpen(false);
-        setAreMobileFiltersOpen(true);
       }
     };
 
@@ -934,31 +945,30 @@ function WorkItemsPageContent() {
   }, [conversations, repairs]);
 
   useEffect(() => {
-    setSelectedStageFilters((prev) => prev.filter((stageName) => (stageCounts.get(stageName) ?? 0) > 0));
-  }, [stageCounts]);
+    if (hasInitializedStageFiltersRef.current || filterStages.length === 0) return;
+    hasInitializedStageFiltersRef.current = true;
 
-  useEffect(() => {
-    if (!stageParam) return;
-    const resolvedStageName = resolveStageFilterFromQuery(stageParam, workflowStages, filterStages);
-    setSelectedStageFilters(resolvedStageName ? [resolvedStageName] : []);
-  }, [filterStages, stageParam, workflowStages]);
+    if (stageParam) {
+      const resolvedStageName = resolveStageFilterFromQuery(stageParam, workflowStages, filterStages);
+      setSelectedStageFilters(resolvedStageName ? [resolvedStageName] : []);
+      setStageFiltersInitialized(true);
+      return;
+    }
 
-  const activeStageFilters = useMemo(
-    () =>
-      filterStages.filter((stageName) => {
-        const normalizedStage = stageName.trim().toLowerCase();
-        return normalizedStage !== "completed" && normalizedStage !== "cancelled" && normalizedStage !== "canceled";
-      }),
-    [filterStages]
-  );
+    setSelectedStageFilters(activeStageFilters);
+    setStageFiltersInitialized(true);
+  }, [activeStageFilters, filterStages, stageParam, workflowStages]);
+
+  const effectiveSelectedStageFilters = stageFiltersInitialized ? selectedStageFilters : activeStageFilters;
+  const areAllActiveTaskFiltersSelected =
+    activeStageFilters.length > 0 && activeStageFilters.every((stageName) => effectiveSelectedStageFilters.includes(stageName));
   const filteredRepairs = useMemo(() => {
     return repairs.filter((repair) => {
       const matchesSearch = matchesRepairSearch(repair, searchQuery);
-      const matchesStageFilter =
-        selectedStageFilters.length === 0 || selectedStageFilters.includes(repair.stage);
+      const matchesStageFilter = effectiveSelectedStageFilters.includes(repair.stage);
       return matchesSearch && matchesStageFilter;
     });
-  }, [repairs, searchQuery, selectedStageFilters]);
+  }, [effectiveSelectedStageFilters, repairs, searchQuery]);
   const visibleRepairs = useMemo(() => {
     const stageOrderByName = new Map(workflowStages.map((stage, index) => [stage.name, index]));
     const originalIndexByRepairId = new Map(repairs.map((repair, index) => [repair.id, index]));
@@ -989,14 +999,27 @@ function WorkItemsPageContent() {
   });
 
   const toggleStageFilter = (stageName: string) => {
-    setSelectedStageFilters((prev) =>
-      prev.includes(stageName) ? prev.filter((selected) => selected !== stageName) : [...prev, stageName]
-    );
+    setStageFiltersInitialized(true);
+    setSelectedStageFilters((prev) => {
+      const current = stageFiltersInitialized ? prev : activeStageFilters;
+      return current.includes(stageName)
+        ? current.filter((selected) => selected !== stageName)
+        : [...current, stageName];
+    });
   };
-  const selectActiveTaskFilters = () => {
-    setSelectedStageFilters(activeStageFilters);
+  const toggleActiveTaskFilters = () => {
+    setStageFiltersInitialized(true);
+    setSelectedStageFilters((prev) => {
+      const current = stageFiltersInitialized ? prev : activeStageFilters;
+      const allActiveSelected = activeStageFilters.every((stageName) => current.includes(stageName));
+      if (allActiveSelected) {
+        return current.filter((stageName) => !activeStageFilters.includes(stageName));
+      }
+      return Array.from(new Set([...current, ...activeStageFilters]));
+    });
   };
   const clearAllStageFilters = () => {
+    setStageFiltersInitialized(true);
     setSelectedStageFilters([]);
   };
 
@@ -1241,7 +1264,7 @@ function WorkItemsPageContent() {
         style={{ background: "var(--bg)" }}
       >
         <div className="flex min-h-0 h-full flex-col pb-0 pt-0 md:pb-8 md:pt-0">
-          <div className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5">
+          <div className="mb-2 space-y-3 px-4 pb-3 pt-4 md:px-10 md:pb-3 md:pt-5">
             <div className="hidden items-center justify-between gap-3 md:flex">
               <h1 className="text-3xl font-bold tracking-[-0.04em] text-white">{repairLabelPlural}</h1>
               <div className="flex shrink-0">
@@ -1254,10 +1277,10 @@ function WorkItemsPageContent() {
                 </button>
               </div>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2.5 md:block">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5">
                 <label
-                  className="flex min-h-10 flex-1 items-center gap-2.5 rounded-xl border px-3.5 py-2 text-slate-400 md:h-11 md:max-w-56 md:gap-3 md:px-4 md:py-0 md:text-sm md:text-slate-300"
+                  className="flex min-h-10 flex-1 items-center gap-2.5 rounded-xl border px-3.5 py-2 text-slate-400 md:h-11 md:max-w-md md:gap-3 md:px-4 md:py-0 md:text-sm md:text-slate-300"
                   style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
                 >
                   <Search className="h-[18px] w-[18px] shrink-0 text-slate-400 md:h-5 md:w-5 md:text-slate-500" />
@@ -1273,13 +1296,24 @@ function WorkItemsPageContent() {
                 <button
                   type="button"
                   onClick={() => setAreMobileFiltersOpen((prev) => !prev)}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-slate-300 hover:bg-white/5 md:hidden"
+                  className={clsx(
+                    "inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border px-0 text-sm font-semibold transition-colors md:h-11 md:px-4",
+                    areMobileFiltersOpen ? "text-[var(--accent)]" : "text-slate-300"
+                  )}
                   style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
                   aria-label={areMobileFiltersOpen ? "Close filters" : "Open filters"}
                   aria-expanded={areMobileFiltersOpen}
                   aria-controls="repairs-stage-filters"
                 >
-                  <SlidersHorizontal className="h-[18px] w-[18px]" />
+                  {areMobileFiltersOpen ? (
+                    <>
+                      <X className="h-[18px] w-[18px] md:hidden" />
+                      <SlidersHorizontal className="hidden h-[18px] w-[18px] md:block" />
+                    </>
+                  ) : (
+                    <SlidersHorizontal className="h-[18px] w-[18px]" />
+                  )}
+                  <span className="hidden md:inline">{areMobileFiltersOpen ? "Hide filters" : "Show filters"}</span>
                 </button>
                 <button
                   type="button"
@@ -1294,20 +1328,14 @@ function WorkItemsPageContent() {
               <div
                 id="repairs-stage-filters"
                 className={clsx(
-                  "flex items-start gap-2",
-                  isMobileViewport && !areMobileFiltersOpen ? "hidden" : "flex"
+                  "rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-3 shadow-[var(--shadow-sm)]",
+                  !areMobileFiltersOpen ? "hidden" : "block"
                 )}
               >
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={selectActiveTaskFilters}
-                    className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:text-white"
-                  >
-                    Active tasks
-                  </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Stage</span>
                   {filterStages.map((stageName) => {
-                    const isActive = selectedStageFilters.includes(stageName);
+                    const isActive = effectiveSelectedStageFilters.includes(stageName);
                     return (
                       <button
                         key={stageName}
@@ -1336,15 +1364,21 @@ function WorkItemsPageContent() {
                       </button>
                     );
                   })}
-                  {selectedStageFilters.length > 0 ? (
+                  <span className="mx-1 hidden h-5 w-px bg-[var(--border)] sm:block" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={toggleActiveTaskFilters}
+                    className="px-1 py-1 text-xs font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)]"
+                  >
+                    {areAllActiveTaskFiltersSelected ? "Deselect active tasks" : "Select active tasks"}
+                  </button>
+                  {effectiveSelectedStageFilters.length > 0 ? (
                     <button
                       type="button"
                       onClick={clearAllStageFilters}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
-                      aria-label="Clear selected labels"
-                      title="Clear selected labels"
+                      className="px-1 py-1 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      Clear all
                     </button>
                   ) : null}
                 </div>
@@ -1511,6 +1545,13 @@ function WorkItemsPageContent() {
               <button
                 type="button"
                 onClick={() => {
+                  const updatedConversations = conversations.map((thread) =>
+                    thread.linkedRepairId === deletingRepair.id
+                      ? { ...thread, open: false, linkedRepairId: undefined }
+                      : thread
+                  );
+                  setConversations(updatedConversations);
+                  writeStoredConversations(updatedConversations);
                   setRepairs((prev) => prev.filter((repair) => repair.id !== deletingRepair.id));
                   if (selectedRepairId === deletingRepair.id) setSelectedRepairId(null);
                   setDeletingRepairId(null);
@@ -1523,7 +1564,7 @@ function WorkItemsPageContent() {
           )}
         >
           <p className="text-sm text-slate-600">
-            Are you sure you want to delete <span className="font-semibold">{deletingRepair.title}</span>?
+            Are you sure you want to delete <span className="font-semibold">{deletingRepair.assetName}</span>?
           </p>
         </ModalShell>
       ) : null}
