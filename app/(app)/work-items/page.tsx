@@ -1243,11 +1243,11 @@ function WorkItemsPageContent() {
         <div className="flex min-h-0 h-full flex-col pb-0 pt-0 md:pb-8 md:pt-0">
           <div className="mb-5 space-y-4 px-4 py-4 md:mb-7 md:px-10 md:py-5">
             <div className="hidden items-center justify-between gap-3 md:flex">
-              <h1 className="text-2xl font-semibold text-white">{repairLabelPlural}</h1>
+              <h1 className="text-3xl font-bold tracking-[-0.04em] text-white">{repairLabelPlural}</h1>
               <div className="flex shrink-0">
                 <button
                   onClick={() => setIsAddRepairOpen(true)}
-                  className="inline-flex h-11 items-center justify-center gap-3 whitespace-nowrap rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]"
+                  className="inline-flex h-11 items-center justify-center gap-3 whitespace-nowrap rounded-xl bg-[var(--accent)] px-5 text-sm font-semibold text-[var(--accent-ink)] shadow-[0_10px_28px_rgba(24,201,189,0.18)]"
                 >
                   <Plus className="h-5 w-5" />
                   New {repairLabel}
@@ -1358,7 +1358,7 @@ function WorkItemsPageContent() {
               className={`subtle-scrollbar min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden border [touch-action:pan-y] [-webkit-overflow-scrolling:touch] ${
                 selectedRepair ? "md:border-r-0" : ""
               }`}
-              style={{ borderColor: "var(--border)", background: "#000000" }}
+              style={{ borderColor: "var(--border)", background: "var(--bg)" }}
             >
               <div className="space-y-1 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:pb-3">
                 {visibleRepairs.length === 0 ? (

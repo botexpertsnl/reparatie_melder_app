@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const repairLabel = useTenantRepairLabel();
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openConversationCount, setOpenConversationCount] = useState(0);
   const [approvedConversationCount, setApprovedConversationCount] = useState(0);
@@ -352,7 +352,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div
       className={clsx(
         "h-dvh overflow-hidden min-[769px]:grid min-[769px]:transition-[grid-template-columns] min-[769px]:duration-300",
-        collapsed ? "min-[769px]:grid-cols-[88px_1fr]" : "min-[769px]:grid-cols-[316px_1fr]"
+        collapsed ? "min-[769px]:grid-cols-[84px_1fr]" : "min-[769px]:grid-cols-[288px_1fr]"
       )}
       style={{ background: "var(--bg)", color: "var(--text-primary)" }}
     >
@@ -360,38 +360,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r min-[769px]:flex"
         style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
       >
-        <div className="border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
+        <div className={clsx("px-5 pb-4 pt-6", collapsed ? "px-3" : "px-5")}>
           <div className="flex items-center gap-4">
-            <div className="rounded-xl bg-[#25d3c4] p-3 text-[#04243a]">
-              <MessageSquareText className="h-5 w-5" />
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[#25d3c4] text-[#04243a] shadow-[0_10px_30px_rgba(24,201,189,0.24)]">
+              <MessageSquareText className="h-5 w-5" strokeWidth={2.1} />
             </div>
             <div className={collapsed ? "hidden" : "block"}>
               <div
-                className="text-2xl font-semibold leading-none tracking-tight"
+                className="text-xl font-bold leading-none tracking-[-0.035em]"
                 style={{ color: "var(--text-primary)" }}
               >
                 StatusFlow
               </div>
-              <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              <div className="mt-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
                 Communication Platform
               </div>
             </div>
           </div>
         </div>
 
-        <div className={clsx("relative flex-1 py-6", collapsed ? "px-2" : "px-4")}>
-          <nav className="space-y-8 pb-16">
+        <div className={clsx("relative flex-1 py-5", collapsed ? "px-2.5" : "px-4")}>
+          <nav className="space-y-7 pb-16">
             {visibleSections.map((section) => (
               <div key={section.label}>
                 <h2
                   className={clsx(
-                    "px-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500",
+                    "px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500",
                     collapsed ? "hidden" : "block"
                   )}
                 >
                   {section.label}
                 </h2>
-                <ul className="mt-3 space-y-1">
+                <ul className="mt-2 space-y-1.5">
                   {section.items.map((item) => {
                     const active = pathname === item.href;
                     const Icon = item.icon;
@@ -414,9 +414,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             }
                           }}
                           className={clsx(
-                            "flex items-center rounded-xl px-3 py-2 text-base font-medium text-slate-300 transition",
+                            "relative flex min-h-11 items-center rounded-xl px-3.5 py-2.5 text-[15px] font-medium text-slate-300 transition-all",
                             collapsed ? "justify-center gap-0" : "gap-3",
-                            active ? "bg-white/10" : "hover:bg-slate-900/70"
+                            active ? "bg-[#18c9bd]/10 shadow-[inset_3px_0_0_var(--accent)]" : "hover:bg-slate-900/70"
                           )}
                           style={active ? { color: "#25d3c4" } : undefined}
                         >
@@ -562,7 +562,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <header
-          className="hidden h-[69px] items-center justify-end gap-3 border-b px-6 pr-8 min-[769px]:flex"
+          className="hidden h-[72px] items-center justify-end gap-2.5 border-b px-6 pr-8 min-[769px]:flex"
           style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
         >
           <button
@@ -657,7 +657,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main
-          className="min-h-0 flex-1 overflow-y-auto px-5 py-6 min-[769px]:px-10 min-[769px]:py-8"
+          className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 min-[769px]:px-8 min-[769px]:py-7 xl:px-10"
           onTouchStart={handleAppTouchStart}
           onTouchMove={handleAppTouchMove}
           onTouchEnd={handleAppTouchEnd}

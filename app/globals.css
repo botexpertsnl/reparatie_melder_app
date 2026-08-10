@@ -4,45 +4,88 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0a0a0b;
-  --surface-1: #0f1012;
-  --surface-2: #131417;
-  --surface-3: #17191d;
-  --surface-muted: #1b1e23;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.1);
-  --text-primary: rgba(255, 255, 255, 0.92);
-  --text-secondary: rgba(255, 255, 255, 0.64);
-  --text-muted: rgba(255, 255, 255, 0.42);
-  --accent: #d5d8de;
-  --accent-soft: #2a2e36;
+  --bg: #071019;
+  --surface-1: #0a141f;
+  --surface-2: #0d1824;
+  --surface-3: #111e2b;
+  --surface-muted: #152432;
+  --surface-hover: #192a38;
+  --border: rgba(148, 177, 196, 0.13);
+  --border-strong: rgba(110, 224, 215, 0.32);
+  --text-primary: #f4f8fb;
+  --text-secondary: #a7b7c5;
+  --text-muted: #718496;
+  --accent: #18c9bd;
+  --accent-hover: #2dd8cd;
+  --accent-ink: #032f35;
+  --accent-soft: rgba(24, 201, 189, 0.12);
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22), 0 8px 28px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.36);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
 }
 
 :root.theme-light {
   color-scheme: light;
-  --bg: #f6f7f8;
+  --bg: #f6f9fb;
   --surface-1: #ffffff;
-  --surface-2: #f3f4f6;
+  --surface-2: #fbfcfd;
   --surface-3: #ffffff;
-  --surface-muted: #eceff3;
-  --surface-hover: #e3e8ef;
-  --border: rgba(15, 23, 42, 0.08);
-  --border-strong: rgba(15, 23, 42, 0.12);
-  --text-primary: rgba(15, 23, 42, 0.92);
-  --text-secondary: rgba(15, 23, 42, 0.62);
-  --text-muted: rgba(15, 23, 42, 0.58);
-  --accent: #1f2937;
-  --accent-soft: #e5e7eb;
+  --surface-muted: #eef5f6;
+  --surface-hover: #e8f2f3;
+  --border: rgba(24, 55, 76, 0.11);
+  --border-strong: rgba(11, 177, 168, 0.35);
+  --text-primary: #112235;
+  --text-secondary: #53677a;
+  --text-muted: #7d8d9c;
+  --accent: #0bb1a8;
+  --accent-hover: #079c95;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(11, 177, 168, 0.09);
+  --danger-soft: rgba(239, 68, 68, 0.08);
+  --shadow-sm: 0 1px 2px rgba(20, 48, 68, 0.04), 0 12px 34px rgba(20, 48, 68, 0.06);
+  --shadow-lg: 0 28px 70px rgba(20, 48, 68, 0.16);
 }
 
-* {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 78% -10%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 34rem),
+    var(--bg);
   color: var(--text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.008em;
   @apply antialiased;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 74%, white);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 /* Hide page-level scrollbar while keeping scroll behavior. */
@@ -74,17 +117,19 @@ body::-webkit-scrollbar {
 }
 
 .card {
-  background: var(--surface-2);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface-2) 96%, white), var(--surface-2));
   border: 1px solid var(--border);
   color: var(--text-primary);
-  @apply rounded-2xl p-5;
+  box-shadow: var(--shadow-sm);
+  @apply rounded-2xl p-5 md:p-6;
 }
 
 .input {
   background: var(--surface-1);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  @apply w-full rounded-2xl px-3 py-2 text-sm outline-none;
+  min-height: 42px;
+  @apply w-full rounded-xl px-3.5 py-2 text-sm outline-none;
 }
 
 .input::placeholder {
@@ -118,21 +163,116 @@ body::-webkit-scrollbar {
 }
 
 .btn {
-  background: var(--surface-3);
+  background: var(--accent);
   border: 1px solid var(--border-strong);
-  color: var(--text-primary);
-  @apply rounded-2xl px-4 py-2 text-sm font-medium;
+  color: var(--accent-ink);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 18%, transparent);
+  @apply rounded-xl px-4 py-2 text-sm font-semibold;
 }
 
 .btn:hover {
-  background: var(--surface-muted);
+  background: var(--accent-hover);
+  transform: translateY(-1px);
 }
 
 .badge {
-  background: var(--surface-muted);
+  background: var(--accent-soft);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   @apply rounded-full px-2.5 py-1 text-xs;
+}
+
+/* Shared visual language for legacy utility-heavy screens. */
+[class*="bg-[#000000]"],
+[style*='background: "#000000"'],
+[style*="background: #000000"] {
+  background: var(--bg) !important;
+}
+
+[class*="bg-[#0a111f"],
+[class*="bg-[#111a2b"],
+[class*="bg-[#0b1323"],
+[class*="bg-[#121b2b"],
+[class*="bg-[#101827"],
+[class*="bg-[#0f1725"] {
+  background: var(--surface-1) !important;
+}
+
+[class*="bg-[#182236"],
+[class*="bg-[#152036"],
+[class*="bg-[#172235"] {
+  background: var(--surface-muted) !important;
+}
+
+[class*="border-[#253149"],
+[class*="border-[#1a2436"],
+[class*="border-[#2f3c52"] {
+  border-color: var(--border) !important;
+}
+
+[class*="bg-[#28d9c6]"],
+[class*="bg-[#2fb2a3]"],
+[class*="bg-[#25d3c4]"] {
+  background-color: var(--accent) !important;
+}
+
+[class*="text-[#69f0df]"],
+[class*="text-[#25d3c4]"],
+[class*="text-[#28d9c6]"] {
+  color: var(--accent) !important;
+}
+
+[class*="hover:bg-[#2a9f91]"]:hover,
+[class*="hover:bg-[#28d9c6]"]:hover {
+  background-color: var(--accent-hover) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border-color: var(--border) !important;
+  background: var(--surface-1) !important;
+  color: var(--text-primary) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 2%, transparent);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent) !important;
+}
+
+button[class*="rounded-xl"],
+a[class*="rounded-xl"] {
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+button[class*="rounded-xl"]:not(:disabled):hover,
+a[class*="rounded-xl"]:hover {
+  transform: translateY(-1px);
+}
+
+:root.theme-light [class*="bg-white"] {
+  background-color: var(--surface-1) !important;
+}
+
+:root.theme-light [class*="text-slate-900"],
+:root.theme-light [class*="text-slate-800"],
+:root.theme-light [class*="text-slate-700"],
+:root.theme-light [class*="text-white"] {
+  color: var(--text-primary) !important;
+}
+
+:root.theme-light [class*="text-slate-600"],
+:root.theme-light [class*="text-slate-400"],
+:root.theme-light [class*="text-slate-300"] {
+  color: var(--text-secondary) !important;
 }
 
 .card input,

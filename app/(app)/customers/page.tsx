@@ -75,9 +75,10 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-[1180px] space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Settings</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Workspace</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-white">Settings</h1>
         <p className="mt-1 text-sm text-slate-400">Configure your business settings, terminology, and integrations.</p>
       </div>
 
