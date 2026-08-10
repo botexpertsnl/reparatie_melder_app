@@ -1294,13 +1294,14 @@ function AdvancedSettingsPageContent() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="mx-auto max-w-[1400px] space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Workflow Stages</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Automation</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-white">Workflow Stages</h1>
             <p className="mt-1 text-sm text-slate-400">Configure stages for your repairs</p>
           </div>
-          <button onClick={() => setIsAddModalOpen(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--surface-3)] px-5 text-sm font-semibold text-[var(--text-primary)]">
+          <button onClick={() => setIsAddModalOpen(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--accent)] px-5 text-sm font-semibold text-[var(--accent-ink)] shadow-[0_10px_28px_rgba(24,201,189,0.18)]">
             <Plus className="h-4 w-4" />
             Add Stage
           </button>
