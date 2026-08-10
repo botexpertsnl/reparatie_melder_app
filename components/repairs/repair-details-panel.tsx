@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Link as LinkIcon, MessageSquare, Pencil, Trash2, Wrench, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Link as LinkIcon, MessageSquare, Pencil, Trash2, Wrench, X } from "lucide-react";
 import type { StoredRepairHistoryItem } from "@/lib/repair-history-store";
 import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
@@ -15,6 +15,7 @@ import {
   resolveStageTemplateAutomation,
   stageTransitionHasModalFlow
 } from "@/lib/repair-stage-transition";
+import { useTenantAssetLabel } from "@/lib/use-tenant-terminology";
 
 type RepairDetailsPanelProps = {
   repair: StoredRepair;
@@ -84,6 +85,10 @@ export function RepairDetailsPanel({
   onStageChange,
   historyItems = [],
 }: RepairDetailsPanelProps) {
+  const assetLabel = useTenantAssetLabel();
+  const noteRef = useRef<HTMLParagraphElement | null>(null);
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+  const [isNoteOverflowing, setIsNoteOverflowing] = useState(false);
   const [workflowStages, setWorkflowStages] = useState<StoredWorkflowStage[]>(() =>
     readStoredWorkflowStages(defaultWorkflowStages)
   );
@@ -95,6 +100,27 @@ export function RepairDetailsPanel({
   } | null>(null);
   const [pendingStageConfirmation, setPendingStageConfirmation] = useState<StoredWorkflowStage | null>(null);
   const visibleWorkflowStages = useMemo(() => filterVisibleWorkflowStages(workflowStages), [workflowStages]);
+
+  useEffect(() => {
+    setIsNoteExpanded(false);
+  }, [repair.id, repair.description]);
+
+  useEffect(() => {
+    const note = noteRef.current;
+    if (!note) return;
+
+    const measureOverflow = () => {
+      setIsNoteOverflowing(note.scrollHeight > note.clientHeight + 1);
+    };
+    const frame = window.requestAnimationFrame(measureOverflow);
+    const observer = new ResizeObserver(measureOverflow);
+    observer.observe(note);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [repair.description, isNoteExpanded]);
 
   useEffect(() => {
     const refreshWorkflowStages = () => {
@@ -167,7 +193,10 @@ export function RepairDetailsPanel({
       {mobileDrawerHeader ? (
         <div className="mb-3 pt-2 shrink-0">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-2xl font-semibold text-white">{repair.title}</h3>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">{assetLabel}</div>
+              <h3 className="mt-1 text-2xl font-semibold text-white">{repair.assetName}</h3>
+            </div>
             {onClose ? (
               <button
                 type="button"
@@ -199,8 +228,15 @@ export function RepairDetailsPanel({
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {mobileDrawerHeader ? null : <h3 className="text-2xl font-semibold text-white">{repair.title}</h3>}
-        <div className="mt-2 text-sm text-slate-400">{repair.customerName} · {repair.assetName}</div>
+        {mobileDrawerHeader ? null : (
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">{assetLabel}</div>
+            <h3 className="mt-1 text-2xl font-semibold text-white">{repair.assetName}</h3>
+          </div>
+        )}
+        <div className="mt-2 text-sm text-slate-400">
+          {[repair.customerName, repair.title].filter(Boolean).join(" · ")}
+        </div>
         {onEdit || onDelete || onLinkChange || linkedConversationHref ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {linkedConversationHref ? (
@@ -230,20 +266,22 @@ export function RepairDetailsPanel({
               <button
                 type="button"
                 onClick={onEdit}
-                className="inline-flex items-center gap-2 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/80 bg-white text-slate-700 shadow-sm transition hover:bg-slate-100"
+                aria-label={`Edit ${itemLabel.toLowerCase()}`}
+                title={`Edit ${itemLabel.toLowerCase()}`}
               >
                 <Pencil className="h-3.5 w-3.5" />
-                edit
               </button>
             ) : null}
             {onDelete ? (
               <button
                 type="button"
                 onClick={onDelete}
-                className="inline-flex items-center gap-2 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-[#2b1a27]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-400/30 text-red-300 transition hover:bg-[#2b1a27]"
+                aria-label={`Delete ${itemLabel.toLowerCase()}`}
+                title={`Delete ${itemLabel.toLowerCase()}`}
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                delete
               </button>
             ) : null}
             {linkedConversationHref && onLinkChange ? (
@@ -262,7 +300,27 @@ export function RepairDetailsPanel({
             ) : null}
           </div>
         ) : null}
-        <div className="mt-4 border-t border-[#253149] pt-4 text-sm text-slate-300">{repair.description}</div>
+        <div className="mt-4 border-t border-[#253149] pt-4">
+          <p
+            ref={noteRef}
+            className={`whitespace-pre-wrap text-sm leading-6 text-slate-300 ${isNoteExpanded ? "" : "line-clamp-3"}`}
+          >
+            {repair.description || "No notes added."}
+          </p>
+          <div className="relative mt-4 border-t border-[#253149]">
+            {isNoteOverflowing || isNoteExpanded ? (
+              <button
+                type="button"
+                onClick={() => setIsNoteExpanded((current) => !current)}
+                className="absolute left-1/2 top-0 inline-flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#253149] bg-[#121b2b] text-slate-400 transition hover:border-[var(--border-strong)] hover:text-white"
+                aria-label={isNoteExpanded ? "Collapse note" : "Expand note"}
+                title={isNoteExpanded ? "Collapse note" : "Expand note"}
+              >
+                {isNoteExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+            ) : null}
+          </div>
+        </div>
         <div className="mt-5 space-y-2">
           {visibleWorkflowStages.map((stage, index) => {
           const isCurrent = index === currentStageIndex;

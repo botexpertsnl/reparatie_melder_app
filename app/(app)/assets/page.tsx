@@ -1,9 +1,14 @@
+"use client";
+
 import { demoAssets } from "@/lib/dummy-data";
+import { pluralizeLabel, useTenantAssetLabel } from "@/lib/use-tenant-terminology";
 
 export default function AssetsPage() {
+  const assetLabel = useTenantAssetLabel();
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Assets</h1>
+      <h1 className="text-2xl font-semibold">{pluralizeLabel(assetLabel)}</h1>
       <div className="grid gap-3 md:grid-cols-3">
         {demoAssets.map((asset) => (
           <article key={asset.id} className="card">

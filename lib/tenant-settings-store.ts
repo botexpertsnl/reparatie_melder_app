@@ -114,3 +114,9 @@ export function getActiveRepairLabel() {
   const tenant = getActiveTenantName();
   return readTenantSettings(tenant, defaultTenantSettings).repairLabel || defaultTenantSettings.repairLabel;
 }
+
+export function getActiveAssetLabel() {
+  if (typeof window === "undefined") return defaultTenantSettings.assetLabel;
+  const tenant = getActiveTenantName();
+  return readTenantSettings(tenant, defaultTenantSettings).assetLabel || defaultTenantSettings.assetLabel;
+}

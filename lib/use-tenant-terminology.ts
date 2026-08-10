@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { defaultTenantSettings, getActiveRepairLabel } from "@/lib/tenant-settings-store";
+import { defaultTenantSettings, getActiveAssetLabel, getActiveRepairLabel } from "@/lib/tenant-settings-store";
 
-export function useTenantRepairLabel() {
-  const [repairLabel, setRepairLabel] = useState(defaultTenantSettings.repairLabel);
+function useTenantLabel(defaultLabel: string, getActiveLabel: () => string) {
+  const [label, setLabel] = useState(defaultLabel);
 
   useEffect(() => {
-    const refresh = () => setRepairLabel(getActiveRepairLabel());
+    const refresh = () => setLabel(getActiveLabel());
     refresh();
     window.addEventListener("tenant-settings:changed", refresh);
     window.addEventListener("storage", refresh);
@@ -15,9 +15,17 @@ export function useTenantRepairLabel() {
       window.removeEventListener("tenant-settings:changed", refresh);
       window.removeEventListener("storage", refresh);
     };
-  }, []);
+  }, [getActiveLabel]);
 
-  return repairLabel;
+  return label;
+}
+
+export function useTenantRepairLabel() {
+  return useTenantLabel(defaultTenantSettings.repairLabel, getActiveRepairLabel);
+}
+
+export function useTenantAssetLabel() {
+  return useTenantLabel(defaultTenantSettings.assetLabel, getActiveAssetLabel);
 }
 
 export function pluralizeLabel(label: string) {
