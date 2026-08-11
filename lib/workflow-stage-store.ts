@@ -16,6 +16,7 @@ export type StoredWorkflowButtonActionMapping = {
   actionType: WorkflowButtonActionType;
   actionConfig: {
     quickReplyId?: string;
+    autoReplyText?: string;
     moveToStageId?: string;
   };
   isActive: boolean;
@@ -54,6 +55,7 @@ export type StoredTemplateButtonAction = {
   buttonTextNormalized?: string;
   sendQuickReplyEnabled?: boolean;
   quickReplyId?: string;
+  autoReplyText?: string;
   moveToStageEnabled?: boolean;
   moveToStageId?: string;
   isActive?: boolean;

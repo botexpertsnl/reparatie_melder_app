@@ -17,6 +17,7 @@ import {
   ArrowUpDown,
   RotateCcw,
   Trash2,
+  Phone,
 } from "lucide-react";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
@@ -771,11 +772,35 @@ function TemplateMessageModal({
   );
 }
 
+function getContactInitials(name: string, phone: string) {
+  const normalizedName = name.trim();
+  if (!normalizedName || normalizedName === phone) return "#";
+  const parts = normalizedName.split(/\s+/).filter(Boolean);
+  return `${parts[0]?.[0] ?? ""}${parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : ""}`.toUpperCase();
+}
+
+function colorWithAlpha(color: string, alpha: string) {
+  return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
+}
+
+function ConversationAvatar({ name, phone, color, large = false }: { name: string; phone: string; color: string; large?: boolean }) {
+  return (
+    <span
+      className={clsx("inline-flex shrink-0 items-center justify-center rounded-full border font-bold", large ? "h-12 w-12 text-sm" : "h-10 w-10 text-xs")}
+      style={{ color, borderColor: colorWithAlpha(color, "70"), background: colorWithAlpha(color, "2B") }}
+      aria-hidden="true"
+    >
+      {getContactInitials(name, phone)}
+    </span>
+  );
+}
+
 function ConversationListRow({
   thread,
   updatedAtLabel,
   isSelected,
   repairs,
+  workflowStages,
   isMobileSwipeEnabled,
   onOpenConversation,
   onToggleConversationOpenState,
@@ -784,10 +809,14 @@ function ConversationListRow({
   updatedAtLabel: string;
   isSelected: boolean;
   repairs: StoredRepair[];
+  workflowStages: StoredWorkflowStage[];
   isMobileSwipeEnabled: boolean;
   onOpenConversation: () => void;
   onToggleConversationOpenState: () => void;
 }) {
+  const repairLabel = useTenantRepairLabel();
+  const linkedRepair = repairs.find((repair) => repair.id === thread.linkedRepairId);
+  const stageColor = workflowStages.find((stage) => stage.name === linkedRepair?.stage)?.color ?? "#25d3c4";
   const { swipeHandlers, swipeStyle } = useMobileRowSwipe({
     enabled: isMobileSwipeEnabled,
     onSwipeOpen: onOpenConversation,
@@ -795,7 +824,7 @@ function ConversationListRow({
   });
 
   return (
-    <div className="relative overflow-hidden rounded-xl">
+    <div className="relative overflow-hidden rounded-2xl px-0.5 py-1">
       <div
         onClick={onOpenConversation}
         onKeyDown={(event) => {
@@ -805,24 +834,27 @@ function ConversationListRow({
         }}
         role="button"
         tabIndex={0}
-        className={`relative w-full rounded-xl border p-3 text-left transition-all duration-200 ${
+        className={`relative w-full rounded-2xl border py-3 pl-16 pr-3 text-left transition-all duration-200 ${
           isSelected
-            ? "shadow-[0_0_0_1px_var(--border-strong)]"
-            : "hover:bg-white/5"
+            ? "shadow-[0_12px_30px_rgba(0,0,0,0.18),0_0_0_1px_var(--border-strong)]"
+            : "hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(0,0,0,0.14)]"
         }`}
         style={{
           borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
-          background: "var(--surface-1)",
+          background: isSelected ? "var(--surface-3)" : "var(--surface-1)",
           ...swipeStyle,
         }}
         {...swipeHandlers}
       >
+        <span className="absolute left-3 top-3">
+          <ConversationAvatar name={thread.customerName} phone={thread.customerPhone} color={stageColor} />
+        </span>
         <div className="flex items-start justify-between gap-2">
-          <span className="text-base font-semibold leading-tight text-white">
+          <span className="truncate text-sm font-semibold leading-tight text-white">
             {thread.customerName || thread.customerPhone}
           </span>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500">{updatedAtLabel}</span>
+            <span className="text-[11px] text-slate-500">{updatedAtLabel}</span>
             <button
               type="button"
               onClick={(event) => {
@@ -830,7 +862,7 @@ function ConversationListRow({
                 onToggleConversationOpenState();
               }}
               onMouseDown={(event) => event.stopPropagation()}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-400"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-transparent p-0 text-slate-500 transition hover:bg-white/5 hover:text-slate-300"
               aria-label={`${thread.open ? "Close" : "Reopen"} conversation with ${thread.customerName || thread.customerPhone}`}
               title={thread.open ? "Close conversation" : "Reopen conversation"}
               data-swipe-ignore="true"
@@ -839,14 +871,14 @@ function ConversationListRow({
             </button>
           </div>
         </div>
-        <p className="mt-1 text-sm text-slate-300 leading-tight">{truncateMessagePreview(thread.preview)}</p>
+        <p className="mt-1 truncate text-sm text-slate-300 leading-tight">{truncateMessagePreview(thread.preview)}</p>
         <p className="mt-1 text-xs italic text-slate-500 leading-tight">
           {thread.linkedRepairId
             ? `🔗 ${
-                repairs.find((r) => r.id === thread.linkedRepairId)?.title ??
+                linkedRepair?.assetName ??
                 "Repair linked"
               }`
-            : "No repair linked"}
+            : `No ${repairLabel.toLowerCase()} linked`}
         </p>
       </div>
     </div>
@@ -1193,6 +1225,7 @@ function ConversationsPageContent() {
   const linkedRepair = selectedThread
     ? repairs.find((repair) => repair.id === selectedThread.linkedRepairId) ?? null
     : null;
+  const linkedRepairStageColor = workflowStages.find((stage) => stage.name === linkedRepair?.stage)?.color ?? "#25d3c4";
   const activeTemplates = useMemo(
     () => templates.filter((template) => template.active),
     [templates]
@@ -1914,7 +1947,32 @@ function ConversationsPageContent() {
       if (!linkedRepairId) return;
 
       const execution = executeWorkflowButtonAction(result.mapping);
-      if (execution.actionType === "MOVE_TO_STAGE" && execution.moveToStageId) {
+      if (execution.autoReplyText) {
+        const autoReplyText = execution.autoReplyText;
+        void fetch(`/api/conversations/${thread.id}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: autoReplyText })
+        });
+        updateThreads((prev) =>
+          prev.map((candidate) =>
+            candidate.id === thread.id
+              ? {
+                  ...candidate,
+                  preview: autoReplyText,
+                  updatedAt: new Date().toISOString(),
+                  messages: [...candidate.messages, {
+                    id: `m_${Date.now()}_workflow_auto`,
+                    role: "agent" as const,
+                    text: autoReplyText,
+                    at: new Date().toISOString()
+                  }]
+                }
+              : candidate
+          )
+        );
+      }
+      if (execution.moveToStageId) {
         const targetStage = workflowStages.find((item) => item.id === execution.moveToStageId);
         if (targetStage) {
           updateRepairStage(linkedRepairId, targetStage.name, {
@@ -2113,6 +2171,7 @@ function ConversationsPageContent() {
                         updatedAtLabel={formatConversationListUpdatedLabel(thread, nowTimestamp)}
                         isSelected={selectedThreadId === thread.id}
                         repairs={repairs}
+                        workflowStages={workflowStages}
                         isMobileSwipeEnabled={isMobileViewport}
                         onOpenConversation={() => {
                           setSelectedThreadId(thread.id);
@@ -2188,6 +2247,12 @@ function ConversationsPageContent() {
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
+                  <ConversationAvatar
+                    name={selectedThread.customerName}
+                    phone={selectedThread.customerPhone}
+                    color={linkedRepairStageColor}
+                    large
+                  />
                   <div>
                     <div className="font-semibold text-slate-200">
                       {selectedThread.customerName || selectedThread.customerPhone}
@@ -2198,6 +2263,14 @@ function ConversationsPageContent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <a
+                    href={`tel:${selectedThread.customerPhone.replace(/[^\d+]/g, "")}`}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-3)] text-slate-300 transition hover:border-[var(--border-strong)] hover:text-white"
+                    aria-label={`Call ${selectedThread.customerName || selectedThread.customerPhone}`}
+                    title={`Call ${selectedThread.customerPhone}`}
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
                   <div className="flex items-center gap-2 md:hidden">
                     {selectedThread.linkedRepairId ? (
                       <button
