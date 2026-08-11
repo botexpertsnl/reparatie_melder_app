@@ -110,7 +110,8 @@ function readStoredQuickReplies(fallback: QuickReply[]) {
 
 function syncTemplateButtonActions(
   template: StoredTemplate | undefined,
-  currentActions: StoredTemplateButtonAction[]
+  currentActions: StoredTemplateButtonAction[],
+  quickReplies: QuickReply[]
 ): StoredTemplateButtonAction[] {
   const buttons = template?.buttons ?? [];
   if (buttons.length === 0) return [];
@@ -126,6 +127,7 @@ function syncTemplateButtonActions(
       buttonTextNormalized: normalizeButtonReplyText(buttonText),
       sendQuickReplyEnabled: Boolean(existing?.sendQuickReplyEnabled),
       quickReplyId: existing?.quickReplyId ?? "",
+      autoReplyText: existing?.autoReplyText ?? quickReplies.find((reply) => reply.id === existing?.quickReplyId)?.body ?? "",
       moveToStageEnabled: Boolean(existing?.moveToStageEnabled),
       moveToStageId: existing?.moveToStageId ?? "",
       isActive: existing?.isActive ?? true,
@@ -139,7 +141,8 @@ function sanitizeTemplateButtonActions(actions: StoredTemplateButtonAction[]) {
   return actions.map((action) => ({
     ...action,
     buttonTextNormalized: normalizeButtonReplyText(action.buttonText ?? ""),
-    quickReplyId: action.sendQuickReplyEnabled ? action.quickReplyId ?? "" : "",
+    quickReplyId: "",
+    autoReplyText: action.sendQuickReplyEnabled ? action.autoReplyText?.trim() ?? "" : "",
     moveToStageId: action.moveToStageEnabled ? action.moveToStageId ?? "" : "",
     updatedAt: new Date().toISOString()
   }));
@@ -355,11 +358,11 @@ function StageModal({
   useEffect(() => {
     if (!values.templateId) return;
     setValues((prev) => {
-      const synced = syncTemplateButtonActions(selectedTemplate, prev.templateButtonActions);
+      const synced = syncTemplateButtonActions(selectedTemplate, prev.templateButtonActions, quickReplies);
       const changed = JSON.stringify(synced) !== JSON.stringify(prev.templateButtonActions);
       return changed ? { ...prev, templateButtonActions: synced } : prev;
     });
-  }, [selectedTemplate, values.templateId]);
+  }, [quickReplies, selectedTemplate, values.templateId]);
 
   const canSubmit = useMemo(() => {
     if (!values.name.trim() || !values.description.trim()) {
@@ -385,7 +388,7 @@ function StageModal({
     }
 
     for (const action of values.templateButtonActions) {
-      if (action.sendQuickReplyEnabled && !action.quickReplyId) {
+      if (action.sendQuickReplyEnabled && !action.autoReplyText?.trim()) {
         return false;
       }
       if (action.moveToStageEnabled && !action.moveToStageId) {
@@ -519,7 +522,7 @@ function StageModal({
                           templateSendDelayEnabled: nextTemplateId ? prev.templateSendDelayEnabled : false,
                           templateSendDelayHours: nextTemplateId ? prev.templateSendDelayHours : 0,
                           templateSendDelayMinutes: nextTemplateId ? prev.templateSendDelayMinutes : 0,
-                          templateButtonActions: syncTemplateButtonActions(nextTemplate, prev.templateButtonActions)
+                          templateButtonActions: syncTemplateButtonActions(nextTemplate, prev.templateButtonActions, quickReplies)
                         };
                       })
                     }
@@ -553,16 +556,15 @@ function StageModal({
                 {values.templateId && actionableButtons.length > 0 ? (
                   <div className="rounded-lg border border-[#d7dce3] bg-[#f7f9fc] p-3">
                     <div className="text-sm font-semibold text-slate-700">Button actions after customer selection</div>
-                    <p className="mt-0.5 text-sm text-slate-500">For each button, choose whether to send a quick reply, move to another stage, or both.</p>
+                    <p className="mt-0.5 text-sm text-slate-500">For each button, choose whether to send an auto-reply, move to another stage, or both.</p>
                     <p className="mt-0.5 text-xs text-slate-500">When this reply is received from the customer, the selected action will be triggered automatically.</p>
                     <div className="mt-3 space-y-3">
                       {values.templateButtonActions.map((action) => {
                         const nextStageOptions = stageOptions.filter((stage) => stage.id !== currentStageId);
-                        const currentQuickReply = quickReplies.find((item) => item.id === action.quickReplyId);
                         const currentTargetStage = stageOptions.find((stage) => stage.id === action.moveToStageId);
                         const conflict = conflictByNormalizedText.get(action.buttonTextNormalized ?? "");
                         const actionSummary = [
-                          action.sendQuickReplyEnabled && currentQuickReply ? `Quick reply: ${currentQuickReply.name}` : null,
+                          action.sendQuickReplyEnabled && action.autoReplyText ? `Auto-reply: ${action.autoReplyText}` : null,
                           action.moveToStageEnabled && currentTargetStage ? `Move stage: ${currentTargetStage.name}` : null
                         ]
                           .filter(Boolean)
@@ -581,7 +583,7 @@ function StageModal({
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                               <div className="rounded-md border border-[#dfe6f0] bg-[#fafcff] p-3">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-medium text-slate-700">Send quick reply</span>
+                                  <span className="text-sm font-medium text-slate-700">Send auto-reply</span>
                                   <button
                                     type="button"
                                     className={clsx("relative inline-flex h-6 w-11 items-center rounded-full transition", action.sendQuickReplyEnabled ? "bg-[#2fb2a3]" : "bg-slate-300")}
@@ -593,39 +595,34 @@ function StageModal({
                                             ? {
                                                 ...item,
                                                 sendQuickReplyEnabled: !item.sendQuickReplyEnabled,
-                                                quickReplyId: !item.sendQuickReplyEnabled ? item.quickReplyId : ""
+                                                quickReplyId: "",
+                                                autoReplyText: !item.sendQuickReplyEnabled ? item.autoReplyText : ""
                                               }
                                             : item
                                         )
                                       }))
                                     }
-                                    aria-label={`Toggle quick reply action for button ${action.buttonText || "Button"}`}
+                                    aria-label={`Toggle auto-reply action for button ${action.buttonText || "Button"}`}
                                   >
                                     <span className={clsx("inline-block h-4 w-4 transform rounded-full bg-white transition", action.sendQuickReplyEnabled ? "translate-x-6" : "translate-x-1")} />
                                   </button>
                                 </div>
                                 {action.sendQuickReplyEnabled ? (
                                   <div className="mt-2">
-                                    <label htmlFor={`button-quick-reply-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-700">Quick reply</label>
-                                    <select
-                                      id={`button-quick-reply-${action.buttonId}`}
-                                      className="w-full rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none focus:border-[#30b5a5]"
-                                      value={action.quickReplyId ?? ""}
+                                    <label htmlFor={`button-auto-reply-${action.buttonId}`} className="mb-1 block text-xs font-medium text-slate-700">Auto-reply text</label>
+                                    <textarea
+                                      id={`button-auto-reply-${action.buttonId}`}
+                                      rows={3}
+                                      className="w-full resize-y rounded-lg border border-[#c9d4e3] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-700 outline-none focus:border-[#30b5a5]"
+                                      placeholder="Type the message that will be sent automatically..."
+                                      value={action.autoReplyText ?? ""}
                                       onChange={(event) =>
                                         setValues((prev) => ({
                                           ...prev,
-                                          templateButtonActions: prev.templateButtonActions.map((item) => (item.buttonId === action.buttonId ? { ...item, quickReplyId: event.target.value } : item))
+                                          templateButtonActions: prev.templateButtonActions.map((item) => (item.buttonId === action.buttonId ? { ...item, autoReplyText: event.target.value, quickReplyId: "" } : item))
                                         }))
                                       }
-                                    >
-                                      <option value="">Select a quick reply</option>
-                                      {quickReplies.map((quickReply) => (
-                                        <option key={quickReply.id} value={quickReply.id}>
-                                          {quickReply.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    {currentQuickReply ? <p className="mt-1 text-xs text-slate-500">Preview: {currentQuickReply.body}</p> : null}
+                                    />
                                   </div>
                                 ) : null}
                               </div>

@@ -37,27 +37,16 @@ function actionToMappings(params: {
     updatedAt: action.updatedAt ?? nowIso
   };
 
-  const mappings: StoredWorkflowButtonActionMapping[] = [];
+  const autoReplyText = action.sendQuickReplyEnabled ? action.autoReplyText?.trim() : undefined;
+  const quickReplyId = action.sendQuickReplyEnabled ? action.quickReplyId : undefined;
+  const moveToStageId = action.moveToStageEnabled ? action.moveToStageId : undefined;
+  if (!autoReplyText && !quickReplyId && !moveToStageId) return [];
 
-  if (action.sendQuickReplyEnabled && action.quickReplyId) {
-    mappings.push({
-      ...common,
-      id: `${common.id}_send_quick_reply`,
-      actionType: "SEND_QUICK_REPLY",
-      actionConfig: { quickReplyId: action.quickReplyId }
-    });
-  }
-
-  if (action.moveToStageEnabled && action.moveToStageId) {
-    mappings.push({
-      ...common,
-      id: `${common.id}_move_stage`,
-      actionType: "MOVE_TO_STAGE",
-      actionConfig: { moveToStageId: action.moveToStageId }
-    });
-  }
-
-  return mappings;
+  return [{
+    ...common,
+    actionType: autoReplyText || quickReplyId ? "SEND_QUICK_REPLY" : "MOVE_TO_STAGE",
+    actionConfig: { autoReplyText, quickReplyId, moveToStageId }
+  }];
 }
 
 export class LocalWorkflowActionRepository implements WorkflowActionRepository {
