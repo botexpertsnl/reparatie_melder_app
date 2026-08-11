@@ -19,7 +19,7 @@ type TemplateVariable = {
   source?: string;
   mode: "manual" | "repair_field";
   manualValue: string;
-  repairField: "customerName" | "customerPhone" | "assetName" | "title" | "description" | "stage" | "priority";
+  repairField: "customerName" | "customerPhone" | "contactName" | "contactPhone" | "assetName" | "title" | "description" | "stage" | "priority";
 };
 
 type TemplateCategory = "UTILITY" | "MARKETING";
@@ -752,8 +752,10 @@ function TemplateModal({
                         ) : (
                           <div className="relative mt-3">
                             <select disabled={isTemplateLocked} className={clsx("w-full appearance-none rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900 disabled:opacity-100", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} value={variable.repairField} onChange={(event) => updateVariable(variable.id, (current) => ({ ...current, repairField: event.target.value as TemplateVariable["repairField"], source: `repair.${event.target.value}` }))}>
-                              <option value="customerName">Customer name</option>
-                              <option value="customerPhone">Customer phone</option>
+                              <option value="contactName">Contact name</option>
+                              <option value="contactPhone">Contact phone</option>
+                              <option value="customerName">Contact name (legacy)</option>
+                              <option value="customerPhone">Contact phone (legacy)</option>
                               <option value="assetName">{assetLabel} name</option>
                               <option value="title">Repair title</option>
                               <option value="description">Repair description</option>

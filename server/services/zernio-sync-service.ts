@@ -167,28 +167,31 @@ export async function syncConversationFromZernio(tenantId: string, conversationI
     }
   });
 
-  const thread = await prisma.conversationThread.upsert({
-    where: {
-      tenantId_whatsappAccountId_externalConversationId: {
-        tenantId,
-        whatsappAccountId: channel.whatsappAccountId,
-        externalConversationId: conversation.id
-      }
-    },
-    update: {
-      customerId: customer.id,
-      phoneNumber: customer.phoneNumber,
-      lastMessageAt: conversation.updatedAt ? new Date(conversation.updatedAt) : new Date()
-    },
-    create: {
-      tenantId,
-      customerId: customer.id,
-      whatsappAccountId: channel.whatsappAccountId,
-      externalConversationId: conversation.id,
-      phoneNumber: customer.phoneNumber,
-      lastMessageAt: conversation.updatedAt ? new Date(conversation.updatedAt) : new Date()
-    }
+  const existingContactThread = await prisma.conversationThread.findFirst({
+    where: { tenantId, customerId: customer.id },
+    orderBy: { updatedAt: "desc" }
   });
+  const thread = existingContactThread
+    ? await prisma.conversationThread.update({
+        where: { id: existingContactThread.id },
+        data: {
+          externalConversationId: conversation.id,
+          whatsappAccountId: channel.whatsappAccountId,
+          customerId: customer.id,
+          phoneNumber: customer.phoneNumber,
+          lastMessageAt: conversation.updatedAt ? new Date(conversation.updatedAt) : new Date()
+        }
+      })
+    : await prisma.conversationThread.create({
+      data: {
+        tenantId,
+        customerId: customer.id,
+        whatsappAccountId: channel.whatsappAccountId,
+        externalConversationId: conversation.id,
+        phoneNumber: customer.phoneNumber,
+        lastMessageAt: conversation.updatedAt ? new Date(conversation.updatedAt) : new Date()
+      }
+    });
 
   const msgResponse = await listZernioConversationMessages(conversation.id, channel.zernioAccountId);
   const messages = msgResponse.data ?? msgResponse.messages ?? [];

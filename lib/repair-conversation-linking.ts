@@ -29,6 +29,7 @@ export function createLinkedConversationForRepair(
 ): StoredConversation {
   return {
     id: createUniqueConversationId(existingConversationIds),
+    contactIdentityId: repair.contactIdentityId,
     customerName: repair.customerName || repair.customerPhone,
     customerPhone: repair.customerPhone,
     preview: "",
@@ -47,12 +48,18 @@ export function ensureRepairsHaveLinkedConversations(
   const existingConversationIds = new Set(conversations.map((thread) => thread.id));
   const linkedRepairIds = new Set(
     conversations
-      .map((thread) => thread.linkedRepairId)
+      .flatMap((thread) => [thread.linkedRepairId, thread.dismissedRepairId])
       .filter((repairId): repairId is string => Boolean(repairId))
   );
+  const conversationContactIds = new Set(conversations.map((thread) => thread.contactIdentityId).filter(Boolean));
+  const conversationPhones = new Set(conversations.map((thread) => thread.customerPhone.replace(/\D/g, "")));
 
   const missingRepairConversations = repairs
-    .filter((repair) => !linkedRepairIds.has(repair.id))
+    .filter((repair) =>
+      !linkedRepairIds.has(repair.id) &&
+      !(repair.contactIdentityId && conversationContactIds.has(repair.contactIdentityId)) &&
+      !conversationPhones.has(repair.customerPhone.replace(/\D/g, ""))
+    )
     .map((repair) => createLinkedConversationForRepair(repair, existingConversationIds));
 
   return {

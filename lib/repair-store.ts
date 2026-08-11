@@ -2,6 +2,7 @@ import { seededDummyRepairs } from "@/lib/mock-conversation-repair-seed";
 
 export type StoredRepair = {
   id: string;
+  contactIdentityId?: string;
   title: string;
   subtitle?: string;
   description: string;

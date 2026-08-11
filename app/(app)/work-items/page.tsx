@@ -35,6 +35,7 @@ import {
   writeStoredRepairHistory,
   type StoredRepairHistoryItem
 } from "@/lib/repair-history-store";
+import { findContactIdentityByPhone, migrateContactIdentityLinks, upsertContactIdentity } from "@/lib/contact-identity-store";
 import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import {
   buildScheduledSendAtIso,
@@ -514,6 +515,7 @@ function AddRepairModal({
   const normalizedPhone = normalizePhoneInput(formValues.customerPhone);
   const isPhoneValid = isSupportedCountryPhoneValid(formValues.customerPhone);
   const showPhoneError = Boolean(normalizedPhone) && !isPhoneValid && (hasTriedSubmit || isPhoneFieldTouched);
+  const matchingContact = isPhoneValid ? findContactIdentityByPhone(formValues.customerPhone) : null;
   const canSubmit =
     normalizedPhone &&
     isPhoneValid &&
@@ -617,6 +619,11 @@ function AddRepairModal({
           />
           {showPhoneError ? (
             <p className="mt-1 text-sm text-red-600">Please enter a valid phone number.</p>
+          ) : null}
+          {!showPhoneError && isPhoneValid ? (
+            <p className="mt-1 text-xs text-slate-500">
+              {matchingContact ? `Linked to existing contact: ${matchingContact.displayName}` : "A new messaging contact will be created automatically."}
+            </p>
           ) : null}
         </div>
         <div>
@@ -755,6 +762,17 @@ function WorkItemsPageContent() {
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
+  const hasMigratedContactIdentitiesRef = useRef(false);
+
+  useEffect(() => {
+    if (hasMigratedContactIdentitiesRef.current) return;
+    hasMigratedContactIdentitiesRef.current = true;
+    const migrated = migrateContactIdentityLinks(repairs, conversations);
+    setRepairs(migrated.repairs.map((repair) => ({ ...repair, stage: normalizeRepairStage(repair.stage, stageNames) })));
+    setConversations(migrated.conversations);
+    writeStoredRepairs(migrated.repairs);
+    writeStoredConversations(migrated.conversations);
+  }, [conversations, repairs, stageNames]);
 
   const editingRepair = repairs.find((repair) => repair.id === editingRepairId) ?? null;
   const deletingRepair = repairs.find((repair) => repair.id === deletingRepairId) ?? null;
@@ -1034,8 +1052,10 @@ function WorkItemsPageContent() {
     const customerFirstName = payload.customerFirstName.trim();
     const customerLastName = payload.customerLastName.trim();
     const customerName = `${customerFirstName} ${customerLastName}`.trim();
+    const contactIdentity = upsertContactIdentity({ displayName: customerName, phoneNumber: payload.customerPhone });
     const newRepair = {
       id: `repair_${Date.now()}`,
+      contactIdentityId: contactIdentity.id,
       title: payload.repairTitle,
       description: payload.description,
       customerName,
@@ -1047,13 +1067,18 @@ function WorkItemsPageContent() {
       priority: "Medium" as const,
       status: "Open" as const
     };
-    const linkedConversation = createLinkedConversationForRepair(
+    const existingContactConversation = conversations.find((thread) => thread.contactIdentityId === contactIdentity.id);
+    const linkedConversation = existingContactConversation ?? createLinkedConversationForRepair(
       newRepair,
       new Set(conversations.map((thread) => thread.id))
     );
     setRepairs((prev) => [newRepair, ...prev]);
     setConversations((prev) => {
-      const updated = [linkedConversation, ...prev];
+      const updated = existingContactConversation
+        ? prev.map((thread) => thread.id === existingContactConversation.id
+          ? { ...thread, linkedRepairId: newRepair.id, dismissedRepairId: undefined }
+          : thread)
+        : [linkedConversation, ...prev];
       writeStoredConversations(updated);
       return updated;
     });
@@ -1079,8 +1104,10 @@ function WorkItemsPageContent() {
     const customerFirstName = payload.customerFirstName.trim();
     const customerLastName = payload.customerLastName.trim();
     const customerName = `${customerFirstName} ${customerLastName}`.trim();
+    const contactIdentity = upsertContactIdentity({ displayName: customerName, phoneNumber: payload.customerPhone });
     const repairSnapshot: RepairItem = {
       ...repairBeforeEdit,
+      contactIdentityId: contactIdentity.id,
       title: payload.repairTitle,
       description: payload.description,
       customerName,
@@ -1135,8 +1162,8 @@ function WorkItemsPageContent() {
 
   const linkConversationToRepair = (threadId: string, repairId: string) => {
     const updated = conversations.map((thread) => {
-      if (thread.id === threadId) return { ...thread, linkedRepairId: repairId };
-      if (thread.linkedRepairId === repairId) return { ...thread, linkedRepairId: undefined };
+      if (thread.id === threadId) return { ...thread, linkedRepairId: repairId, dismissedRepairId: undefined };
+      if (thread.linkedRepairId === repairId) return { ...thread, linkedRepairId: undefined, dismissedRepairId: repairId };
       return thread;
     });
     setConversations(updated);
@@ -1146,7 +1173,7 @@ function WorkItemsPageContent() {
 
   const unlinkConversationFromRepair = (repairId: string) => {
     const updated = conversations.map((thread) =>
-      thread.linkedRepairId === repairId ? { ...thread, linkedRepairId: undefined } : thread
+      thread.linkedRepairId === repairId ? { ...thread, linkedRepairId: undefined, dismissedRepairId: repairId } : thread
     );
     setConversations(updated);
     writeStoredConversations(updated);

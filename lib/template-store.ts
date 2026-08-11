@@ -15,7 +15,7 @@ export type StoredTemplate = {
     name?: string;
     mode: "manual" | "repair_field";
     manualValue?: string;
-    repairField?: "customerName" | "customerPhone" | "assetName" | "title" | "description" | "stage" | "priority";
+    repairField?: "customerName" | "customerPhone" | "contactName" | "contactPhone" | "assetName" | "title" | "description" | "stage" | "priority";
   }[];
   buttons?: {
     id: string;
@@ -39,7 +39,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
     zernioTemplateId: "",
     active: true,
     variables: [
-      { id: "var_1", name: "Customer name", mode: "repair_field", repairField: "customerName" },
+      { id: "var_1", name: "Contact name", mode: "repair_field", repairField: "contactName" },
       { id: "var_2", name: "Device name", mode: "repair_field", repairField: "assetName" }
     ],
     buttons: []
@@ -53,7 +53,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
     zernioTemplateId: "",
     active: true,
     variables: [
-      { id: "var_3", name: "Customer name", mode: "repair_field", repairField: "customerName" },
+      { id: "var_3", name: "Contact name", mode: "repair_field", repairField: "contactName" },
       { id: "var_4", name: "Device name", mode: "repair_field", repairField: "assetName" }
     ],
     buttons: [{ id: "btn_1", type: "QUICK_REPLY", text: "Ik kom eraan" }]
@@ -67,7 +67,7 @@ export const defaultStoredTemplates: StoredTemplate[] = [
     zernioTemplateId: "",
     active: true,
     variables: [
-      { id: "var_5", name: "Customer name", mode: "repair_field", repairField: "customerName" },
+      { id: "var_5", name: "Contact name", mode: "repair_field", repairField: "contactName" },
       { id: "var_6", name: "Price", mode: "manual", manualValue: "", label: "price" }
     ],
     buttons: [
