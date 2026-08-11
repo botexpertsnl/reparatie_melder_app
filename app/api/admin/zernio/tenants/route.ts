@@ -9,6 +9,7 @@ import { ensureZernioWebhook } from "@/lib/integrations/zernio/webhook-settings"
 
 function toApiError(error: unknown) {
   const message = error instanceof Error ? error.message : "Unable to manage Zernio connections";
+  console.error("[ZERNIO_ADMIN] Connection management failed", message.replace(/Bearer\s+[^\s]+/gi, "Bearer [redacted]"));
   if (message === "Unauthorized") return NextResponse.json({ error: "Sign in as a system administrator to manage Zernio connections." }, { status: 401 });
   if (message === "System admin access required") return NextResponse.json({ error: "System administrator access is required." }, { status: 403 });
   return NextResponse.json({ error: "Unable to manage Zernio connections. Check the server logs for details." }, { status: 500 });
