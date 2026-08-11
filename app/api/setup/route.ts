@@ -14,10 +14,16 @@ async function hasSystemAdmin() {
   return (await prisma.user.count({ where: { isSystemAdmin: true } })) > 0;
 }
 
+function safeDatabaseError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unknown database error";
+  return message.replace(/postgres(?:ql)?:\/\/[^\s'"`]+/gi, "[redacted connection string]");
+}
+
 export async function GET() {
   try {
     return NextResponse.json({ data: { setupRequired: !(await hasSystemAdmin()) } });
-  } catch {
+  } catch (error) {
+    console.error("Initial setup database check failed:", safeDatabaseError(error));
     return NextResponse.json({ error: "Setup is not available until the database connection is configured." }, { status: 503 });
   }
 }
