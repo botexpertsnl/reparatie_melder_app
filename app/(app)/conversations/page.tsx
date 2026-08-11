@@ -93,17 +93,26 @@ type ApiConversationThread = {
 
 function getAttachmentFromRawPayload(rawPayload: unknown) {
   if (!rawPayload || typeof rawPayload !== "object") return null;
-  const attachments = (rawPayload as { attachments?: unknown }).attachments;
+  const payload = rawPayload as { attachments?: unknown; accountId?: unknown };
+  const attachments = payload.attachments;
   if (!Array.isArray(attachments)) return null;
 
-  const imageAttachment = attachments.find((attachment): attachment is { url?: string; filename?: string; mimeType?: string } => {
+  const imageAttachment = attachments.find((attachment): attachment is { url?: string; filename?: string; mimeType?: string; type?: string; payload?: { id?: string } } => {
     if (!attachment || typeof attachment !== "object") return false;
-    const mimeType = (attachment as { mimeType?: unknown }).mimeType;
-    return typeof mimeType !== "string" || mimeType.startsWith("image/");
+    const candidate = attachment as { mimeType?: unknown; type?: unknown };
+    return candidate.type === "image" || (typeof candidate.mimeType === "string" && candidate.mimeType.startsWith("image/"));
   });
 
   if (!imageAttachment || typeof imageAttachment.url !== "string") return null;
-  return { url: imageAttachment.url, filename: imageAttachment.filename, mimeType: imageAttachment.mimeType };
+  let url = imageAttachment.url;
+  const mediaId = imageAttachment.payload?.id ?? (() => {
+    const match = url.match(/\/v1\/whatsapp\/media\/([^/?#]+)/);
+    return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+  })();
+  if (mediaId && typeof payload.accountId === "string") {
+    url = `/api/media/zernio/download?mediaId=${encodeURIComponent(mediaId)}&accountId=${encodeURIComponent(payload.accountId)}`;
+  }
+  return { url, filename: imageAttachment.filename, mimeType: imageAttachment.mimeType };
 }
 
 function mapApiThreadToStored(thread: ApiConversationThread): StoredConversation {
@@ -1499,11 +1508,16 @@ function ConversationsPageContent() {
     const response = await fetch(`/api/conversations/${selectedThread.id}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: body })
+      body: JSON.stringify({ text: body, phoneNumber: selectedThread.customerPhone })
     });
 
     if (response.status === 409) {
       openTemplateMessageModal();
+      return;
+    }
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      window.alert(payload.error ?? "Message could not be sent");
       return;
     }
 
@@ -1582,17 +1596,28 @@ function ConversationsPageContent() {
       templatePreview,
       selectedTemplate.buttons
     );
-    await fetch(`/api/conversations/${selectedThread.id}/messages`, {
+    const templateResponse = await fetch(`/api/conversations/${selectedThread.id}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         template: {
           name: selectedTemplate.name,
           language: selectedTemplate.language,
-          components: []
-        }
+          components: templateVariableValues.length
+            ? [{
+                type: "body",
+                parameters: templateVariableValues.map((value) => ({ type: "text", text: value.trim() }))
+              }]
+            : []
+        },
+        phoneNumber: selectedThread.customerPhone
       })
     });
+    const templatePayload = await templateResponse.json();
+    if (!templateResponse.ok) {
+      window.alert(templatePayload.error ?? "Template could not be sent");
+      return;
+    }
 
     updateThreads((prev) =>
       prev.map((thread) =>
@@ -1887,11 +1912,24 @@ function ConversationsPageContent() {
       });
 
     const dataUrl = await toDataUrl();
-    await fetch(`/api/conversations/${selectedThread.id}/messages`, {
+    const uploadForm = new FormData();
+    uploadForm.append("file", file);
+    const uploadResponse = await fetch("/api/media/zernio/upload", { method: "POST", body: uploadForm });
+    const uploadPayload = await uploadResponse.json();
+    if (!uploadResponse.ok || !uploadPayload.data?.url) {
+      window.alert(uploadPayload.error ?? "Image upload failed");
+      return;
+    }
+    const sendResponse = await fetch(`/api/conversations/${selectedThread.id}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attachments: [{ url: dataUrl, filename: file.name, mimeType: file.type }] })
+      body: JSON.stringify({ phoneNumber: selectedThread.customerPhone, attachments: [{ url: uploadPayload.data.url, filename: file.name, mimeType: file.type }] })
     });
+    const sendPayload = await sendResponse.json();
+    if (!sendResponse.ok) {
+      window.alert(sendPayload.error ?? "Image could not be sent");
+      return;
+    }
 
     updateThreads((prev) =>
       prev.map((thread) =>

@@ -12,8 +12,10 @@ const SUPPORTED_EVENTS = new Set([
   "message.read",
   "message.failed",
   "message.deleted",
+  "conversation.started",
   "account.connected",
-  "account.disconnected"
+  "account.disconnected",
+  "whatsapp.template.status_updated"
 ]);
 
 function resolveEventType(payload: Record<string, unknown>) {
@@ -37,7 +39,9 @@ function isSignatureValid(rawBody: string, signature: string | null) {
   if (!secret) return true;
   if (!signature) return false;
   const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  const expectedBuffer = Buffer.from(expected);
+  const signatureBuffer = Buffer.from(signature);
+  return expectedBuffer.length === signatureBuffer.length && crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
 }
 
 export async function POST(request: NextRequest) {
@@ -145,6 +149,46 @@ export async function POST(request: NextRequest) {
         data: { tenantId, processingStatus: "FAILED", processingError: error instanceof Error ? error.message : "sync failed" }
       });
       return NextResponse.json({ ok: true });
+    }
+  }
+
+  if (eventType === "conversation.started") {
+    try {
+      if (conversationId) await syncConversationFromZernio(tenantId, conversationId);
+      else {
+        const { syncTenantConversations } = await import("@/server/services/zernio-sync-service");
+        await syncTenantConversations(tenantId);
+      }
+    } catch (error) {
+      await prisma.webhookEvent.update({
+        where: { id: event.id },
+        data: { tenantId, processingStatus: "FAILED", processingError: error instanceof Error ? error.message : "conversation sync failed" }
+      });
+      return NextResponse.json({ ok: true });
+    }
+  }
+
+  if (eventType === "whatsapp.template.status_updated") {
+    const template = payload.template as { id?: string; name?: string; status?: string; reason?: string } | undefined;
+    if (template?.id || template?.name) {
+      const stored = await prisma.messageTemplate.findMany({
+        where: {
+          tenantId,
+          OR: [
+            ...(template.id ? [{ externalTemplateId: template.id }] : []),
+            ...(template.name ? [{ name: template.name }] : [])
+          ]
+        }
+      });
+      await Promise.all(stored.map((item) => {
+        const previous = item.variablesSchema && typeof item.variablesSchema === "object" && !Array.isArray(item.variablesSchema)
+          ? item.variablesSchema as Record<string, Prisma.JsonValue>
+          : {};
+        return prisma.messageTemplate.update({
+          where: { id: item.id },
+          data: { variablesSchema: { ...previous, zernioStatus: template.status ?? "UNKNOWN", zernioReason: template.reason ?? null } as Prisma.InputJsonValue }
+        });
+      }));
     }
   }
 

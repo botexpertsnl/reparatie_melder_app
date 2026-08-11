@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
   getZernioConversation,
+  createZernioWhatsappConversation,
   listZernioAccounts,
   listZernioConversationMessages,
   listZernioConversations,
@@ -11,9 +12,6 @@ import {
   type ZernioMessage
 } from "@/lib/integrations/zernio/inbox";
 import { isWithinWhatsappServiceWindow } from "@/lib/integrations/zernio/message-window-utils";
-
-const DEFAULT_PROFILE_ID = "69dac091b54d90f7e8780d93";
-const DEFAULT_AUTOGARAGE_PHONE = "+18054670673";
 
 function normalizePhoneNumber(value?: string | null) {
   if (!value) return "";
@@ -36,33 +34,35 @@ function pickResolvedWhatsappAccount(params: {
     if (matched) return matched;
   }
 
-  const expectedPhone = normalizePhoneNumber(params.existingWhatsappPhone) || DEFAULT_AUTOGARAGE_PHONE;
-  const matchedPhone = params.phoneNumbers.find((item) => {
-    if (!item.accountId) return false;
-    const phone = normalizePhoneNumber(item.displayNumber ?? item.phoneNumber);
-    return phone === normalizePhoneNumber(expectedPhone);
-  });
-  if (matchedPhone?.accountId) {
-    const matched = accounts.find((item) => item.id === matchedPhone.accountId);
-    if (matched) return matched;
+  const expectedPhone = normalizePhoneNumber(params.existingWhatsappPhone);
+  if (expectedPhone) {
+    const matchedPhone = params.phoneNumbers.find((item) => {
+      if (!item.accountId) return false;
+      const phone = normalizePhoneNumber(item.displayNumber ?? item.phoneNumber);
+      return phone === expectedPhone;
+    });
+    if (matchedPhone?.accountId) {
+      const matched = accounts.find((item) => item.id === matchedPhone.accountId);
+      if (matched) return matched;
+    }
   }
 
-  return (
-    accounts.find((item) => (item.platform ?? "").toLowerCase() === "whatsapp" && (item.status ?? "").toLowerCase() === "connected") ??
-    accounts.find((item) => (item.platform ?? "").toLowerCase() === "whatsapp") ??
-    accounts[0]
+  const connected = accounts.filter((item) =>
+    (item.platform ?? "whatsapp").toLowerCase() === "whatsapp" &&
+    (item.status ?? "connected").toLowerCase() === "connected"
   );
+  return connected.length === 1 ? connected[0] : null;
 }
 
 function getConversationParticipant(conversation: ZernioConversation) {
   return {
-    name: conversation.customer?.name ?? conversation.participant?.name ?? "Unknown",
-    phone: conversation.customer?.phone ?? conversation.participant?.phone ?? ""
+    name: conversation.participantName ?? conversation.customer?.name ?? conversation.participant?.name ?? "Unknown",
+    phone: conversation.participantId ?? conversation.customer?.phone ?? conversation.participant?.phone ?? ""
   };
 }
 
 function getMessageBody(message: ZernioMessage) {
-  return message.text?.body ?? message.body ?? "";
+  return message.message ?? message.text?.body ?? message.body ?? "";
 }
 
 function mapStatus(status?: string) {
@@ -79,7 +79,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
   if (!tenant) throw new Error("Tenant not found");
 
   const existing = await prisma.tenantMessagingChannel.findFirst({ where: { tenantId, provider: "ZERNIO" } });
-  const profileId = existing?.zernioProfileId ?? (tenant.name === "AutoGarage De Vries" ? DEFAULT_PROFILE_ID : null);
+  const profileId = existing?.zernioProfileId;
   if (!profileId) throw new Error("No Zernio profile configured for tenant");
 
   const accountsResponse = await listZernioAccounts(profileId, "whatsapp");
@@ -100,7 +100,9 @@ export async function ensureTenantZernioChannel(tenantId: string) {
       profileId,
       accountsCount: accounts.length
     });
-    throw new Error("No WhatsApp account connected in Zernio");
+    throw new Error(accounts.length > 1
+      ? "Multiple WhatsApp accounts are connected to this Zernio profile; select the account in System Admin"
+      : "No connected WhatsApp account was found for this Zernio profile");
   }
 
   const phone = phoneNumbers.find((item) => item.accountId === resolvedAccount.id);
@@ -110,7 +112,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
     profileId,
     accountId: resolvedAccount.id,
     platform: resolvedAccount.platform ?? "unknown",
-    phoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? DEFAULT_AUTOGARAGE_PHONE
+    phoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? ""
   });
 
   return prisma.tenantMessagingChannel.upsert({
@@ -120,7 +122,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
       zernioAccountId: resolvedAccount.id,
       whatsappAccountId: resolvedAccount.id,
       zernioPhoneNumberId: phone?.id,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? DEFAULT_AUTOGARAGE_PHONE,
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? "",
       displayName: existing?.displayName ?? "WhatsApp (ZERNIO)",
       connectionStatus: "CONNECTED",
       isActive: true
@@ -132,7 +134,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
       zernioAccountId: resolvedAccount.id,
       whatsappAccountId: resolvedAccount.id,
       zernioPhoneNumberId: phone?.id,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? DEFAULT_AUTOGARAGE_PHONE,
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? "",
       displayName: "WhatsApp (ZERNIO)",
       connectionStatus: "CONNECTED",
       isActive: true
@@ -155,6 +157,7 @@ export async function syncConversationFromZernio(tenantId: string, conversationI
   if (!conversation) throw new Error("Conversation not found");
 
   const participant = getConversationParticipant(conversation);
+  const conversationUpdatedAt = new Date(conversation.updatedTime ?? conversation.updatedAt ?? Date.now());
   const customer = await prisma.customer.upsert({
     where: { tenantId_phoneNumber: { tenantId, phoneNumber: participant.phone || `unknown-${conversation.id}` } },
     update: { fullName: participant.name, firstName: participant.name.split(" ")[0] ?? participant.name, lastName: "" },
@@ -179,7 +182,8 @@ export async function syncConversationFromZernio(tenantId: string, conversationI
           whatsappAccountId: channel.whatsappAccountId,
           customerId: customer.id,
           phoneNumber: customer.phoneNumber,
-          lastMessageAt: conversation.updatedAt ? new Date(conversation.updatedAt) : new Date()
+          unreadCount: conversation.unreadCount ?? 0,
+          lastMessageAt: conversationUpdatedAt
         }
       })
     : await prisma.conversationThread.create({
@@ -189,12 +193,19 @@ export async function syncConversationFromZernio(tenantId: string, conversationI
         whatsappAccountId: channel.whatsappAccountId,
         externalConversationId: conversation.id,
         phoneNumber: customer.phoneNumber,
-        lastMessageAt: conversation.updatedAt ? new Date(conversation.updatedAt) : new Date()
+        unreadCount: conversation.unreadCount ?? 0,
+        lastMessageAt: conversationUpdatedAt
       }
     });
 
-  const msgResponse = await listZernioConversationMessages(conversation.id, channel.zernioAccountId);
-  const messages = msgResponse.data ?? msgResponse.messages ?? [];
+  const messages: ZernioMessage[] = [];
+  let messageCursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const msgResponse = await listZernioConversationMessages(conversation.id, channel.zernioAccountId, messageCursor);
+    messages.push(...(msgResponse.data ?? msgResponse.messages ?? []));
+    if (!msgResponse.pagination?.hasMore || !msgResponse.pagination.nextCursor) break;
+    messageCursor = msgResponse.pagination.nextCursor;
+  }
   console.info("[ZERNIO_SYNC] Conversation message fetch complete", {
     tenantId,
     conversationId: conversation.id,
@@ -208,22 +219,22 @@ export async function syncConversationFromZernio(tenantId: string, conversationI
       update: {
         body,
         type: message.type ?? "TEXT",
-        status: mapStatus(message.status),
+        status: mapStatus(message.deliveryStatus ?? message.status),
         rawPayload: message,
-        deliveredAt: message.status === "delivered" ? new Date(message.timestamp ?? message.createdAt ?? Date.now()) : undefined,
-        readAt: message.status === "read" ? new Date(message.timestamp ?? message.createdAt ?? Date.now()) : undefined
+        deliveredAt: message.deliveredAt ? new Date(message.deliveredAt) : undefined,
+        readAt: message.readAt ? new Date(message.readAt) : undefined
       },
       create: {
         tenantId,
         threadId: thread.id,
         customerId: customer.id,
-        direction: (message.direction ?? "inbound").toLowerCase() === "outbound" ? "OUTBOUND" : "INBOUND",
+        direction: ["outbound", "outgoing"].includes((message.direction ?? "incoming").toLowerCase()) ? "OUTBOUND" : "INBOUND",
         type: message.type ?? "TEXT",
         body,
-        status: mapStatus(message.status),
+        status: mapStatus(message.deliveryStatus ?? message.status),
         externalMessageId: message.id,
-        receivedAt: (message.direction ?? "inbound").toLowerCase() === "inbound" ? new Date(message.timestamp ?? message.createdAt ?? Date.now()) : null,
-        sentAt: (message.direction ?? "inbound").toLowerCase() === "outbound" ? new Date(message.timestamp ?? message.createdAt ?? Date.now()) : null,
+        receivedAt: ["inbound", "incoming"].includes((message.direction ?? "incoming").toLowerCase()) ? new Date(message.timestamp ?? message.createdAt ?? Date.now()) : null,
+        sentAt: ["outbound", "outgoing"].includes((message.direction ?? "incoming").toLowerCase()) ? new Date(message.sentAt ?? message.timestamp ?? message.createdAt ?? Date.now()) : null,
         rawPayload: message
       }
     });
@@ -236,15 +247,22 @@ export async function syncTenantConversations(tenantId: string) {
   const channel = await ensureTenantZernioChannel(tenantId);
   if (!channel.zernioAccountId || !channel.zernioProfileId) throw new Error("Missing Zernio channel IDs");
 
-  const response = await listZernioConversations({
-    profileId: channel.zernioProfileId,
-    accountId: channel.zernioAccountId,
-    platform: "whatsapp",
-    sortOrder: "desc",
-    limit: 50
-  });
-
-  const conversations = response.data ?? response.conversations ?? [];
+  const conversations: ZernioConversation[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const response = await listZernioConversations({
+      profileId: channel.zernioProfileId,
+      accountId: channel.zernioAccountId,
+      platform: "whatsapp",
+      sortOrder: "desc",
+      limit: 100,
+      cursor
+    });
+    conversations.push(...(response.data ?? response.conversations ?? []));
+    const pagination = (response as { pagination?: { hasMore?: boolean; nextCursor?: string } }).pagination;
+    if (!pagination?.hasMore || !pagination.nextCursor) break;
+    cursor = pagination.nextCursor;
+  }
   console.info("[ZERNIO_SYNC] Inbox conversations fetched", {
     tenantId,
     profileId: channel.zernioProfileId,
@@ -278,13 +296,46 @@ export async function syncTenantConversations(tenantId: string) {
 export async function sendConversationMessage(params: {
   tenantId: string;
   threadId: string;
+  phoneNumber?: string;
   text?: string;
   attachments?: Array<{ url: string; mimeType?: string; filename?: string }>;
   template?: { name: string; language: string; components?: Array<Record<string, unknown>> };
 }) {
   const channel = await ensureTenantZernioChannel(params.tenantId);
-  const thread = await prisma.conversationThread.findFirst({ where: { id: params.threadId, tenantId: params.tenantId } });
-  if (!thread?.externalConversationId || !channel.zernioAccountId) throw new Error("Thread is not linked to Zernio conversation");
+  let thread = await prisma.conversationThread.findFirst({ where: { id: params.threadId, tenantId: params.tenantId } });
+  if (!thread && params.phoneNumber) {
+    const customer = await prisma.customer.findUnique({
+      where: { tenantId_phoneNumber: { tenantId: params.tenantId, phoneNumber: params.phoneNumber } }
+    });
+    if (customer) {
+      thread = await prisma.conversationThread.findFirst({
+        where: { tenantId: params.tenantId, customerId: customer.id },
+        orderBy: { updatedAt: "desc" }
+      });
+    }
+  }
+  if (!channel.zernioAccountId) throw new Error("No Zernio account is configured for this tenant");
+
+  if (!thread?.externalConversationId) {
+    if (!params.template || !params.phoneNumber) throw new Error("WHATSAPP_TEMPLATE_REQUIRED");
+    const templateParams = (params.template.components ?? []).flatMap((component) => {
+      const parameters = component.parameters;
+      return Array.isArray(parameters)
+        ? parameters.flatMap((parameter) => parameter && typeof parameter === "object" && "text" in parameter ? [String(parameter.text)] : [])
+        : [];
+    });
+    const created = await createZernioWhatsappConversation({
+      accountId: channel.zernioAccountId,
+      phoneNumber: params.phoneNumber,
+      templateName: params.template.name,
+      templateLanguage: params.template.language,
+      templateParams
+    });
+    const conversationId = created.data?.conversationId;
+    if (!conversationId) throw new Error("Zernio did not return a conversation ID");
+    await syncConversationFromZernio(params.tenantId, conversationId);
+    return created;
+  }
 
   if (params.text) {
     const lastInbound = await prisma.message.findFirst({
@@ -300,7 +351,15 @@ export async function sendConversationMessage(params: {
     conversationId: thread.externalConversationId,
     accountId: channel.zernioAccountId,
     text: params.text,
-    attachments: params.attachments,
+    attachment: params.attachments?.[0]
+      ? {
+          url: params.attachments[0].url,
+          type: params.attachments[0].mimeType?.startsWith("image/") ? "image"
+            : params.attachments[0].mimeType?.startsWith("video/") ? "video"
+              : params.attachments[0].mimeType?.startsWith("audio/") ? "audio" : "file",
+          filename: params.attachments[0].filename
+        }
+      : undefined,
     template: params.template
   });
 

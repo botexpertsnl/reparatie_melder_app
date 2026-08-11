@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, RefreshCw } from "lucide-react";
 
 type ZernioConnection = {
   connectionStatus: string;
@@ -25,23 +25,9 @@ export function WhatsappZernioCard() {
     void loadZernioConnection();
   }, []);
 
-  const handleZernioConnect = async () => {
+  const refreshZernioConnection = async () => {
     setZernioLoading(true);
     try {
-      const response = await fetch("/api/whatsapp/zernio/connect", { method: "POST" });
-      if (!response.ok) return;
-      const payload = await response.json();
-      const connectUrl = payload?.data?.connectUrl as string | undefined;
-      if (connectUrl) window.location.href = connectUrl;
-    } finally {
-      setZernioLoading(false);
-    }
-  };
-
-  const handleZernioDisconnect = async () => {
-    setZernioLoading(true);
-    try {
-      await fetch("/api/whatsapp/zernio/disconnect", { method: "POST" });
       await loadZernioConnection();
     } finally {
       setZernioLoading(false);
@@ -54,7 +40,7 @@ export function WhatsappZernioCard() {
         <MessageCircle className="h-4 w-4" />
         WhatsApp (ZERNIO)
       </h2>
-      <p className="mt-1 text-xs text-slate-500">Manage tenant-level WhatsApp connection via ZERNIO.</p>
+      <p className="mt-1 text-xs text-slate-500">This connection is assigned by the system administrator.</p>
 
       <div className="mt-4 grid gap-2 rounded-xl border border-[#253149] bg-[#0b1323] px-3 py-3 text-sm text-slate-300">
         <div>Connection status: <span className="font-semibold text-white">{zernioConnection?.connectionStatus ?? "DISCONNECTED"}</span></div>
@@ -65,19 +51,11 @@ export function WhatsappZernioCard() {
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={handleZernioConnect}
+          onClick={refreshZernioConnection}
           disabled={zernioLoading}
-          className="rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[#28d9c6]/10 px-4 py-2 text-sm font-semibold text-[#7ff5e9] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {zernioConnection ? "Reconnect" : "Connect"}
-        </button>
-        <button
-          type="button"
-          onClick={handleZernioDisconnect}
-          disabled={zernioLoading || !zernioConnection}
-          className="rounded-xl border border-red-500/70 px-4 py-2 text-sm font-semibold text-red-300 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Disconnect
+          <RefreshCw className={`h-4 w-4 ${zernioLoading ? "animate-spin" : ""}`} /> Refresh status
         </button>
       </div>
     </section>
