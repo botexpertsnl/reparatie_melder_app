@@ -3,8 +3,10 @@ import { z } from "zod";
 import { requireTenantContext } from "@/lib/multitenancy/tenant-context";
 import { prisma } from "@/lib/prisma";
 import { sendConversationMessage, syncConversationFromZernio } from "@/server/services/zernio-sync-service";
+import { ZernioError } from "@/lib/integrations/zernio/client";
 
 const postSchema = z.object({
+  phoneNumber: z.string().trim().min(7).optional(),
   text: z.string().trim().min(1).optional(),
   attachments: z.array(z.object({ url: z.string().url(), mimeType: z.string().optional(), filename: z.string().optional() })).optional(),
   template: z
@@ -45,6 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (error instanceof Error && error.message === "WHATSAPP_TEMPLATE_REQUIRED") {
       return NextResponse.json({ error: "Template required outside 24-hour WhatsApp window" }, { status: 409 });
     }
-    throw error;
+    if (error instanceof ZernioError) return NextResponse.json({ error: error.message }, { status: error.status >= 400 && error.status < 500 ? error.status : 502 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Message could not be sent" }, { status: 500 });
   }
 }

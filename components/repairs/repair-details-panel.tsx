@@ -26,6 +26,7 @@ type RepairDetailsPanelProps = {
   onDelete?: () => void;
   onLinkChange?: () => void;
   onLinkAriaLabel?: string;
+  linkActionLabel?: string;
   isLinkActive?: boolean;
   useIconOnlyChangeLinkButton?: boolean;
   linkedConversationHref?: string;
@@ -78,6 +79,7 @@ export function RepairDetailsPanel({
   onDelete,
   onLinkChange,
   onLinkAriaLabel = "Change linked repair",
+  linkActionLabel,
   isLinkActive = true,
   useIconOnlyChangeLinkButton = false,
   linkedConversationHref,
@@ -258,7 +260,7 @@ export function RepairDetailsPanel({
               >
                 <LinkIcon className={`h-3.5 w-3.5 ${isLinkActive ? "text-[#69f0df]" : "text-slate-500"}`} />
                 {useIconOnlyChangeLinkButton && linkedConversationHref ? null : (
-                  linkedConversationHref ? "Change link" : "Link conversation"
+                  linkActionLabel ?? (linkedConversationHref ? "Change link" : "Link conversation")
                 )}
               </button>
             ) : null}
@@ -294,7 +296,7 @@ export function RepairDetailsPanel({
               >
                 <LinkIcon className={`h-3.5 w-3.5 ${isLinkActive ? "text-[#69f0df]" : "text-slate-500"}`} />
                 {useIconOnlyChangeLinkButton && linkedConversationHref ? null : (
-                  linkedConversationHref ? "Change link" : "Link conversation"
+                  linkActionLabel ?? (linkedConversationHref ? "Change link" : "Link conversation")
                 )}
               </button>
             ) : null}

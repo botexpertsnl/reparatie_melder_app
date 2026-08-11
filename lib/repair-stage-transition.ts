@@ -1,6 +1,7 @@
 import type { StoredRepair } from "@/lib/repair-store";
 import type { StoredTemplate } from "@/lib/template-store";
 import type { StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { getContactIdentityById, type ContactIdentity } from "@/lib/contact-identity-store";
 
 export function resolveStageTemplateAutomation(
   stageName: string,
@@ -22,20 +23,25 @@ export function stageTransitionHasModalFlow(
   return Boolean(resolveStageTemplateAutomation(stageName, workflowStages, templates));
 }
 
-function resolveRepairField(repair: StoredRepair, field?: string) {
-  if (field === "customerName") return repair.customerName;
-  if (field === "customerPhone") return repair.customerPhone;
-  if (field === "assetName") return repair.assetName;
-  if (field === "title") return repair.title;
-  if (field === "description") return repair.description;
-  if (field === "stage") return repair.stage;
-  if (field === "priority") return repair.priority;
+function resolveRepairField(repair: StoredRepair | null | undefined, contact: ContactIdentity | null, field?: string) {
+  if (field === "contactName" || field === "customerName") return contact?.displayName ?? repair?.customerName ?? "";
+  if (field === "contactPhone" || field === "customerPhone") return contact?.phoneNumber ?? repair?.customerPhone ?? "";
+  if (field === "assetName") return repair?.assetName ?? "";
+  if (field === "title") return repair?.title ?? "";
+  if (field === "description") return repair?.description ?? "";
+  if (field === "stage") return repair?.stage ?? "";
+  if (field === "priority") return repair?.priority ?? "";
   return "";
 }
 
-export function buildTemplateVariableDefaults(template: StoredTemplate, repair: StoredRepair) {
+export function buildTemplateVariableDefaults(
+  template: StoredTemplate,
+  repair?: StoredRepair | null,
+  providedContact?: ContactIdentity | null
+) {
+  const contact = providedContact ?? getContactIdentityById(repair?.contactIdentityId);
   return (template.variables ?? []).map((variable) =>
-    variable.mode === "repair_field" ? resolveRepairField(repair, variable.repairField) : variable.manualValue ?? ""
+    variable.mode === "repair_field" ? resolveRepairField(repair, contact, variable.repairField) : variable.manualValue ?? ""
   );
 }
 

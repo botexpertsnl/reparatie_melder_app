@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Shield, Building2, ArrowLeftRight } from "lucide-react";
+import { Shield, Building2, ArrowLeftRight, MessageCircleMore } from "lucide-react";
 import { canAccessSystemAdminArea } from "@/lib/access/area-access";
 
 const adminNavItems = [
-  { href: "/admin/diagnostics", label: "Diagnostics", icon: Building2 }
+  { href: "/admin/diagnostics", label: "Tenants", icon: Building2 },
+  { href: "/admin/zernio", label: "Zernio", icon: MessageCircleMore }
 ];
 
 export function SystemAdminShell({ children }: { children: React.ReactNode }) {

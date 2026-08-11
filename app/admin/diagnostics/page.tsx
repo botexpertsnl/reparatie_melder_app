@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Plus, Pencil } from "lucide-react";
 import clsx from "clsx";
 import { setSuperAdmin, startImpersonation, stopImpersonation } from "@/lib/impersonation-store";
@@ -29,7 +30,6 @@ export default function DiagnosticsPage() {
   const [selectedTenantId, setSelectedTenantId] = useState<string>(() => readAdminTenants()[0]?.id ?? defaultAdminTenants[0].id);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
-  const [newCustomerZernioProfileId, setNewCustomerZernioProfileId] = useState("");
   const [userModal, setUserModal] = useState<{ mode: "create" | "edit"; userId?: string } | null>(null);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -43,7 +43,6 @@ export default function DiagnosticsPage() {
   });
 
   const selectedTenant = tenants.find((tenant) => tenant.id === selectedTenantId) ?? tenants[0];
-  const [zernioProfileIdInput, setZernioProfileIdInput] = useState("");
 
   useEffect(() => {
     if (!selectedTenant) return;
@@ -54,7 +53,6 @@ export default function DiagnosticsPage() {
       customerLabel: settings.customerLabel,
       identifierLabel: settings.identifierLabel
     });
-    setZernioProfileIdInput(selectedTenant.zernioProfileId ?? "");
   }, [selectedTenant]);
 
   useEffect(() => {
@@ -114,15 +112,6 @@ export default function DiagnosticsPage() {
     );
   };
 
-  const saveTenantZernioProfile = () => {
-    if (!selectedTenant) return;
-    const trimmed = zernioProfileIdInput.trim();
-    updateTenants((prev) =>
-      prev.map((tenant) => (tenant.id === selectedTenant.id ? { ...tenant, zernioProfileId: trimmed || undefined } : tenant))
-    );
-    setZernioProfileIdInput(trimmed);
-  };
-
   const impersonateTenant = () => {
     if (!selectedTenant) return;
     startImpersonation(selectedTenant.name);
@@ -174,7 +163,7 @@ export default function DiagnosticsPage() {
         <aside className="card space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">Customers</h2>
-            <button type="button" onClick={() => { setNewCustomerName(""); setNewCustomerZernioProfileId(""); setShowAddCustomerModal(true); }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#28d9c6]/50 bg-[#28d9c6]/10 text-[#69f0df] hover:bg-[#28d9c6]/20" aria-label="Add customer">
+            <button type="button" onClick={() => { setNewCustomerName(""); setShowAddCustomerModal(true); }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#28d9c6]/50 bg-[#28d9c6]/10 text-[#69f0df] hover:bg-[#28d9c6]/20" aria-label="Add customer">
               <Plus className="h-4 w-4" />
             </button>
           </div>
@@ -187,7 +176,6 @@ export default function DiagnosticsPage() {
             >
               <div className="font-semibold text-white">{tenant.name}</div>
               <div className="mt-1 text-sm text-slate-400">{tenant.users.length} users attached</div>
-              <div className="mt-2 text-xs text-slate-500">{tenant.zernioProfileId ? "Connected to Zernio profile" : "No Zernio profile linked"}</div>
             </button>
           ))}
         </aside>
@@ -198,9 +186,6 @@ export default function DiagnosticsPage() {
               <div>
                 <h2 className="text-lg font-semibold text-white">{selectedTenant.name}</h2>
                 <p className="text-sm text-slate-400">Attached users and credit controls</p>
-                <div className={clsx("mt-2 inline-flex rounded-full border px-2 py-1 text-xs", selectedTenant.zernioProfileId ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-slate-500/40 bg-slate-600/10 text-slate-300")}>
-                  {selectedTenant.zernioProfileId ? "Connected to Zernio profile" : "No Zernio profile linked"}
-                </div>
               </div>
               <button type="button" onClick={openCreateUserModal} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#28d9c6] px-4 text-sm font-semibold text-[#022a36]">
                 <Plus className="h-4 w-4" />
@@ -212,20 +197,8 @@ export default function DiagnosticsPage() {
               Impersonate customer account
             </button>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-              <div>
-                <label htmlFor="zernio-profile-id" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Zernio Profile ID</label>
-                <input
-                  id="zernio-profile-id"
-                  className="w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#30b5a5]"
-                  placeholder="Enter Zernio profile ID"
-                  value={zernioProfileIdInput}
-                  onChange={(event) => setZernioProfileIdInput(event.target.value)}
-                />
-              </div>
-              <button type="button" onClick={saveTenantZernioProfile} className="rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]">
-                Save Tenant Settings
-              </button>
+            <div className="mt-4 rounded-xl border border-[#253149] bg-[#0b1323] p-3 text-sm text-slate-300">
+              Zernio profiles and WhatsApp accounts are stored server-side. <Link href="/admin/zernio" className="font-semibold text-[#69f0df] hover:underline">Manage Zernio connections</Link>
             </div>
 
             <div className="mt-4 space-y-2">
@@ -295,10 +268,6 @@ export default function DiagnosticsPage() {
             <label htmlFor="customer-name" className="mb-2 block text-sm font-medium text-slate-700">Customer name *</label>
             <input id="customer-name" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" placeholder="e.g. QuickFix Amsterdam" value={newCustomerName} onChange={(event) => setNewCustomerName(event.target.value)} />
           </div>
-          <div>
-            <label htmlFor="customer-zernio-profile" className="mb-2 block text-sm font-medium text-slate-700">Zernio Profile ID</label>
-            <input id="customer-zernio-profile" className="w-full rounded-xl border border-[#bfc9d8] bg-white px-3 py-2 text-sm outline-none focus:border-[#30b5a5]" placeholder="Enter Zernio profile ID" value={newCustomerZernioProfileId} onChange={(event) => setNewCustomerZernioProfileId(event.target.value)} />
-          </div>
           <div className="flex items-center justify-end gap-3">
             <button type="button" onClick={() => setShowAddCustomerModal(false)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
             <button
@@ -306,8 +275,7 @@ export default function DiagnosticsPage() {
               onClick={() => {
                 const name = newCustomerName.trim();
                 if (!name) return;
-                const zernioProfileId = newCustomerZernioProfileId.trim();
-                const newTenant: Tenant = { id: `ten_${Date.now()}`, name, users: [], monthlyCredits: 0, oneTimeCredits: 0, zernioProfileId: zernioProfileId || undefined };
+                const newTenant: Tenant = { id: `ten_${Date.now()}`, name, users: [], monthlyCredits: 0, oneTimeCredits: 0 };
                 updateTenants((prev) => [...prev, newTenant]);
                 setSelectedTenantId(newTenant.id);
                 setShowAddCustomerModal(false);

@@ -15,10 +15,11 @@ function requireApiKey() {
 }
 
 export async function zernioFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const isMultipart = typeof FormData !== "undefined" && init?.body instanceof FormData;
   const response = await fetch(`${ZERNIO_BASE_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(!isMultipart ? { "Content-Type": "application/json" } : {}),
       Authorization: `Bearer ${requireApiKey()}`,
       ...init?.headers
     },
@@ -26,6 +27,21 @@ export async function zernioFetch<T>(path: string, init?: RequestInit): Promise<
   });
 
   const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new ZernioError("ZERNIO API request failed", response.status, payload);
+  if (!response.ok) {
+    const detail = payload && typeof payload === "object" && "error" in payload
+      ? String((payload as { error?: unknown }).error ?? "Unknown Zernio error")
+      : "Unknown Zernio error";
+    throw new ZernioError(`ZERNIO API request failed: ${detail}`, response.status, payload);
+  }
   return payload as T;
+}
+
+export async function zernioRawFetch(path: string, init?: RequestInit) {
+  const response = await fetch(`${ZERNIO_BASE_URL}${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${requireApiKey()}`, ...init?.headers },
+    cache: "no-store"
+  });
+  if (!response.ok) throw new ZernioError("ZERNIO media request failed", response.status, null);
+  return response;
 }

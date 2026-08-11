@@ -1,5 +1,5 @@
 import "server-only";
-import { zernioFetch } from "@/lib/integrations/zernio/client";
+import { zernioFetch, zernioRawFetch } from "@/lib/integrations/zernio/client";
 
 export type ZernioAccount = {
   id: string;
@@ -14,11 +14,17 @@ export type ZernioConversation = {
   id: string;
   accountId?: string;
   profileId?: string;
+  platform?: string;
+  participantId?: string;
+  participantName?: string;
+  participantPicture?: string;
   customer?: { id?: string; name?: string; phone?: string };
   participant?: { name?: string; phone?: string };
-  lastMessage?: { id?: string; text?: string; body?: string; createdAt?: string; timestamp?: string };
+  lastMessage?: string | { id?: string; text?: string; body?: string; createdAt?: string; timestamp?: string };
+  updatedTime?: string;
   updatedAt?: string;
   status?: string;
+  unreadCount?: number;
 };
 
 export type ZernioMessage = {
@@ -27,11 +33,16 @@ export type ZernioMessage = {
   direction?: "inbound" | "outbound" | string;
   status?: string;
   text?: { body?: string };
+  message?: string;
   body?: string;
   createdAt?: string;
   timestamp?: string;
   sender?: { phone?: string; name?: string };
-  attachments?: Array<{ id?: string; url?: string; filename?: string; mimeType?: string }>;
+  deliveryStatus?: string;
+  deliveredAt?: string;
+  readAt?: string;
+  sentAt?: string;
+  attachments?: Array<{ id?: string; type?: string; url?: string; filename?: string; mimeType?: string; previewUrl?: string }>;
 };
 
 export async function listZernioAccounts(profileId: string, platform = "whatsapp") {
@@ -65,7 +76,11 @@ export async function listZernioConversations(params: {
   if (typeof params.limit === "number") query.set("limit", String(params.limit));
   if (params.cursor) query.set("cursor", params.cursor);
 
-  return zernioFetch<{ data?: ZernioConversation[]; conversations?: ZernioConversation[] }>(`/v1/inbox/conversations?${query.toString()}`);
+  return zernioFetch<{
+    data?: ZernioConversation[];
+    conversations?: ZernioConversation[];
+    pagination?: { hasMore?: boolean; nextCursor?: string };
+  }>(`/v1/inbox/conversations?${query.toString()}`);
 }
 
 export async function getZernioConversation(conversationId: string, accountId: string) {
@@ -74,9 +89,11 @@ export async function getZernioConversation(conversationId: string, accountId: s
   );
 }
 
-export async function listZernioConversationMessages(conversationId: string, accountId: string) {
-  return zernioFetch<{ data?: ZernioMessage[]; messages?: ZernioMessage[] }>(
-    `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?accountId=${encodeURIComponent(accountId)}`
+export async function listZernioConversationMessages(conversationId: string, accountId: string, cursor?: string) {
+  const query = new URLSearchParams({ accountId, limit: "100", sortOrder: "asc" });
+  if (cursor) query.set("cursor", cursor);
+  return zernioFetch<{ data?: ZernioMessage[]; messages?: ZernioMessage[]; pagination?: { hasMore?: boolean; nextCursor?: string } }>(
+    `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?${query.toString()}`
   );
 }
 
@@ -84,7 +101,7 @@ export async function sendZernioConversationMessage(params: {
   conversationId: string;
   accountId: string;
   text?: string;
-  attachments?: Array<{ url: string; mimeType?: string; filename?: string }>;
+  attachment?: { url: string; type?: "image" | "video" | "audio" | "file"; filename?: string };
   template?: {
     name: string;
     language: string;
@@ -97,21 +114,64 @@ export async function sendZernioConversationMessage(params: {
       method: "POST",
       body: JSON.stringify({
         accountId: params.accountId,
-        ...(params.text ? { type: "text", text: { body: params.text } } : {}),
-        ...(params.attachments?.length ? { type: "attachment", attachments: params.attachments } : {}),
+        ...(params.text ? { message: params.text } : {}),
+        ...(params.attachment
+          ? {
+              attachmentUrl: params.attachment.url,
+              attachmentType: params.attachment.type ?? "file",
+              ...(params.attachment.filename ? { attachmentName: params.attachment.filename } : {})
+            }
+          : {}),
         ...(params.template
           ? {
-              type: "template",
               template: {
-                name: params.template.name,
-                language: params.template.language,
-                components: params.template.components ?? []
+                elements: [{
+                  name: params.template.name,
+                  language: params.template.language,
+                  components: params.template.components ?? []
+                }]
               }
             }
           : {})
       })
     }
   );
+}
+
+export async function createZernioWhatsappConversation(params: {
+  accountId: string;
+  phoneNumber: string;
+  templateName: string;
+  templateLanguage: string;
+  templateParams?: string[];
+}) {
+  return zernioFetch<{
+    success?: boolean;
+    data?: { messageId?: string; conversationId?: string; participantId?: string; participantName?: string };
+  }>("/v1/inbox/conversations", {
+    method: "POST",
+    body: JSON.stringify({
+      accountId: params.accountId,
+      participantId: params.phoneNumber.replace(/[^\d]/g, ""),
+      templateName: params.templateName,
+      templateLanguage: params.templateLanguage,
+      templateParams: params.templateParams ?? []
+    })
+  });
+}
+
+export async function uploadZernioMedia(file: File) {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  if (file.type) form.append("contentType", file.type);
+  return zernioFetch<{ url: string; filename?: string; contentType?: string; size?: number }>("/v1/media/upload-direct", {
+    method: "POST",
+    body: form
+  });
+}
+
+export function downloadZernioWhatsappMedia(mediaId: string, accountId: string) {
+  return zernioRawFetch(`/v1/whatsapp/media/${encodeURIComponent(mediaId)}?accountId=${encodeURIComponent(accountId)}`);
 }
 
 export async function deleteZernioConversationMessage(conversationId: string, messageId: string, accountId: string) {

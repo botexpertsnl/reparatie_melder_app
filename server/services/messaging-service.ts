@@ -29,6 +29,7 @@ export async function sendOutboundTemplate(params: {
   language: string;
   bodyPreview?: string;
   workItemId?: string;
+  components?: Array<Record<string, unknown>>;
 }) {
   await sendConversationMessage({
     tenantId: params.tenantId,
@@ -36,7 +37,7 @@ export async function sendOutboundTemplate(params: {
     template: {
       name: params.templateId,
       language: params.language,
-      components: []
+      components: params.components ?? []
     }
   });
 

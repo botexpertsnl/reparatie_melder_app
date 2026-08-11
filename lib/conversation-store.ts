@@ -13,12 +13,14 @@ export type StoredConversationMessage = {
 
 export type StoredConversation = {
   id: string;
+  contactIdentityId?: string;
   customerName: string;
   customerPhone: string;
   preview: string;
   updatedAt: string;
   open: boolean;
   linkedRepairId?: string;
+  dismissedRepairId?: string;
   messages: StoredConversationMessage[];
   isDummy?: boolean;
   dummyTag?: string;

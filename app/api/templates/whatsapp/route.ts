@@ -21,7 +21,24 @@ export async function GET() {
   const channel = await ensureTenantZernioChannel(ctx.tenantId);
   if (!channel.zernioAccountId) return NextResponse.json({ data: [] });
   const templates = await listZernioWhatsappTemplates(channel.zernioAccountId);
-  return NextResponse.json({ data: templates.data ?? templates.templates ?? [] });
+  const remoteTemplates = templates.data ?? templates.templates ?? [];
+  const storedTemplates = await prisma.messageTemplate.findMany({ where: { tenantId: ctx.tenantId, isActive: true } });
+  const data = remoteTemplates.map((template) => {
+    const remote = template as { id?: string; name?: string; category?: string; language?: string; status?: string };
+    const stored = storedTemplates.find((item) => item.externalTemplateId === remote.id || item.name === remote.name);
+    const schema = stored?.variablesSchema && typeof stored.variablesSchema === "object"
+      ? stored.variablesSchema as { variables?: unknown[]; buttons?: unknown[] }
+      : {};
+    return {
+      ...remote,
+      id: remote.id ?? stored?.id,
+      body: stored?.bodyPreview ?? "",
+      variables: schema.variables ?? [],
+      buttons: schema.buttons ?? [],
+      active: stored?.isActive ?? true
+    };
+  });
+  return NextResponse.json({ data });
 }
 
 export async function POST(request: NextRequest) {
