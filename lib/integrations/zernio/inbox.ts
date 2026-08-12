@@ -7,6 +7,7 @@ export type ZernioAccount = {
   platform?: string;
   providerAccountId?: string;
   displayName?: string;
+  username?: string;
   status?: string;
 };
 

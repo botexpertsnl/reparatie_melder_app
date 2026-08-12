@@ -34,9 +34,21 @@ const updateSchema = z.object({
   accountId: z.string().trim().optional()
 });
 
-export async function GET() {
+function isConnectedWhatsappAccount(status?: string) {
+  return ["connected", "active", "ready", "verified"].includes((status ?? "connected").toLowerCase());
+}
+
+export async function GET(request: NextRequest) {
   try {
     await requireSystemAdmin();
+    const profileId = request.nextUrl.searchParams.get("profileId");
+    if (profileId) {
+      const accountResponse = await listZernioAccounts(profileId, "whatsapp");
+      const accounts = (accountResponse.data ?? accountResponse.accounts ?? [])
+        .filter((account) => isConnectedWhatsappAccount(account.status))
+        .map((account) => ({ id: account.id, displayName: account.displayName, username: account.username, status: account.status }));
+      return NextResponse.json({ data: { accounts } });
+    }
     const [tenants, profileResponse] = await Promise.all([
       prisma.tenant.findMany({
         orderBy: { name: "asc" },
@@ -78,12 +90,22 @@ export async function PATCH(request: NextRequest) {
 
   const accountResponse = await listZernioAccounts(profileId, "whatsapp");
   const accounts = accountResponse.data ?? accountResponse.accounts ?? [];
-  const connectedAccounts = accounts.filter((item) => ["connected", "active", "ready", "verified"].includes((item.status ?? "connected").toLowerCase()));
+  const connectedAccounts = accounts.filter((item) => isConnectedWhatsappAccount(item.status));
   const selectedAccount = accountId
     ? accounts.find((item) => item.id === accountId)
     : connectedAccounts.length === 1
       ? connectedAccounts[0]
       : undefined;
+
+  if (accountId && !selectedAccount) {
+    return NextResponse.json({
+      error: "This is not a Zernio WhatsApp account ID for the selected profile. Use the account _id from Zernio, not a Meta WABA ID or phone number ID."
+    }, { status: 400 });
+  }
+
+  if (selectedAccount && !connectedAccounts.some((item) => item.id === selectedAccount.id)) {
+    return NextResponse.json({ error: "The selected Zernio WhatsApp account is not active yet. Finish activating the number in Zernio first." }, { status: 409 });
+  }
 
   if (!selectedAccount && connectedAccounts.length > 1) {
     return NextResponse.json({
@@ -102,7 +124,7 @@ export async function PATCH(request: NextRequest) {
       zernioAccountId: selectedAccount?.id ?? null,
       whatsappAccountId: selectedAccount?.id ?? pendingAccountId,
       zernioPhoneNumberId: phone?.id ?? null,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? "",
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? selectedAccount?.username ?? "",
       displayName: `WhatsApp (ZERNIO) · ${profile.name}`,
       connectionStatus: selectedAccount ? "CONNECTED" : "AWAITING_ACCOUNT",
       isActive: true
@@ -114,7 +136,7 @@ export async function PATCH(request: NextRequest) {
       zernioAccountId: selectedAccount?.id,
       whatsappAccountId: selectedAccount?.id ?? pendingAccountId,
       zernioPhoneNumberId: phone?.id,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? "",
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? selectedAccount?.username ?? "",
       displayName: `WhatsApp (ZERNIO) · ${profile.name}`,
       connectionStatus: selectedAccount ? "CONNECTED" : "AWAITING_ACCOUNT",
       isActive: true
