@@ -71,9 +71,9 @@ export async function PATCH(request: NextRequest) {
 
   const accountResponse = await listZernioAccounts(profileId, "whatsapp");
   const accounts = accountResponse.data ?? accountResponse.accounts ?? [];
-  const connectedAccounts = accounts.filter((item) => (item.status ?? "connected").toLowerCase() === "connected");
+  const connectedAccounts = accounts.filter((item) => ["connected", "active", "ready", "verified"].includes((item.status ?? "connected").toLowerCase()));
   const selectedAccount = accountId
-    ? connectedAccounts.find((item) => item.id === accountId)
+    ? accounts.find((item) => item.id === accountId)
     : connectedAccounts.length === 1
       ? connectedAccounts[0]
       : undefined;
