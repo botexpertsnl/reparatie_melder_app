@@ -778,6 +778,7 @@ function WorkItemsPageContent() {
   const repairDrawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const repairsListParentRef = useRef<HTMLDivElement | null>(null);
   const hasInitializedStageFiltersRef = useRef(false);
+  const previousActiveStageFiltersRef = useRef<string[]>([]);
   const sessionState = useSession();
   const session = sessionState?.data;
   const activeUsername = session?.user?.name?.trim() || "User";
@@ -999,6 +1000,16 @@ function WorkItemsPageContent() {
   const effectiveSelectedStageFilters = stageFiltersInitialized ? selectedStageFilters : activeStageFilters;
   const areAllActiveTaskFiltersSelected =
     activeStageFilters.length > 0 && activeStageFilters.every((stageName) => effectiveSelectedStageFilters.includes(stageName));
+
+  useEffect(() => {
+    const previousActiveStages = previousActiveStageFiltersRef.current;
+    previousActiveStageFiltersRef.current = activeStageFilters;
+    if (!stageFiltersInitialized || previousActiveStages.length === 0) return;
+    setSelectedStageFilters((previous) => {
+      const allPreviouslyActive = previousActiveStages.every((stageName) => previous.includes(stageName));
+      return allPreviouslyActive ? Array.from(new Set([...previous, ...activeStageFilters])) : previous;
+    });
+  }, [activeStageFilters, stageFiltersInitialized]);
   const filteredRepairs = useMemo(() => {
     return repairs.filter((repair) => {
       const matchesSearch = matchesRepairSearch(repair, searchQuery);
@@ -1223,6 +1234,39 @@ function WorkItemsPageContent() {
       writeStoredRepairHistory(result.historyItems);
       return result.repairs;
     });
+  };
+
+  const sendWorkflowTemplate = async () => {
+    if (!pendingTemplateStageChange) return;
+    const { repairId, stage, template, variableValues } = pendingTemplateStageChange;
+    const thread = conversations.find((item) => item.linkedRepairId === repairId);
+    if (!thread) {
+      window.alert("Link an open conversation before sending this workflow template.");
+      return;
+    }
+    const templatePreview = fillTemplateBody(template, variableValues);
+    const response = await fetch(`/api/conversations/${thread.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: thread.customerPhone,
+        template: {
+          name: template.name,
+          language: template.language,
+          components: variableValues.length ? [{ type: "body", parameters: variableValues.map((value) => ({ type: "text", text: value.trim() })) }] : []
+        }
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      window.alert(payload.error ?? "Template could not be sent.");
+      return;
+    }
+    updateRepairStage(repairId, stage.name, {
+      sentTemplateMessage: buildTemplateMessageWithButtons(templatePreview, template.buttons),
+      scheduledSendAtIso: buildScheduledSendAtIso(stage)
+    });
+    setPendingTemplateStageChange(null);
   };
 
   const runStageTransitionFromSave = (
@@ -1691,25 +1735,7 @@ function WorkItemsPageContent() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const templatePreview = fillTemplateBody(
-                    pendingTemplateStageChange.template,
-                    pendingTemplateStageChange.variableValues
-                  );
-                  const hasEmptyVariableValues = (pendingTemplateStageChange.template.variables ?? []).some(
-                    (_, index) => !(pendingTemplateStageChange.variableValues[index] ?? "").trim()
-                  );
-                  if (hasEmptyVariableValues) return;
-
-                  updateRepairStage(pendingTemplateStageChange.repairId, pendingTemplateStageChange.stage.name, {
-                    sentTemplateMessage: buildTemplateMessageWithButtons(
-                      templatePreview,
-                      pendingTemplateStageChange.template.buttons
-                    ),
-                    scheduledSendAtIso: buildScheduledSendAtIso(pendingTemplateStageChange.stage)
-                  });
-                  setPendingTemplateStageChange(null);
-                }}
+                onClick={() => void sendWorkflowTemplate()}
                 disabled={(pendingTemplateStageChange.template.variables ?? []).some(
                   (_, index) => !(pendingTemplateStageChange.variableValues[index] ?? "").trim()
                 )}
