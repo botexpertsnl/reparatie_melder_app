@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest) {
 
     const { tenantId, profileId, accountId } = parsed.data;
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    if (!tenant) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
   const profileResponse = await listZernioProfiles();
   const profiles = profileResponse.profiles ?? profileResponse.data?.profiles ?? [];
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   try {
     await requireSystemAdmin();
     const body = await request.json().catch(() => ({})) as { tenantId?: string };
-    if (!body.tenantId) return NextResponse.json({ error: "Tenant ID is required" }, { status: 400 });
+    if (!body.tenantId) return NextResponse.json({ error: "Customer ID is required" }, { status: 400 });
     const channel = await ensureTenantZernioChannel(body.tenantId);
     const webhook = await ensureZernioWebhook();
     return NextResponse.json({ data: { ...channel, webhookConfigured: Boolean(webhook) } });
@@ -137,7 +137,7 @@ export async function DELETE(request: NextRequest) {
   try {
     await requireSystemAdmin();
     const body = await request.json().catch(() => ({})) as { tenantId?: string };
-    if (!body.tenantId) return NextResponse.json({ error: "Tenant ID is required" }, { status: 400 });
+    if (!body.tenantId) return NextResponse.json({ error: "Customer ID is required" }, { status: 400 });
     await prisma.tenantMessagingChannel.deleteMany({ where: { tenantId: body.tenantId, provider: "ZERNIO" } });
     return NextResponse.json({ data: { disconnected: true } });
   } catch (error) {

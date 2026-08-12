@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Shield, Building2, ArrowLeftRight } from "lucide-react";
+import { Shield, Building2 } from "lucide-react";
 import { canAccessSystemAdminArea } from "@/lib/access/area-access";
 
 const adminNavItems = [
@@ -26,7 +26,7 @@ export function SystemAdminShell({ children }: { children: React.ReactNode }) {
             href="/dashboard"
             className="mt-4 inline-flex items-center rounded-xl bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36]"
           >
-            Return to tenant app
+            Return to customer workspace
           </Link>
         </div>
       </div>
@@ -68,16 +68,6 @@ export function SystemAdminShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="px-4 pb-5">
-          <Link
-            href="/dashboard"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm text-slate-300 hover:bg-slate-900/70"
-            style={{ borderColor: "var(--border)" }}
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            Open tenant environment
-          </Link>
-        </div>
       </aside>
 
       <div className="flex min-h-screen flex-col">

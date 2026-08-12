@@ -32,7 +32,11 @@ export async function GET() {
     });
     return NextResponse.json({ data: { tenants } });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error && error.message === "Forbidden" ? "System administrator access is required." : "Unable to load customers." }, { status: 403 });
+    const forbidden = error instanceof Error && error.message === "Forbidden";
+    return NextResponse.json(
+      { error: forbidden ? "System administrator access is required." : "Unable to load customers." },
+      { status: forbidden ? 403 : 500 }
+    );
   }
 }
 
@@ -71,7 +75,7 @@ export async function DELETE(request: NextRequest) {
   try {
     await requireSystemAdmin();
     const parsed = z.object({ tenantId: z.string().min(1), confirmationName: z.string().min(1) }).safeParse(await request.json());
-    if (!parsed.success) return NextResponse.json({ error: "Tenant ID and confirmation name are required." }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: "Customer ID and confirmation name are required." }, { status: 400 });
     const tenant = await prisma.tenant.findUnique({ where: { id: parsed.data.tenantId }, select: { id: true, name: true } });
     if (!tenant) return NextResponse.json({ error: "Customer not found." }, { status: 404 });
     if (parsed.data.confirmationName !== tenant.name) return NextResponse.json({ error: "The confirmation name does not match." }, { status: 400 });
