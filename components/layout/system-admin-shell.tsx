@@ -34,8 +34,8 @@ export function SystemAdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen min-[960px]:grid min-[960px]:grid-cols-[270px_1fr]" style={{ background: "var(--bg)", color: "var(--text-primary)" }}>
-      <aside className="border-b min-[960px]:border-b-0 min-[960px]:border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
+    <div className="min-h-screen min-[960px]:grid min-[960px]:h-screen min-[960px]:grid-cols-[270px_1fr] min-[960px]:overflow-hidden" style={{ background: "var(--bg)", color: "var(--text-primary)" }}>
+      <aside className="border-b min-[960px]:min-h-0 min-[960px]:overflow-y-auto min-[960px]:border-b-0 min-[960px]:border-r" style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}>
         <div className="border-b px-6 py-5" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-[#28d9c6]/15 p-2.5 text-[#69f0df]">
@@ -70,12 +70,12 @@ export function SystemAdminShell({ children }: { children: React.ReactNode }) {
 
       </aside>
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col min-[960px]:min-h-0">
         <header className="border-b px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
           <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Separated environment</p>
           <h1 className="text-lg font-semibold text-white">System Administration</h1>
         </header>
-        <main className="flex-1 px-5 py-6 min-[769px]:px-10 min-[769px]:py-8">{children}</main>
+        <main className="flex-1 px-5 py-6 min-[769px]:px-10 min-[769px]:py-8 min-[960px]:min-h-0 min-[960px]:overflow-y-auto">{children}</main>
       </div>
     </div>
   );
