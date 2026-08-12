@@ -882,7 +882,7 @@ function ConversationListRow({
   });
 
   return (
-    <div className="relative overflow-hidden border-b-4 border-double border-[var(--border)]">
+    <div className="relative overflow-hidden border-b border-[var(--border)]">
       <div
         onClick={onOpenConversation}
         onKeyDown={(event) => {

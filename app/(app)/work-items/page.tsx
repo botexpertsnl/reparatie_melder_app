@@ -399,7 +399,7 @@ function RepairListRow({
   const showDetailsIndicator = isMobileSwipeEnabled && previewOffset < 0;
 
   return (
-    <div className="relative overflow-hidden border-b-4 border-double border-[var(--border)]">
+    <div className="relative overflow-hidden border-b border-[var(--border)]">
       {isMobileSwipeEnabled ? (
         <div
           aria-hidden="true"
