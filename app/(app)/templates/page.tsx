@@ -7,7 +7,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import Link from "next/link";
 
 import { defaultStoredTemplates, readStoredTemplates, writeStoredTemplates } from "@/lib/template-store";
-import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
+import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, writeStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
 import { validateButtonTextUniqueness } from "@/lib/templates/button-text-uniqueness";
 import { useTenantAssetLabel } from "@/lib/use-tenant-terminology";
 
@@ -88,15 +88,16 @@ function normalizeCategory(category?: string): TemplateCategory {
   return "UTILITY";
 }
 
-function normalizeButton(button: { id: string; type: string; text: string; value?: string; url?: string; phoneNumber?: string }): TemplateButton {
-  const normalizedType = button.type.toUpperCase();
+function normalizeButton(button: { id?: string; type?: string; text?: string; value?: string; url?: string; phoneNumber?: string; phone_number?: string }, fallbackId = `btn_${Date.now()}`): TemplateButton {
+  const normalizedType = (button.type ?? "QUICK_REPLY").toUpperCase();
+  const id = button.id ?? fallbackId;
   if (normalizedType === "URL") {
-    return { id: button.id, type: "URL", text: button.text ?? "", url: button.url ?? button.value ?? "" };
+    return { id, type: "URL", text: button.text ?? "", url: button.url ?? button.value ?? "" };
   }
   if (normalizedType === "PHONE_NUMBER" || normalizedType === "PHONE") {
-    return { id: button.id, type: "PHONE_NUMBER", text: button.text ?? "", phoneNumber: button.phoneNumber ?? button.value ?? "" };
+    return { id, type: "PHONE_NUMBER", text: button.text ?? "", phoneNumber: button.phoneNumber ?? button.phone_number ?? button.value ?? "" };
   }
-  return { id: button.id, type: "QUICK_REPLY", text: button.text ?? "" };
+  return { id, type: "QUICK_REPLY", text: button.text ?? "" };
 }
 
 function templateToFormValues(template: Template): TemplateFormValues {
@@ -624,7 +625,7 @@ function TemplateModal({
           <div ref={modalScrollRef} className="subtle-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
             {isTemplateLocked ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                Existing templates are locked. You can only update the template name and active status.
+                The approved template content is locked. Quick-reply labels and their automatic actions remain editable in the app.
               </div>
             ) : null}
             <div>
@@ -826,7 +827,7 @@ function TemplateModal({
                           </div>
                         ) : null}
 
-                        <input ref={(node) => { buttonInputRefs.current[button.id] = node; }} readOnly={isTemplateLocked} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900", isTemplateLocked ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
+                        <input ref={(node) => { buttonInputRefs.current[button.id] = node; }} readOnly={isTemplateLocked && button.type !== "QUICK_REPLY"} className={clsx("w-full rounded-lg border border-[#cdd5e2] bg-white px-3 py-2 text-sm mobile-no-zoom text-slate-900", isTemplateLocked && button.type !== "QUICK_REPLY" ? "cursor-not-allowed bg-slate-100 text-slate-900" : undefined)} placeholder="Button text (max 20 chars)" value={button.text} maxLength={20} onChange={(event) => updateButton(button.id, (current) => ({ ...current, text: event.target.value }))} />
                         <div className="mt-1 text-xs text-slate-500">{button.text.trim().length}/20</div>
                         {emptyButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot be empty.</p> : null}
                         {tooLongButtonIndexes.has(index) ? <p className="mt-1 text-xs text-red-500">Button text cannot exceed 20 characters.</p> : null}
@@ -937,17 +938,17 @@ export default function TemplatesPage() {
         const response = await fetch("/api/templates/whatsapp", { cache: "no-store" });
         if (!response.ok) return;
         const payload = await response.json();
-        const zernioTemplates = ((payload.data ?? []) as Array<{ id: string; name: string; category: string; language: string; status?: string }>).map((template) => ({
+        const zernioTemplates = ((payload.data ?? []) as Array<{ id: string; name: string; category: string; language: string; status?: string; body?: string; variables?: TemplateVariable[]; buttons?: Array<{ id?: string; type?: string; text?: string; value?: string; url?: string; phoneNumber?: string; phone_number?: string }>; active?: boolean }>).map((template) => ({
           id: `zernio_${template.id}`,
           zernioTemplateId: template.id,
           zernioStatus: template.status,
           name: template.name,
           category: normalizeCategory(template.category),
           language: template.language,
-          body: "",
-          active: (template.status ?? "").toUpperCase() !== "REJECTED",
-          variables: [],
-          buttons: []
+          body: template.body ?? "",
+          active: template.active ?? (template.status ?? "").toUpperCase() !== "REJECTED",
+          variables: template.variables ?? [],
+          buttons: (template.buttons ?? []).map((button, index) => normalizeButton(button, `zernio_${template.id}_btn_${index + 1}`))
         }));
 
         if (zernioTemplates.length > 0) {
@@ -1053,14 +1054,34 @@ export default function TemplatesPage() {
     setIsCreateModalOpen(false);
   };
 
-  const handleEditTemplate = (templateId: string, values: TemplateFormValues) => {
+  const handleEditTemplate = async (templateId: string, values: TemplateFormValues) => {
     const normalizedButtons = sanitizeButtonsForSave(values.buttons);
+    const currentTemplate = templates.find((template) => template.id === templateId);
     const uniqueness = validateButtonTextUniqueness({
       buttons: normalizedButtons,
       templates,
       currentTemplateId: templateId
     });
     if (uniqueness.duplicateWithinTemplateIndexes.size > 0 || uniqueness.duplicateAcrossTemplatesIndexes.size > 0) return;
+
+    if (currentTemplate?.zernioTemplateId) {
+      const response = await fetch("/api/templates/whatsapp", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          externalTemplateId: currentTemplate.zernioTemplateId,
+          name: values.name.trim(),
+          category: currentTemplate.category,
+          language: currentTemplate.language,
+          body: currentTemplate.body,
+          variables: currentTemplate.variables,
+          buttons: normalizedButtons,
+          active: values.active
+        })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "The quick replies could not be saved.");
+    }
 
     setTemplates((prev) =>
       prev.map((template) => {
@@ -1069,10 +1090,26 @@ export default function TemplatesPage() {
         return {
           ...template,
           name: values.name.trim(),
-          active: values.active
+          active: values.active,
+          buttons: normalizedButtons
         };
       })
     );
+
+    if (currentTemplate) {
+      const oldTextByButtonId = new Map(currentTemplate.buttons.map((button) => [button.id, button.text]));
+      const newTextByButtonId = new Map(normalizedButtons.map((button) => [button.id, button.text]));
+      const nextStages = workflowStages.map((stage) => ({
+        ...stage,
+        templateButtonActions: (stage.templateButtonActions ?? []).map((action) => {
+          if (stage.templateId !== templateId || !oldTextByButtonId.has(action.buttonId)) return action;
+          const buttonText = newTextByButtonId.get(action.buttonId) ?? action.buttonText ?? "";
+          return { ...action, buttonText, buttonTextNormalized: undefined, updatedAt: new Date().toISOString() };
+        })
+      }));
+      setWorkflowStages(nextStages);
+      writeStoredWorkflowStages(nextStages);
+    }
 
     setEditingTemplateId(null);
   };

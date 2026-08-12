@@ -10,8 +10,13 @@ export type ZernioTemplate = {
   components?: Array<Record<string, unknown>>;
 };
 
+type ZernioTemplateListResponse = {
+  data?: { templates?: ZernioTemplate[] } | ZernioTemplate[];
+  templates?: ZernioTemplate[];
+};
+
 export async function listZernioWhatsappTemplates(accountId: string) {
-  return zernioFetch<{ data?: ZernioTemplate[]; templates?: ZernioTemplate[] }>(
+  return zernioFetch<ZernioTemplateListResponse>(
     `/v1/whatsapp/templates?accountId=${encodeURIComponent(accountId)}`
   );
 }
