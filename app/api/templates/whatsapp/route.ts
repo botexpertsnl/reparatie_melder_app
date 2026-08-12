@@ -4,6 +4,7 @@ import { requireTenantContext } from "@/lib/multitenancy/tenant-context";
 import { prisma } from "@/lib/prisma";
 import { ensureTenantZernioChannel } from "@/server/services/zernio-sync-service";
 import { createZernioWhatsappTemplate, listZernioWhatsappTemplates } from "@/lib/integrations/zernio/templates";
+import { ZernioError } from "@/lib/integrations/zernio/client";
 
 const schema = z.object({
   name: z.string().min(1),
@@ -42,45 +43,62 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const ctx = await requireTenantContext();
-  if (!ctx.tenantId) return NextResponse.json({ error: "Tenant required" }, { status: 403 });
-  const parsed = schema.safeParse(await request.json());
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  try {
+    const ctx = await requireTenantContext();
+    if (!ctx.tenantId) return NextResponse.json({ error: "Tenant required" }, { status: 403 });
+    const parsed = schema.safeParse(await request.json());
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const channel = await ensureTenantZernioChannel(ctx.tenantId);
-  if (!channel.zernioAccountId) return NextResponse.json({ error: "No Zernio account" }, { status: 400 });
+    const channel = await ensureTenantZernioChannel(ctx.tenantId);
+    if (!channel.zernioAccountId) return NextResponse.json({ error: "No Zernio account is connected for this customer." }, { status: 400 });
 
-  const payload = parsed.data;
-  const components: Array<Record<string, unknown>> = [
-    { type: "BODY", text: payload.body },
-    ...(payload.buttons?.length ? [{ type: "BUTTONS", buttons: payload.buttons }] : [])
-  ];
+    const payload = parsed.data;
+    const buttons = payload.buttons?.map((button) => {
+      if (!button || typeof button !== "object") return button;
+      const value = button as { type?: string; text?: string; url?: string; phoneNumber?: string };
+      if (value.type === "URL") return { type: "URL", text: value.text, url: value.url };
+      if (value.type === "PHONE_NUMBER") return { type: "PHONE_NUMBER", text: value.text, phone_number: value.phoneNumber };
+      return { type: "QUICK_REPLY", text: value.text };
+    });
+    const components: Array<Record<string, unknown>> = [
+      { type: "BODY", text: payload.body },
+      ...(buttons?.length ? [{ type: "BUTTONS", buttons }] : [])
+    ];
 
-  const created = await createZernioWhatsappTemplate({
-    accountId: channel.zernioAccountId,
-    name: payload.name,
-    category: payload.category,
-    language: payload.language,
-    components
-  });
-  const template = created.data ?? created.template;
-
-  const saved = await prisma.messageTemplate.create({
-    data: {
-      tenantId: ctx.tenantId,
+    const created = await createZernioWhatsappTemplate({
+      accountId: channel.zernioAccountId,
       name: payload.name,
       category: payload.category,
       language: payload.language,
-      bodyPreview: payload.body,
-      externalTemplateId: template?.id ?? created.id,
-      variablesSchema: {
-        zernioStatus: template?.status ?? "PENDING",
-        zernioTemplateName: template?.name ?? payload.name,
-        variables: payload.variables ?? [],
-        buttons: payload.buttons ?? []
-      }
-    }
-  });
+      components
+    });
+    const template = created.data ?? created.template;
 
-  return NextResponse.json({ data: { template, saved } });
+    const saved = await prisma.messageTemplate.create({
+      data: {
+        tenantId: ctx.tenantId,
+        name: payload.name,
+        category: payload.category,
+        language: payload.language,
+        bodyPreview: payload.body,
+        externalTemplateId: template?.id ?? created.id,
+        variablesSchema: {
+          zernioStatus: template?.status ?? "PENDING",
+          zernioTemplateName: template?.name ?? payload.name,
+          variables: payload.variables ?? [],
+          buttons: payload.buttons ?? []
+        }
+      }
+    });
+
+    return NextResponse.json({ data: { template, saved } });
+  } catch (error) {
+    if (error instanceof ZernioError) {
+      return NextResponse.json(
+        { error: error.message.replace(/^ZERNIO API request failed:\s*/i, "") },
+        { status: error.status >= 400 && error.status < 500 ? error.status : 502 }
+      );
+    }
+    throw error;
+  }
 }

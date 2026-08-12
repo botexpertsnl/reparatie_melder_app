@@ -8,7 +8,6 @@ import clsx from "clsx";
 import {
   Search,
   Send,
-  Link as LinkIcon,
   Wrench,
   X,
   ChevronLeft,
@@ -68,7 +67,6 @@ import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from
 import { buildTemplateMessageWithButtons, buildTemplateVariableDefaults, fillTemplateBody } from "@/lib/repair-stage-transition";
 import { findContactIdentityByPhone, getContactIdentityById, migrateContactIdentityLinks, removeExpiredContactIdentities, upsertContactIdentity } from "@/lib/contact-identity-store";
 
-type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
 type ChatImagePreview = { url: string; alt: string };
 
@@ -426,43 +424,6 @@ function LinkRepairModal({
             </button>
           ))}
         </div>
-      </div>
-    </ModalShell>
-  );
-}
-
-function ConnectRepairModal({ repairLabel, onClose, onLink, onCreate }: {
-  repairLabel: string;
-  onClose: () => void;
-  onLink: () => void;
-  onCreate: () => void;
-}) {
-  return (
-    <ModalShell
-      title={`Connect ${repairLabel}`}
-      onClose={onClose}
-      maxWidthClassName="max-w-md"
-      closeLabel="Close connect repair dialog"
-      closeOnBackdrop
-    >
-      <p className="text-sm text-slate-600">Choose how you want to connect this conversation.</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={onLink}
-          className="rounded-xl border border-[#bfc9d8] bg-white px-4 py-4 text-left transition hover:border-[#2fb2a3] hover:bg-[#f0fbf9]"
-        >
-          <span className="block text-sm font-semibold text-slate-800">Link {repairLabel}</span>
-          <span className="mt-1 block text-xs text-slate-500">Select an existing {repairLabel.toLowerCase()}.</span>
-        </button>
-        <button
-          type="button"
-          onClick={onCreate}
-          className="rounded-xl border border-[#2fb2a3]/50 bg-[#2fb2a3]/10 px-4 py-4 text-left transition hover:bg-[#2fb2a3]/20"
-        >
-          <span className="block text-sm font-semibold text-[#16786b]">New {repairLabel}</span>
-          <span className="mt-1 block text-xs text-slate-500">Create and connect a new {repairLabel.toLowerCase()}.</span>
-        </button>
       </div>
     </ModalShell>
   );
@@ -846,7 +807,7 @@ function ConversationAvatar({ name, phone, color, large = false, unlinked = fals
         : { color, borderColor: colorWithAlpha(color, "70"), background: colorWithAlpha(color, "2B") }}
       aria-hidden="true"
     >
-      {unlinked ? <LinkIcon className={large ? "h-5 w-5" : "h-4 w-4"} /> : getContactInitials(name, phone)}
+      {unlinked ? <Wrench className={large ? "h-5 w-5" : "h-4 w-4"} /> : getContactInitials(name, phone)}
     </span>
   );
 }
@@ -860,7 +821,7 @@ function ConversationListRow({
   isMobileSwipeEnabled,
   onOpenConversation,
   onToggleConversationOpenState,
-  onConnectRepair,
+  onCreateRepair,
 }: {
   thread: StoredConversation;
   updatedAtLabel: string;
@@ -870,7 +831,7 @@ function ConversationListRow({
   isMobileSwipeEnabled: boolean;
   onOpenConversation: () => void;
   onToggleConversationOpenState: () => void;
-  onConnectRepair: () => void;
+  onCreateRepair: () => void;
 }) {
   const repairLabel = useTenantRepairLabel();
   const linkedRepair = repairs.find((repair) => repair.id === thread.linkedRepairId);
@@ -913,12 +874,12 @@ function ConversationListRow({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onConnectRepair();
+              onCreateRepair();
             }}
             onMouseDown={(event) => event.stopPropagation()}
             className="absolute left-3 top-3 rounded-full transition hover:scale-105 hover:shadow-md"
-            aria-label={`Connect ${repairLabel.toLowerCase()} to ${thread.customerName || thread.customerPhone}`}
-            title={`Connect ${repairLabel}`}
+            aria-label={`Create ${repairLabel.toLowerCase()} for ${thread.customerName || thread.customerPhone}`}
+            title={`Create ${repairLabel}`}
             data-swipe-ignore="true"
           >
             <ConversationAvatar name={thread.customerName} phone={thread.customerPhone} color={stageColor} unlinked />
@@ -1020,11 +981,6 @@ function ConversationsPageContent() {
     return window.matchMedia("(max-width: 767px)").matches;
   });
   const [isClientMounted, setIsClientMounted] = useState(false);
-  const [linkModal, setLinkModal] = useState<LinkModalState>({
-    open: false,
-    threadId: null,
-  });
-  const [connectRepairThreadId, setConnectRepairThreadId] = useState<string | null>(null);
   const [createRepairThreadId, setCreateRepairThreadId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [isMessageInputFocused, setIsMessageInputFocused] = useState(false);
@@ -1360,15 +1316,21 @@ function ConversationsPageContent() {
     if (lastInboundTimestamp <= 0) return false;
     return nowTimestamp - lastInboundTimestamp > 24 * 60 * 60 * 1000;
   }, [lastCustomerMessage, nowTimestamp]);
-  const createRepairInitialValues = useMemo<NewRepairFormValues>(() => ({
-    customerFirstName: "",
-    customerLastName: "",
-    customerPhone: createRepairThread?.customerPhone ?? "+31 ",
-    assetName: "",
-    repairTitle: "",
-    description: "",
-    repairStage: initialStage
-  }), [createRepairThread?.customerPhone, initialStage]);
+  const createRepairInitialValues = useMemo<NewRepairFormValues>(() => {
+    const contactName = createRepairThread?.customerName.trim() ?? "";
+    const isPhoneOnlyName = contactName === createRepairThread?.customerPhone;
+    const nameParts = isPhoneOnlyName ? [] : contactName.split(/\s+/).filter(Boolean);
+
+    return {
+      customerFirstName: nameParts[0] ?? "",
+      customerLastName: nameParts.slice(1).join(" "),
+      customerPhone: createRepairThread?.customerPhone ?? "+31 ",
+      assetName: "",
+      repairTitle: "",
+      description: "",
+      repairStage: initialStage
+    };
+  }, [createRepairThread?.customerName, createRepairThread?.customerPhone, initialStage]);
 
   const visibleThreads = useMemo(() => {
     const getComparableTimestamp = (thread: StoredConversation) => {
@@ -1729,42 +1691,8 @@ function ConversationsPageContent() {
     );
   }, [updateThreads]);
 
-  const linkRepairToThread = (threadId: string, repairId: string) => {
-    const repair = repairs.find((item) => item.id === repairId);
-    if (!repair) return;
-
-    updateThreads((prev) =>
-      prev.map((thread) => {
-        if (thread.id === threadId) {
-          return {
-              ...thread,
-              linkedRepairId: repair.id,
-              dismissedRepairId: undefined,
-              contactIdentityId: repair.contactIdentityId,
-              customerName: repair.customerName,
-              customerPhone: repair.customerPhone,
-          };
-        }
-        if (thread.linkedRepairId === repair.id) {
-          return { ...thread, linkedRepairId: undefined, dismissedRepairId: repair.id };
-        }
-        return thread;
-      })
-    );
-
-    setLinkModal({ open: false, threadId: null });
-    setConnectRepairThreadId(null);
-    setShowRepairPanel(true);
-  };
-
   const createRepairFromThread = (threadId: string) => {
-    setLinkModal({ open: false, threadId: null });
-    setConnectRepairThreadId(null);
     setCreateRepairThreadId(threadId);
-  };
-
-  const openConnectRepairModal = (threadId: string) => {
-    setConnectRepairThreadId(threadId);
   };
 
   const unlinkRepairFromThread = (threadId: string) => {
@@ -1839,7 +1767,6 @@ function ConversationsPageContent() {
     );
 
     setShowRepairPanel(true);
-    setLinkModal({ open: false, threadId: null });
     setCreateRepairThreadId(null);
   };
 
@@ -2347,7 +2274,7 @@ function ConversationsPageContent() {
                             fromListRowCloseButton: thread.open,
                           });
                         }}
-                        onConnectRepair={() => openConnectRepairModal(thread.id)}
+                        onCreateRepair={() => createRepairFromThread(thread.id)}
                       />
                     </div>
                   );
@@ -2449,11 +2376,11 @@ function ConversationsPageContent() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => openConnectRepairModal(selectedThread.id)}
+                        onClick={() => createRepairFromThread(selectedThread.id)}
                         className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-[var(--border-strong)] hover:text-white"
                       >
-                        <LinkIcon className="h-4 w-4" />
-                        Connect {repairLabel}
+                        <Wrench className="h-4 w-4" />
+                        Create {repairLabel}
                       </button>
                     )}
                     <button
@@ -2480,11 +2407,11 @@ function ConversationsPageContent() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => openConnectRepairModal(selectedThread.id)}
+                        onClick={() => createRepairFromThread(selectedThread.id)}
                         className="inline-flex items-center gap-2 rounded-xl border border-[#253149] bg-[#111a2b] px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-[var(--border-strong)] hover:text-white"
                       >
-                        <LinkIcon className="h-4 w-4" />
-                        Connect {repairLabel}
+                        <Wrench className="h-4 w-4" />
+                        Create {repairLabel}
                       </button>
                     )}
                     <button
@@ -2746,27 +2673,6 @@ function ConversationsPageContent() {
           )
         : null}
 
-      {connectRepairThreadId ? (
-        <ConnectRepairModal
-          repairLabel={repairLabel}
-          onClose={() => setConnectRepairThreadId(null)}
-          onLink={() => {
-            const threadId = connectRepairThreadId;
-            setConnectRepairThreadId(null);
-            setLinkModal({ open: true, threadId });
-          }}
-          onCreate={() => createRepairFromThread(connectRepairThreadId)}
-        />
-      ) : null}
-      {linkModal.open && linkModal.threadId ? (
-        <LinkRepairModal
-          repairs={repairs.filter((repair) => repair.status === "Open")}
-          repairLabel={repairLabel}
-          onClose={() => setLinkModal({ open: false, threadId: null })}
-          onSelect={(repairId) => linkRepairToThread(linkModal.threadId!, repairId)}
-          onCreate={() => createRepairFromThread(linkModal.threadId!)}
-        />
-      ) : null}
       {createRepairThread ? (
         <AddRepairModal
           initialValues={createRepairInitialValues}
