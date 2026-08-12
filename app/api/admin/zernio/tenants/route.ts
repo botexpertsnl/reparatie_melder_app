@@ -35,7 +35,7 @@ const updateSchema = z.object({
 });
 
 function isConnectedWhatsappAccount(status?: string) {
-  return ["connected", "active", "ready", "verified"].includes((status ?? "connected").toLowerCase());
+  return ["connected", "active", "ready", "verified", "approved"].includes((status ?? "connected").toLowerCase());
 }
 
 export async function GET(request: NextRequest) {
