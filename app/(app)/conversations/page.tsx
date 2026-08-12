@@ -267,6 +267,27 @@ function getMessageTimestamp(message: StoredConversationMessage | null) {
   return parsedFromId;
 }
 
+function formatMessageTime(value: string) {
+  const timestamp = getMessageTimestamp({ id: "", at: value } as StoredConversationMessage);
+  if (!timestamp) return "";
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }).format(timestamp);
+}
+
+function messageDayKey(message: StoredConversationMessage) {
+  const timestamp = getMessageTimestamp(message);
+  if (!timestamp) return "";
+  return `${timestamp.getFullYear()}-${timestamp.getMonth()}-${timestamp.getDate()}`;
+}
+
+function formatMessageDayLabel(message: StoredConversationMessage) {
+  const timestamp = getMessageTimestamp(message);
+  if (!timestamp) return "";
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+  if (messageDayKey(message) === todayKey) return "Today";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(timestamp);
+}
+
 function getThreadLatestMessageTimestamp(thread: StoredConversation) {
   const lastMessage = thread.messages[thread.messages.length - 1] ?? null;
   return getMessageTimestamp(lastMessage);
@@ -1506,46 +1527,53 @@ function ConversationsPageContent() {
   const sendMessage = async ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
     if (!selectedThread || !message.trim()) return;
     const body = message.trim();
+    const threadId = selectedThread.id;
+    const sentAt = new Date().toISOString();
+    const optimisticMessage: StoredConversationMessage = {
+      id: `pending_${Date.now()}`,
+      role: "agent",
+      text: body,
+      at: sentAt,
+    };
 
-    const response = await fetch(`/api/conversations/${selectedThread.id}/messages`, {
+    // Give the operator instant feedback; the server remains the source of truth.
+    setMessage("");
+    updateThreads((prev) => prev.map((thread) => thread.id === threadId
+      ? {
+          ...thread,
+          preview: body,
+          updatedAt: sentAt,
+          open: closeConversation ? false : thread.open,
+          messages: [...thread.messages, optimisticMessage]
+        }
+      : thread
+    ));
+
+    const response = await fetch(`/api/conversations/${threadId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: body, phoneNumber: selectedThread.customerPhone })
     });
 
     if (response.status === 409) {
+      updateThreads((prev) => prev.map((thread) => thread.id === threadId
+        ? { ...thread, messages: thread.messages.filter((item) => item.id !== optimisticMessage.id) }
+        : thread
+      ));
+      setMessage(body);
       openTemplateMessageModal();
       return;
     }
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
+      updateThreads((prev) => prev.map((thread) => thread.id === threadId
+        ? { ...thread, messages: thread.messages.filter((item) => item.id !== optimisticMessage.id) }
+        : thread
+      ));
+      setMessage(body);
       window.alert(payload.error ?? "Message could not be sent");
       return;
     }
-
-    updateThreads((prev) =>
-      prev.map((thread) =>
-        thread.id === selectedThread.id
-          ? {
-              ...thread,
-              preview: body,
-              updatedAt: new Date().toISOString(),
-              open: closeConversation ? false : thread.open,
-              messages: [
-                ...thread.messages,
-                {
-                  id: `m_${Date.now()}`,
-                  role: "agent",
-                  text: body,
-                  at: new Date().toISOString(),
-                },
-              ],
-            }
-          : thread
-      )
-    );
-
-    setMessage("");
   };
 
   const openTemplateMessageModal = useCallback(() => {
@@ -2505,29 +2533,19 @@ function ConversationsPageContent() {
                 ref={messageWindowRef}
                 className="subtle-scrollbar flex-1 space-y-3 overflow-y-auto px-3 pb-4 pt-3 md:p-4"
               >
-                {selectedThread.messages.map((msg) => {
+                {selectedThread.messages.map((msg, index) => {
                   const parsedMessage = parseTemplateMessageContent(msg.text);
                   const hasTemplateButtons = parsedMessage.buttons.length > 0;
                   const isCancelledScheduledTemplate = msg.scheduledStatus === "cancelled";
+                  const previousMessage = selectedThread.messages[index - 1];
+                  const startsNewDay = !previousMessage || messageDayKey(previousMessage) !== messageDayKey(msg);
 
                   return (
-                    <div
-                      key={msg.id}
-                      className={`max-w-[72%] min-w-0 rounded-2xl px-4 py-3 text-base ${
-                        msg.role === "agent" ? "ml-auto" : ""
-                      }`}
-                      style={
-                        msg.role === "agent"
-                          ? {
-                              background: "var(--surface-3)",
-                              color: "var(--text-primary)",
-                            }
-                          : {
-                              background: "var(--surface-muted)",
-                              color: "var(--text-primary)",
-                            }
-                      }
-                    >
+                    <div key={msg.id}>
+                      {startsNewDay ? <div className="my-4 text-center text-xs font-medium text-[var(--text-muted)]">{formatMessageDayLabel(msg)}</div> : null}
+                      <div
+                        className={`max-w-[72%] min-w-0 rounded-2xl px-4 py-3 text-base ${msg.role === "agent" ? "ml-auto bg-[#20c6b8] text-[#032b31] shadow-sm dark:bg-[#096d6a] dark:text-white" : "border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]"}`}
+                      >
                       {msg.imageUrl ? (
                         <button
                           type="button"
@@ -2583,7 +2601,8 @@ function ConversationsPageContent() {
                           <span>{formatScheduledTemplateLabel(msg.scheduledForIso, isCancelledScheduledTemplate)}</span>
                         </div>
                       ) : null}
-                      <div className="mt-1 text-right text-xs opacity-70">{msg.at}</div>
+                      <div className="mt-1 text-right text-xs opacity-70">{formatMessageTime(msg.at)}</div>
+                      </div>
                     </div>
                   );
                 })}
@@ -2623,6 +2642,12 @@ function ConversationsPageContent() {
                         }}
                         onFocus={() => setIsMessageInputFocused(true)}
                         onBlur={() => setIsMessageInputFocused(false)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            void sendMessage();
+                          }
+                        }}
                         rows={1}
                         style={{ minHeight: "44px", maxHeight: "88px" }}
                       />
