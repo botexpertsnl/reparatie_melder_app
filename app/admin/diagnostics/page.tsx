@@ -10,6 +10,7 @@ type Settings = { businessLabel: string; workItemLabel: string; assetLabel: stri
 type Channel = { zernioProfileId?: string | null; zernioAccountId?: string | null; whatsappPhoneNumber?: string | null; connectionStatus?: string | null } | null;
 type Tenant = { id: string; name: string; industryType: string; users: User[]; settings: Settings; channels: Channel[] };
 type Profile = { _id: string; name: string };
+type WhatsappAccount = { id: string; displayName?: string; username?: string; status?: string };
 type Tab = "general" | "users" | "zernio" | "settings";
 
 const inputClass = "mt-1.5 w-full rounded-xl border border-[#253149] bg-[#0a111f] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-[#28d9c6]";
@@ -19,6 +20,8 @@ export default function DiagnosticsPage() {
   const [selectedId, setSelectedId] = useState("");
   const [tab, setTab] = useState<Tab>("general");
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [whatsappAccounts, setWhatsappAccounts] = useState<WhatsappAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -61,6 +64,31 @@ export default function DiagnosticsPage() {
     setAccountId(channel?.zernioAccountId ?? "");
     setDeleteConfirmation("");
   }, [channel, selectedId]);
+
+  useEffect(() => {
+    if (!profileId) {
+      setWhatsappAccounts([]);
+      return;
+    }
+
+    let active = true;
+    setLoadingAccounts(true);
+    fetch(`/api/admin/zernio/tenants?profileId=${encodeURIComponent(profileId)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "Unable to load WhatsApp accounts.");
+        if (active) setWhatsappAccounts(body.data?.accounts ?? []);
+      })
+      .catch((error) => {
+        if (active) {
+          setWhatsappAccounts([]);
+          setNotice(error instanceof Error ? error.message : "Unable to load WhatsApp accounts.");
+        }
+      })
+      .finally(() => { if (active) setLoadingAccounts(false); });
+
+    return () => { active = false; };
+  }, [profileId]);
 
   const tenantCommand = async (data: unknown) => {
     setSaving(true); setNotice(null);
@@ -132,7 +160,7 @@ export default function DiagnosticsPage() {
             <section className="mt-4 card">
               {tab === "general" ? <GeneralTab tenant={selected} saving={saving} command={tenantCommand} /> : null}
               {tab === "users" ? <UsersTab tenant={selected} saving={saving} form={userForm} setForm={setUserForm} command={tenantCommand} onReset={(user) => { setResetUser(user); setNewPassword(""); }} /> : null}
-              {tab === "zernio" ? <div className="space-y-5"><div><h3 className="text-lg font-semibold text-white">Zernio</h3><p className="mt-1 text-sm text-slate-400">The selected WhatsApp account remains visible after saving.</p></div><label className="block text-sm text-slate-200">Zernio profile<select className={inputClass} value={profileId} onChange={(e) => setProfileId(e.target.value)}><option value="">Select a profile</option>{profiles.map((profile) => <option key={profile._id} value={profile._id}>{profile.name} · {profile._id}</option>)}</select></label><label className="block text-sm text-slate-200">WhatsApp account ID<input className={inputClass} value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="Zernio WhatsApp account ID" /></label><div className="rounded-xl border border-[#253149] bg-[#0b1323] p-4 text-sm text-slate-300"><div className="flex items-center gap-2">Status: {connected ? <><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /><b className="text-emerald-300">Connected</b></> : <b className="text-white">{channel?.connectionStatus ?? "Not configured"}</b>}</div><p className="mt-2">Connected number: <b className="text-white">{channel?.whatsappPhoneNumber || "—"}</b></p></div><div className="flex flex-wrap justify-end gap-3">{channel ? <button disabled={saving} onClick={() => void zernioRequest("DELETE")} className="inline-flex items-center gap-2 rounded-xl border border-red-400/40 px-4 py-2.5 text-sm font-semibold text-red-300"><Unplug className="h-4 w-4" />Disconnect</button> : null}<button disabled={saving || !channel?.zernioProfileId} onClick={() => void zernioRequest("POST")} className="rounded-xl border border-[#28d9c6]/50 px-4 py-2.5 text-sm font-semibold text-[#69f0df] disabled:opacity-40">Test connection</button><button disabled={saving || !profileId.trim()} onClick={() => void zernioRequest("PATCH")} className="inline-flex items-center gap-2 rounded-xl bg-[#28d9c6] px-4 py-2.5 text-sm font-semibold text-[#022a36] disabled:opacity-40"><Save className="h-4 w-4" />Save</button></div></div> : null}
+              {tab === "zernio" ? <div className="space-y-5"><div><h3 className="text-lg font-semibold text-white">Zernio</h3><p className="mt-1 text-sm text-slate-400">The selected WhatsApp account remains visible after saving.</p></div><label className="block text-sm text-slate-200">Zernio profile<select className={inputClass} value={profileId} onChange={(e) => { setProfileId(e.target.value); setAccountId(""); }}><option value="">Select a profile</option>{profiles.map((profile) => <option key={profile._id} value={profile._id}>{profile.name} · {profile._id}</option>)}</select></label><label className="block text-sm text-slate-200">Connected WhatsApp account<select className={inputClass} value={accountId} onChange={(e) => setAccountId(e.target.value)} disabled={!profileId || loadingAccounts}><option value="">{loadingAccounts ? "Loading WhatsApp accounts…" : whatsappAccounts.length === 0 ? "No active WhatsApp accounts found" : "Select a connected WhatsApp account"}</option>{whatsappAccounts.map((account) => <option key={account.id} value={account.id}>{account.displayName ?? account.username ?? account.id}{account.username && account.displayName ? ` · ${account.username}` : ""}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Accounts are loaded from the selected Zernio profile. Meta WABA and phone-number IDs are not used here.</span></label><div className="rounded-xl border border-[#253149] bg-[#0b1323] p-4 text-sm text-slate-300"><div className="flex items-center gap-2">Status: {connected ? <><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /><b className="text-emerald-300">Connected</b></> : <b className="text-white">{channel?.connectionStatus ?? "Not configured"}</b>}</div><p className="mt-2">Connected number: <b className="text-white">{channel?.whatsappPhoneNumber || "—"}</b></p></div><div className="flex flex-wrap justify-end gap-3">{channel ? <button disabled={saving} onClick={() => void zernioRequest("DELETE")} className="inline-flex items-center gap-2 rounded-xl border border-red-400/40 px-4 py-2.5 text-sm font-semibold text-red-300"><Unplug className="h-4 w-4" />Disconnect</button> : null}<button disabled={saving || !channel?.zernioProfileId} onClick={() => void zernioRequest("POST")} className="rounded-xl border border-[#28d9c6]/50 px-4 py-2.5 text-sm font-semibold text-[#69f0df] disabled:opacity-40">Test connection</button><button disabled={saving || !profileId.trim()} onClick={() => void zernioRequest("PATCH")} className="inline-flex items-center gap-2 rounded-xl bg-[#28d9c6] px-4 py-2.5 text-sm font-semibold text-[#022a36] disabled:opacity-40"><Save className="h-4 w-4" />Save</button></div></div> : null}
               {tab === "settings" ? <div className="space-y-5"><div><h3 className="text-lg font-semibold text-white">Customer settings</h3><p className="mt-1 text-sm text-slate-400">Danger zone for irreversible customer-level actions.</p></div><div className="rounded-2xl border border-red-500/35 bg-red-500/5 p-5"><h4 className="font-semibold text-red-200">Delete complete customer</h4><p className="mt-2 text-sm text-slate-400">This permanently deletes all users, repairs, conversations, contacts, messages, templates and settings for {selected.name}. Type the exact customer name to confirm.</p><input className={`${inputClass} max-w-xl`} value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} placeholder={selected.name} /><button disabled={saving || deleteConfirmation !== selected.name} onClick={() => void deleteTenant()} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"><Trash2 className="h-4 w-4" />Delete customer permanently</button></div></div> : null}
             </section>
           </> : <section className="card text-sm text-slate-400">No customer selected.</section>}

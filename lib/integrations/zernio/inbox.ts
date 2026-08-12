@@ -7,8 +7,22 @@ export type ZernioAccount = {
   platform?: string;
   providerAccountId?: string;
   displayName?: string;
+  username?: string;
   status?: string;
 };
+
+type ZernioAccountPayload = Omit<ZernioAccount, "id"> & {
+  id?: string;
+  _id?: string;
+  accountId?: string;
+};
+
+function normalizeZernioAccounts(items: ZernioAccountPayload[] | undefined): ZernioAccount[] {
+  return (items ?? []).flatMap((item) => {
+    const id = item.id ?? item._id ?? item.accountId;
+    return id ? [{ ...item, id }] : [];
+  });
+}
 
 export type ZernioConversation = {
   id: string;
@@ -46,9 +60,14 @@ export type ZernioMessage = {
 };
 
 export async function listZernioAccounts(profileId: string, platform = "whatsapp") {
-  return zernioFetch<{ data?: ZernioAccount[]; accounts?: ZernioAccount[] }>(
+  const response = await zernioFetch<{ data?: ZernioAccountPayload[]; accounts?: ZernioAccountPayload[] }>(
     `/v1/accounts?profileId=${encodeURIComponent(profileId)}&platform=${encodeURIComponent(platform)}`
   );
+  return {
+    ...response,
+    data: normalizeZernioAccounts(response.data),
+    accounts: normalizeZernioAccounts(response.accounts)
+  };
 }
 
 export async function listZernioPhoneNumbers() {

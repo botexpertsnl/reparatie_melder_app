@@ -19,13 +19,13 @@ function normalizePhoneNumber(value?: string | null) {
 }
 
 function pickResolvedWhatsappAccount(params: {
-  accounts: Array<{ id?: string; platform?: string; status?: string }>;
+  accounts: Array<{ id?: string; platform?: string; status?: string; username?: string }>;
   existingAccountId?: string | null;
   existingWhatsappAccountId?: string | null;
   phoneNumbers: Array<{ accountId?: string; phoneNumber?: string; displayNumber?: string }>;
   existingWhatsappPhone?: string | null;
 }) {
-  const accounts = params.accounts.filter((item): item is { id: string; platform?: string; status?: string } => Boolean(item?.id));
+  const accounts = params.accounts.filter((item): item is { id: string; platform?: string; status?: string; username?: string } => Boolean(item?.id));
   if (accounts.length === 0) return null;
 
   const existingAccountId = params.existingAccountId ?? params.existingWhatsappAccountId;
@@ -49,7 +49,7 @@ function pickResolvedWhatsappAccount(params: {
 
   const connected = accounts.filter((item) =>
     (item.platform ?? "whatsapp").toLowerCase() === "whatsapp" &&
-    (item.status ?? "connected").toLowerCase() === "connected"
+    ["connected", "active", "ready", "verified"].includes((item.status ?? "connected").toLowerCase())
   );
   return connected.length === 1 ? connected[0] : null;
 }
@@ -112,7 +112,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
     profileId,
     accountId: resolvedAccount.id,
     platform: resolvedAccount.platform ?? "unknown",
-    phoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? ""
+    phoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? resolvedAccount.username ?? existing?.whatsappPhoneNumber ?? ""
   });
 
   return prisma.tenantMessagingChannel.upsert({
@@ -122,7 +122,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
       zernioAccountId: resolvedAccount.id,
       whatsappAccountId: resolvedAccount.id,
       zernioPhoneNumberId: phone?.id,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? existing?.whatsappPhoneNumber ?? "",
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? resolvedAccount.username ?? existing?.whatsappPhoneNumber ?? "",
       displayName: existing?.displayName ?? "WhatsApp (ZERNIO)",
       connectionStatus: "CONNECTED",
       isActive: true
@@ -134,7 +134,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
       zernioAccountId: resolvedAccount.id,
       whatsappAccountId: resolvedAccount.id,
       zernioPhoneNumberId: phone?.id,
-      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? "",
+      whatsappPhoneNumber: phone?.displayNumber ?? phone?.phoneNumber ?? resolvedAccount.username ?? "",
       displayName: "WhatsApp (ZERNIO)",
       connectionStatus: "CONNECTED",
       isActive: true
