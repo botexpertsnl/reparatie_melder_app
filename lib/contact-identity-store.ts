@@ -20,8 +20,11 @@ export function normalizeContactPhone(value: string) {
   if (!trimmed) return "";
   const digits = trimmed.replace(/\D/g, "");
   if (!digits) return "";
-  if (trimmed.startsWith("+")) return `+${digits}`;
-  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  if (trimmed.startsWith("+")) return `+${digits.startsWith("310") ? `31${digits.slice(3)}` : digits}`;
+  if (digits.startsWith("00")) {
+    const international = digits.slice(2);
+    return `+${international.startsWith("310") ? `31${international.slice(3)}` : international}`;
+  }
   if (digits.startsWith("0")) return `+31${digits.slice(1)}`;
   return `+${digits}`;
 }
@@ -52,7 +55,7 @@ export function upsertContactIdentity(params: {
   const normalizedPhone = normalizeContactPhone(params.phoneNumber);
   const now = new Date().toISOString();
   const identities = readContactIdentities();
-  const existing = identities.find((item) => item.tenantName === tenantName && item.normalizedPhone === normalizedPhone);
+  const existing = identities.find((item) => item.tenantName === tenantName && normalizeContactPhone(item.normalizedPhone) === normalizedPhone);
   const identity: ContactIdentity = existing
     ? {
         ...existing,
@@ -86,7 +89,7 @@ export function getContactIdentityById(id?: string) {
 export function findContactIdentityByPhone(phoneNumber: string) {
   const normalizedPhone = normalizeContactPhone(phoneNumber);
   const tenantName = getActiveTenantName();
-  return readContactIdentities().find((item) => item.tenantName === tenantName && item.normalizedPhone === normalizedPhone) ?? null;
+  return readContactIdentities().find((item) => item.tenantName === tenantName && normalizeContactPhone(item.normalizedPhone) === normalizedPhone) ?? null;
 }
 
 export function parseRetentionPeriod(period: string) {

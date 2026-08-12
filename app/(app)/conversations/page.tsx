@@ -176,7 +176,8 @@ function normalizePhoneInput(value: string) {
 
 function toNationalNumber(normalizedPhone: string, countryCode: string) {
   if (!normalizedPhone.startsWith(`+${countryCode}`)) return null;
-  return `0${normalizedPhone.slice(countryCode.length + 1)}`;
+  const nationalDigits = normalizedPhone.slice(countryCode.length + 1).replace(/^0/, "");
+  return `0${nationalDigits}`;
 }
 
 function isValidDutchPhone(nationalPhone: string) {

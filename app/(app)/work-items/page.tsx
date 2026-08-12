@@ -35,7 +35,7 @@ import {
   writeStoredRepairHistory,
   type StoredRepairHistoryItem
 } from "@/lib/repair-history-store";
-import { findContactIdentityByPhone, migrateContactIdentityLinks, upsertContactIdentity } from "@/lib/contact-identity-store";
+import { findContactIdentityByPhone, migrateContactIdentityLinks, normalizeContactPhone, upsertContactIdentity } from "@/lib/contact-identity-store";
 import { defaultStoredTemplates, readStoredTemplates, type StoredTemplate } from "@/lib/template-store";
 import {
   buildScheduledSendAtIso,
@@ -60,6 +60,7 @@ type NewRepairFormValues = {
   repairTitle: string;
   description: string;
   repairStage: RepairItem["stage"];
+  linkedConversationId?: string;
 };
 
 const initialFormValues: NewRepairFormValues = {
@@ -86,7 +87,8 @@ function normalizePhoneInput(value: string) {
 
 function toNationalNumber(normalizedPhone: string, countryCode: string) {
   if (!normalizedPhone.startsWith(`+${countryCode}`)) return null;
-  return `0${normalizedPhone.slice(countryCode.length + 1)}`;
+  const nationalDigits = normalizedPhone.slice(countryCode.length + 1).replace(/^0/, "");
+  return `0${nationalDigits}`;
 }
 
 function isValidDutchPhone(nationalPhone: string) {
@@ -499,6 +501,7 @@ function AddRepairModal({
   initialValues,
   stageOptions,
   repairLabel,
+  availableConversations,
   onClose,
   onSubmit
 }: {
@@ -506,6 +509,7 @@ function AddRepairModal({
   initialValues: NewRepairFormValues;
   stageOptions: string[];
   repairLabel: string;
+  availableConversations: StoredConversation[];
   onClose: () => void;
   onSubmit: (payload: NewRepairFormValues) => void;
 }) {
@@ -513,6 +517,7 @@ function AddRepairModal({
   const [formValues, setFormValues] = useState<NewRepairFormValues>(initialValues);
   const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [isPhoneFieldTouched, setIsPhoneFieldTouched] = useState(false);
+  const [linkedConversationId, setLinkedConversationId] = useState<string | undefined>();
   const selectOptions = useMemo(
     () => (stageOptions.includes(formValues.repairStage) ? stageOptions : [...stageOptions, formValues.repairStage]),
     [formValues.repairStage, stageOptions]
@@ -521,6 +526,13 @@ function AddRepairModal({
   const isPhoneValid = isSupportedCountryPhoneValid(formValues.customerPhone);
   const showPhoneError = Boolean(normalizedPhone) && !isPhoneValid && (hasTriedSubmit || isPhoneFieldTouched);
   const matchingContact = isPhoneValid ? findContactIdentityByPhone(formValues.customerPhone) : null;
+  const matchingOpenConversations = useMemo(() => {
+    const query = normalizeContactPhone(formValues.customerPhone).replace(/\D/g, "");
+    if (query.length < 4) return [];
+    return availableConversations.filter((thread) =>
+      thread.open && !thread.linkedRepairId && normalizeContactPhone(thread.customerPhone).replace(/\D/g, "").includes(query)
+    );
+  }, [availableConversations, formValues.customerPhone]);
   const canSubmit =
     normalizedPhone &&
     isPhoneValid &&
@@ -564,10 +576,36 @@ function AddRepairModal({
           if (!canSubmit) return;
           onSubmit({
             ...formValues,
-            customerPhone: formValues.customerPhone.trim()
+            customerPhone: formValues.customerPhone.trim(),
+            linkedConversationId
           });
         }}
       >
+        <div>
+          <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">
+            Customer phone *
+          </label>
+          <input
+            id="repair-customer-phone"
+            className={clsx("w-full rounded-xl border bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0", showPhoneError ? "border-red-400 focus:border-red-500" : "border-[#bfc9d8] focus:border-[#30b5a5]")}
+            placeholder="+31 6 12345678"
+            value={formValues.customerPhone}
+            onChange={(event) => { setLinkedConversationId(undefined); setFormValues((prev) => ({ ...prev, customerPhone: event.target.value })); }}
+            onBlur={() => setIsPhoneFieldTouched(true)}
+            aria-invalid={showPhoneError}
+          />
+          {showPhoneError ? <p className="mt-1 text-sm text-red-600">Please enter a valid phone number.</p> : null}
+          {matchingOpenConversations.length > 0 ? (
+            <div className="mt-2 rounded-xl border border-[#b8e5df] bg-[#f0fbf9] p-2">
+              <p className="px-1 pb-1 text-xs font-medium text-[#16786b]">Open conversations without a repair</p>
+              {matchingOpenConversations.map((thread) => (
+                <button key={thread.id} type="button" onClick={() => { setLinkedConversationId(thread.id); setFormValues((prev) => ({ ...prev, customerPhone: thread.customerPhone, customerFirstName: thread.customerName === thread.customerPhone ? prev.customerFirstName : thread.customerName.split(" ")[0] ?? "", customerLastName: thread.customerName === thread.customerPhone ? prev.customerLastName : thread.customerName.split(" ").slice(1).join(" ") })); }} className={clsx("flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm transition", linkedConversationId === thread.id ? "bg-[#c9f3ed] text-[#07584f]" : "hover:bg-white") }>
+                  <span className="font-medium">{thread.customerName || thread.customerPhone}</span><span className="text-xs text-slate-500">{thread.preview}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="repair-customer-first-name" className="mb-2 block text-sm font-medium text-slate-700">
@@ -606,31 +644,7 @@ function AddRepairModal({
             />
           </div>
         </div>
-        <div>
-          <label htmlFor="repair-customer-phone" className="mb-2 block text-sm font-medium text-slate-700">
-            Customer phone *
-          </label>
-          <input
-            id="repair-customer-phone"
-            className={clsx(
-              "w-full rounded-xl border bg-white px-3 py-2 text-sm mobile-no-zoom outline-none ring-0",
-              showPhoneError ? "border-red-400 focus:border-red-500" : "border-[#bfc9d8] focus:border-[#30b5a5]"
-            )}
-            placeholder="+31 6 12345678"
-            value={formValues.customerPhone}
-            onChange={(event) => setFormValues((prev) => ({ ...prev, customerPhone: event.target.value }))}
-            onBlur={() => setIsPhoneFieldTouched(true)}
-            aria-invalid={showPhoneError}
-          />
-          {showPhoneError ? (
-            <p className="mt-1 text-sm text-red-600">Please enter a valid phone number.</p>
-          ) : null}
-          {!showPhoneError && isPhoneValid ? (
-            <p className="mt-1 text-xs text-slate-500">
-              {matchingContact ? `Linked to existing contact: ${matchingContact.displayName}` : "A new messaging contact will be created automatically."}
-            </p>
-          ) : null}
-        </div>
+        {!showPhoneError && isPhoneValid ? <p className="-mt-3 text-xs text-slate-500">{matchingContact ? `Linked to existing contact: ${matchingContact.displayName}` : "A new messaging contact will be created automatically."}</p> : null}
         <div>
           <label htmlFor="repair-asset" className="mb-2 block text-sm font-medium text-slate-700">
             {assetLabel} *
@@ -1072,7 +1086,8 @@ function WorkItemsPageContent() {
       priority: "Medium" as const,
       status: "Open" as const
     };
-    const existingContactConversation = conversations.find((thread) => thread.contactIdentityId === contactIdentity.id);
+    const existingContactConversation = conversations.find((thread) => thread.id === payload.linkedConversationId)
+      ?? conversations.find((thread) => thread.contactIdentityId === contactIdentity.id);
     const linkedConversation = existingContactConversation ?? createLinkedConversationForRepair(
       newRepair,
       new Set(conversations.map((thread) => thread.id))
@@ -1081,7 +1096,7 @@ function WorkItemsPageContent() {
     setConversations((prev) => {
       const updated = existingContactConversation
         ? prev.map((thread) => thread.id === existingContactConversation.id
-          ? { ...thread, linkedRepairId: newRepair.id, dismissedRepairId: undefined }
+          ? { ...thread, contactIdentityId: contactIdentity.id, linkedRepairId: newRepair.id, dismissedRepairId: undefined }
           : thread)
         : [linkedConversation, ...prev];
       writeStoredConversations(updated);
@@ -1543,6 +1558,7 @@ function WorkItemsPageContent() {
           initialValues={{ ...initialFormValues, repairStage: initialStage }}
           stageOptions={stageOptions}
           repairLabel={repairLabel}
+          availableConversations={conversations}
           onClose={() => setIsAddRepairOpen(false)}
           onSubmit={handleCreateRepair}
         />
@@ -1554,6 +1570,7 @@ function WorkItemsPageContent() {
           initialValues={toFormValues(editingRepair)}
           stageOptions={stageOptions}
           repairLabel={repairLabel}
+          availableConversations={conversations}
           onClose={() => setEditingRepairId(null)}
           onSubmit={(values) => handleEditRepair(editingRepair.id, values)}
         />
