@@ -132,3 +132,15 @@ export async function POST(request: NextRequest) {
     return toApiError(error);
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireSystemAdmin();
+    const body = await request.json().catch(() => ({})) as { tenantId?: string };
+    if (!body.tenantId) return NextResponse.json({ error: "Tenant ID is required" }, { status: 400 });
+    await prisma.tenantMessagingChannel.deleteMany({ where: { tenantId: body.tenantId, provider: "ZERNIO" } });
+    return NextResponse.json({ data: { disconnected: true } });
+  } catch (error) {
+    return toApiError(error);
+  }
+}

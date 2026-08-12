@@ -66,3 +66,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message.includes("Unique constraint") ? "That email address is already in use." : "Unable to save changes." }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireSystemAdmin();
+    const parsed = z.object({ tenantId: z.string().min(1), confirmationName: z.string().min(1) }).safeParse(await request.json());
+    if (!parsed.success) return NextResponse.json({ error: "Tenant ID and confirmation name are required." }, { status: 400 });
+    const tenant = await prisma.tenant.findUnique({ where: { id: parsed.data.tenantId }, select: { id: true, name: true } });
+    if (!tenant) return NextResponse.json({ error: "Customer not found." }, { status: 404 });
+    if (parsed.data.confirmationName !== tenant.name) return NextResponse.json({ error: "The confirmation name does not match." }, { status: 400 });
+    await prisma.$transaction([
+      prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } }),
+      prisma.webhookEvent.deleteMany({ where: { tenantId: tenant.id } }),
+      prisma.tenant.delete({ where: { id: tenant.id } })
+    ]);
+    return NextResponse.json({ data: { deletedTenantId: tenant.id } });
+  } catch {
+    return NextResponse.json({ error: "Unable to delete this customer." }, { status: 500 });
+  }
+}
