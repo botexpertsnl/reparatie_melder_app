@@ -882,7 +882,10 @@ function ConversationListRow({
   });
 
   return (
-    <div className="relative overflow-hidden border-b border-[var(--border)]">
+    <div
+      className="relative overflow-hidden border-b"
+      style={{ borderColor: "color-mix(in srgb, var(--text-secondary) 24%, transparent)" }}
+    >
       <div
         onClick={onOpenConversation}
         onKeyDown={(event) => {

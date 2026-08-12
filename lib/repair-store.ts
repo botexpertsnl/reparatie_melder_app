@@ -1,4 +1,5 @@
 import { seededDummyRepairs } from "@/lib/mock-conversation-repair-seed";
+import { getActiveTenantName } from "@/lib/tenant-settings-store";
 
 export type StoredRepair = {
   id: string;
@@ -20,7 +21,16 @@ export type StoredRepair = {
   updatedAt?: string;
 };
 
-const STORAGE_KEY = "statusflow.repairs";
+const LEGACY_STORAGE_KEY = "statusflow.repairs";
+const STORAGE_KEY_PREFIX = "statusflow.repairs.customer";
+
+function getStorageKey() {
+  return `${STORAGE_KEY_PREFIX}.${encodeURIComponent(getActiveTenantName())}`;
+}
+
+function usesDemoData() {
+  return getActiveTenantName().trim().toLowerCase() === "demo";
+}
 
 export const defaultRepairs: StoredRepair[] = [
   {
@@ -55,18 +65,24 @@ export const defaultRepairs: StoredRepair[] = [
 export function readStoredRepairs(fallback: StoredRepair[]): StoredRepair[] {
   if (typeof window === "undefined") return fallback;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
+    const raw = window.localStorage.getItem(getStorageKey());
+    if (!raw) {
+      if (!usesDemoData()) return [];
+      const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (!legacy) return fallback;
+      const parsedLegacy = JSON.parse(legacy) as StoredRepair[];
+      return Array.isArray(parsedLegacy) ? parsedLegacy : fallback;
+    }
     const parsed = JSON.parse(raw) as StoredRepair[];
-    if (!Array.isArray(parsed)) return fallback;
+    if (!Array.isArray(parsed)) return usesDemoData() ? fallback : [];
     return parsed;
   } catch {
-    return fallback;
+    return usesDemoData() ? fallback : [];
   }
 }
 
 export function writeStoredRepairs(items: StoredRepair[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  window.localStorage.setItem(getStorageKey(), JSON.stringify(items));
   window.dispatchEvent(new Event("repairs:changed"));
 }
