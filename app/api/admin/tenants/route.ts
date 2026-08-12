@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ data: { tenant } }, { status: 201 });
     }
     if (data.action === "saveSettings") {
-      await prisma.tenantSettings.upsert({ where: { tenantId: data.tenantId }, create: { tenantId: data.tenantId, businessLabel: data.businessLabel, workItemLabel: data.workItemLabel, assetLabel: data.assetLabel, customerLabel: data.customerLabel }, update: { businessLabel: data.businessLabel, workItemLabel: data.workItemLabel, assetLabel: data.assetLabel, customerLabel: data.customerLabel } });
+      await prisma.$transaction([
+        prisma.tenant.update({ where: { id: data.tenantId }, data: { name: data.businessLabel } }),
+        prisma.tenantSettings.upsert({ where: { tenantId: data.tenantId }, create: { tenantId: data.tenantId, businessLabel: data.businessLabel, workItemLabel: data.workItemLabel, assetLabel: data.assetLabel, customerLabel: data.customerLabel }, update: { businessLabel: data.businessLabel, workItemLabel: data.workItemLabel, assetLabel: data.assetLabel, customerLabel: data.customerLabel } })
+      ]);
       return NextResponse.json({ data: { ok: true } });
     }
     if (data.action === "createUser") {

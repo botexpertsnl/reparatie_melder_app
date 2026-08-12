@@ -1,4 +1,5 @@
 import { seededDummyConversations } from "@/lib/mock-conversation-repair-seed";
+import { getActiveTenantName } from "@/lib/tenant-settings-store";
 
 export type StoredConversationMessage = {
   id: string;
@@ -27,7 +28,16 @@ export type StoredConversation = {
   createdAt?: string;
 };
 
-const STORAGE_KEY = "statusflow.conversations";
+const LEGACY_STORAGE_KEY = "statusflow.conversations";
+const STORAGE_KEY_PREFIX = "statusflow.conversations.customer";
+
+function getStorageKey() {
+  return `${STORAGE_KEY_PREFIX}.${encodeURIComponent(getActiveTenantName())}`;
+}
+
+function usesDemoData() {
+  return getActiveTenantName().trim().toLowerCase() === "demo";
+}
 
 export const defaultConversations: StoredConversation[] = [
   {
@@ -64,18 +74,24 @@ export function readStoredConversations(fallback: StoredConversation[]): StoredC
   if (typeof window === "undefined") return dedupeConversationsById(fallback);
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return dedupeConversationsById(fallback);
+    const raw = window.localStorage.getItem(getStorageKey());
+    if (!raw) {
+      if (!usesDemoData()) return [];
+      const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (!legacy) return dedupeConversationsById(fallback);
+      const parsedLegacy = JSON.parse(legacy) as StoredConversation[];
+      return Array.isArray(parsedLegacy) ? dedupeConversationsById(parsedLegacy) : dedupeConversationsById(fallback);
+    }
     const parsed = JSON.parse(raw) as StoredConversation[];
-    if (!Array.isArray(parsed)) return dedupeConversationsById(fallback);
+    if (!Array.isArray(parsed)) return usesDemoData() ? dedupeConversationsById(fallback) : [];
     return dedupeConversationsById(parsed);
   } catch {
-    return dedupeConversationsById(fallback);
+    return usesDemoData() ? dedupeConversationsById(fallback) : [];
   }
 }
 
 export function writeStoredConversations(items: StoredConversation[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dedupeConversationsById(items)));
+  window.localStorage.setItem(getStorageKey(), JSON.stringify(dedupeConversationsById(items)));
   window.dispatchEvent(new Event("conversations:changed"));
 }

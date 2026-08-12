@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { KeyRound, LogIn, Plus, RefreshCw, Save, Trash2, Unplug, Users } from "lucide-react";
 import { startImpersonation } from "@/lib/impersonation-store";
+import { defaultTenantSettings, writeTenantSettings } from "@/lib/tenant-settings-store";
 
 type User = { id: string; name: string; email: string; role: "TENANT_OWNER" | "TENANT_ADMIN" | "EMPLOYEE"; isActive: boolean };
 type Settings = { businessLabel: string; workItemLabel: string; assetLabel: string; customerLabel: string } | null;
@@ -67,6 +68,16 @@ export default function DiagnosticsPage() {
       const response = await fetch("/api/admin/tenants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       const body = await response.json();
       if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "Unable to save changes.");
+      if (typeof data === "object" && data !== null && "action" in data && data.action === "saveSettings") {
+        const settings = data as unknown as { businessLabel: string; workItemLabel: string; assetLabel: string; customerLabel: string };
+        writeTenantSettings(settings.businessLabel, {
+          ...defaultTenantSettings,
+          businessName: settings.businessLabel,
+          repairLabel: settings.workItemLabel,
+          assetLabel: settings.assetLabel,
+          customerLabel: settings.customerLabel
+        });
+      }
       await load(); return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to save changes."); return false;
@@ -112,12 +123,12 @@ export default function DiagnosticsPage() {
         <aside className="card flex min-h-0 flex-col">
           <div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customers</span><button onClick={() => void load()} className="rounded-lg p-2 text-slate-300 hover:bg-white/10"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button></div>
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {tenants.map((tenant) => <button key={tenant.id} onClick={() => { setSelectedId(tenant.id); setTab("general"); }} className={`w-full rounded-xl border p-3 text-left ${tenant.id === selectedId ? "border-[#28d9c6]/60 bg-[#182236]" : "border-[#253149] bg-[#0b1323]"}`}><b className="block text-sm text-white">{tenant.name}</b><span className="mt-1 block text-xs text-slate-400">{tenant.users.length} users · {tenant.channels[0]?.connectionStatus ?? "Not configured"}</span></button>)}
+            {tenants.map((tenant) => <button key={tenant.id} onClick={() => { setSelectedId(tenant.id); setTab("general"); }} className={`w-full rounded-xl border p-3 text-left ${tenant.id === selectedId ? "border-[#28d9c6]/60 bg-[#182236]" : "border-[#253149] bg-[#0b1323]"}`}><b className="block text-sm text-white">{tenant.settings?.businessLabel ?? tenant.name}</b><span className="mt-1 block text-xs text-slate-400">{tenant.users.length} users · {tenant.channels[0]?.connectionStatus ?? "Not configured"}</span></button>)}
           </div>
         </aside>
         <main className="min-w-0">
           {selected ? <>
-            <section className="card"><div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">{selected.name}</h2><p className="mt-1 text-sm text-slate-400">{selected.industryType}</p></div>{connected ? <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400" />Connected</span> : null}</div><div className="mt-5 flex overflow-x-auto border-b border-[#253149]">{(["general", "users", "zernio", "settings"] as Tab[]).map((item) => <button key={item} onClick={() => setTab(item)} className={`border-b-2 px-4 py-3 text-sm font-semibold capitalize ${tab === item ? "border-[#28d9c6] text-[#69f0df]" : "border-transparent text-slate-400"}`}>{item}</button>)}</div></section>
+            <section className="card"><div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">{selected.settings?.businessLabel ?? selected.name}</h2><p className="mt-1 text-sm text-slate-400">{selected.industryType}</p></div>{connected ? <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400" />Connected</span> : null}</div><div className="mt-5 flex overflow-x-auto border-b border-[#253149]">{(["general", "users", "zernio", "settings"] as Tab[]).map((item) => <button key={item} onClick={() => setTab(item)} className={`border-b-2 px-4 py-3 text-sm font-semibold capitalize ${tab === item ? "border-[#28d9c6] text-[#69f0df]" : "border-transparent text-slate-400"}`}>{item}</button>)}</div></section>
             <section className="mt-4 card">
               {tab === "general" ? <GeneralTab tenant={selected} saving={saving} command={tenantCommand} /> : null}
               {tab === "users" ? <UsersTab tenant={selected} saving={saving} form={userForm} setForm={setUserForm} command={tenantCommand} onReset={(user) => { setResetUser(user); setNewPassword(""); }} /> : null}
@@ -139,10 +150,10 @@ function GeneralTab({ tenant, saving, command }: { tenant: Tenant; saving: boole
   const impersonate = async () => {
     const response = await fetch("/api/admin/impersonation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenantId: tenant.id }) });
     if (!response.ok) return;
-    startImpersonation(tenant.name);
+    startImpersonation(tenant.settings?.businessLabel ?? tenant.name);
     window.location.href = "/dashboard";
   };
-  return <form onSubmit={(e) => { e.preventDefault(); void command({ action: "saveSettings", tenantId: tenant.id, ...values }); }} className="space-y-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-semibold text-white">General</h3><p className="mt-1 text-sm text-slate-400">Terminology used throughout this customer workspace.</p></div><button type="button" onClick={impersonate} className="inline-flex items-center gap-2 rounded-xl border border-[#28d9c6]/50 bg-[#28d9c6]/10 px-4 py-2 text-sm font-semibold text-[#69f0df]"><LogIn className="h-4 w-4" />Open as customer</button></div><div className="grid gap-4 md:grid-cols-2">{Object.entries(values).map(([key, value]) => <label key={key} className="text-sm capitalize text-slate-200">{key.replace(/Label$/, " label")}<input className={inputClass} value={value} onChange={(e) => setValues({ ...values, [key]: e.target.value })} /></label>)}</div><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#28d9c6] px-4 py-2.5 text-sm font-semibold text-[#022a36]"><Save className="h-4 w-4" />Save settings</button></form>;
+  return <form onSubmit={(e) => { e.preventDefault(); void command({ action: "saveSettings", tenantId: tenant.id, ...values }); }} className="space-y-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-semibold text-white">General</h3><p className="mt-1 text-sm text-slate-400">Terminology used throughout this customer workspace.</p></div><button type="button" onClick={impersonate} className="inline-flex items-center gap-2 rounded-xl border border-[#28d9c6] bg-[#28d9c6] px-4 py-2 text-sm font-semibold text-[#022a36] hover:bg-[#4de5d7]"><LogIn className="h-4 w-4" />Open as customer</button></div><div className="grid gap-4 md:grid-cols-2">{Object.entries(values).map(([key, value]) => <label key={key} className="text-sm capitalize text-slate-200">{key.replace(/Label$/, " label")}<input className={inputClass} value={value} onChange={(e) => setValues({ ...values, [key]: e.target.value })} /></label>)}</div><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#28d9c6] px-4 py-2.5 text-sm font-semibold text-[#022a36]"><Save className="h-4 w-4" />Save settings</button></form>;
 }
 
 function UsersTab({ tenant, saving, form, setForm, command, onReset }: { tenant: Tenant; saving: boolean; form: { name: string; email: string; password: string; role: User["role"] }; setForm: (value: { name: string; email: string; password: string; role: User["role"] }) => void; command: (data: unknown) => Promise<boolean>; onReset: (user: User) => void }) {
