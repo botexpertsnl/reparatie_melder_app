@@ -1031,6 +1031,7 @@ function ConversationsPageContent() {
   const [createRepairThreadId, setCreateRepairThreadId] = useState<string | null>(null);
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [isMessageInputFocused, setIsMessageInputFocused] = useState(false);
+  const [isDeleteConversationConfirmOpen, setIsDeleteConversationConfirmOpen] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<ChatImagePreview | null>(null);
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const [fullScreenImageDragOffset, setFullScreenImageDragOffset] = useState(0);
@@ -1187,7 +1188,15 @@ function ConversationsPageContent() {
         if (!response.ok) return;
         const payload = await response.json();
         const mapped = ((payload.data ?? []) as ApiConversationThread[]).map(mapApiThreadToStored);
-        setThreads(dedupeConversationsById(mapped));
+        setThreads((previous) => dedupeConversationsById(mapped.map((remoteThread) => {
+          const localThread = previous.find((thread) =>
+            thread.id === remoteThread.id ||
+            thread.customerPhone.replace(/\D/g, "") === remoteThread.customerPhone.replace(/\D/g, "")
+          );
+          return localThread && !remoteThread.linkedRepairId
+            ? { ...remoteThread, linkedRepairId: localThread.linkedRepairId, dismissedRepairId: localThread.dismissedRepairId, contactIdentityId: localThread.contactIdentityId }
+            : remoteThread;
+        })));
       } catch {
         setThreads([]);
       }
@@ -1701,6 +1710,15 @@ function ConversationsPageContent() {
     }
 
     reopenConversation(selectedThread.id);
+  };
+
+  const deleteSelectedConversation = async () => {
+    if (!selectedThread) return;
+    await fetch(`/api/conversations/${selectedThread.id}/messages`, { method: "DELETE" }).catch(() => undefined);
+    updateThreads((current) => current.filter((thread) => thread.id !== selectedThread.id));
+    setSelectedThreadId("");
+    setMobileActivePane("list");
+    setIsDeleteConversationConfirmOpen(false);
   };
 
   const handleBackFromConversation = useCallback(() => {
@@ -2451,6 +2469,7 @@ function ConversationsPageContent() {
                   >
                     <Phone className="h-4 w-4" />
                   </a>
+                  <button type="button" onClick={() => setIsDeleteConversationConfirmOpen(true)} className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-400/30 text-red-300 transition hover:bg-red-500/10" aria-label="Delete conversation" title="Delete conversation"><Trash2 className="h-4 w-4" /></button>
                   <div className="flex items-center gap-2 md:hidden">
                     {selectedThread.linkedRepairId ? (
                       <button
@@ -2814,6 +2833,9 @@ function ConversationsPageContent() {
           onVariableChange={handleTemplateVariableChange}
           onSend={sendTemplateMessage}
         />
+      ) : null}
+      {isDeleteConversationConfirmOpen ? (
+        <ModalShell title="Delete conversation" onClose={() => setIsDeleteConversationConfirmOpen(false)} maxWidthClassName="max-w-md" footer={<><button type="button" onClick={() => setIsDeleteConversationConfirmOpen(false)} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-700">Cancel</button><button type="button" onClick={() => void deleteSelectedConversation()} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">Delete conversation</button></>}><p className="text-sm text-slate-600">Are you sure? This removes the conversation and its messages.</p></ModalShell>
       ) : null}
       {fullScreenImage && isClientMounted
         ? createPortal(

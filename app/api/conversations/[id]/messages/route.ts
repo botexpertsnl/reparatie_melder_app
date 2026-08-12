@@ -51,3 +51,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: error instanceof Error ? error.message : "Message could not be sent" }, { status: 500 });
   }
 }
+
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await requireTenantContext();
+  if (!ctx.tenantId) return NextResponse.json({ error: "Tenant required" }, { status: 403 });
+  const { id } = await params;
+  const deleted = await prisma.conversationThread.deleteMany({ where: { id, tenantId: ctx.tenantId } });
+  if (deleted.count === 0) return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+  return NextResponse.json({ data: { deleted: true } });
+}

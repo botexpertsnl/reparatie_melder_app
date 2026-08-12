@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Link as LinkIcon, MessageSquare, Pencil, Trash2, Wrench, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Link as LinkIcon, MessageSquare, MoreVertical, Pencil, Trash2, Wrench, X } from "lucide-react";
 import type { StoredRepairHistoryItem } from "@/lib/repair-history-store";
 import type { StoredRepair } from "@/lib/repair-store";
 import { defaultWorkflowStages, filterVisibleWorkflowStages, readStoredWorkflowStages, type StoredWorkflowStage } from "@/lib/workflow-stage-store";
@@ -101,6 +101,7 @@ export function RepairDetailsPanel({
     variableValues: string[];
   } | null>(null);
   const [pendingStageConfirmation, setPendingStageConfirmation] = useState<StoredWorkflowStage | null>(null);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
   const visibleWorkflowStages = useMemo(() => filterVisibleWorkflowStages(workflowStages), [workflowStages]);
 
   useEffect(() => {
@@ -250,56 +251,14 @@ export function RepairDetailsPanel({
                 Open conversation
               </a>
             ) : null}
-            {!linkedConversationHref && onLinkChange ? (
-              <button
-                type="button"
-                onClick={onLinkChange}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
-                aria-label={onLinkAriaLabel}
-                title={useIconOnlyChangeLinkButton && linkedConversationHref ? onLinkAriaLabel : undefined}
-              >
-                <LinkIcon className={`h-3.5 w-3.5 ${isLinkActive ? "text-[#69f0df]" : "text-slate-500"}`} />
-                {useIconOnlyChangeLinkButton && linkedConversationHref ? null : (
-                  linkActionLabel ?? (linkedConversationHref ? "Change link" : "Link conversation")
-                )}
-              </button>
-            ) : null}
-            {onEdit ? (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/80 bg-white text-slate-700 shadow-sm transition hover:bg-slate-100"
-                aria-label={`Edit ${itemLabel.toLowerCase()}`}
-                title={`Edit ${itemLabel.toLowerCase()}`}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-            {onDelete ? (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-400/30 text-red-300 transition hover:bg-[#2b1a27]"
-                aria-label={`Delete ${itemLabel.toLowerCase()}`}
-                title={`Delete ${itemLabel.toLowerCase()}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-            {linkedConversationHref && onLinkChange ? (
-              <button
-                type="button"
-                onClick={onLinkChange}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#253149] px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-[#182236]"
-                aria-label={onLinkAriaLabel}
-                title={useIconOnlyChangeLinkButton && linkedConversationHref ? onLinkAriaLabel : undefined}
-              >
-                <LinkIcon className={`h-3.5 w-3.5 ${isLinkActive ? "text-[#69f0df]" : "text-slate-500"}`} />
-                {useIconOnlyChangeLinkButton && linkedConversationHref ? null : (
-                  linkActionLabel ?? (linkedConversationHref ? "Change link" : "Link conversation")
-                )}
-              </button>
-            ) : null}
+            {(onEdit || onDelete || onLinkChange) ? <div className="relative">
+              <button type="button" onClick={() => setIsActionsOpen((open) => !open)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#253149] text-slate-200 hover:bg-[#182236]" aria-label="More repair actions"><MoreVertical className="h-4 w-4" /></button>
+              {isActionsOpen ? <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-[#253149] bg-[#111a2b] p-1 shadow-xl">
+                {onLinkChange ? <button type="button" onClick={() => { setIsActionsOpen(false); onLinkChange(); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-slate-200 hover:bg-[#182236]"><LinkIcon className={`h-3.5 w-3.5 ${isLinkActive ? "text-[#69f0df]" : "text-slate-500"}`} />{linkActionLabel ?? (linkedConversationHref ? "Change link" : "Link conversation")}</button> : null}
+                {onEdit ? <button type="button" onClick={() => { setIsActionsOpen(false); onEdit(); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-slate-200 hover:bg-[#182236]"><Pencil className="h-3.5 w-3.5" />Edit {itemLabel.toLowerCase()}</button> : null}
+                {onDelete ? <button type="button" onClick={() => { setIsActionsOpen(false); onDelete(); }} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-red-300 hover:bg-[#2b1a27]"><Trash2 className="h-3.5 w-3.5" />Delete {itemLabel.toLowerCase()}</button> : null}
+              </div> : null}
+            </div> : null}
           </div>
         ) : null}
         <div className="mt-4 border-t border-[#253149] pt-4">
