@@ -419,11 +419,17 @@ function RepairListRow({
           </span>
         </div>
       ) : null}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onOpenRepair}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onOpenRepair();
+        }}
         className={clsx(
-          "relative z-10 w-full px-3 py-5 text-left transition-colors duration-200 sm:px-4 sm:py-6",
+          "relative z-10 w-full cursor-pointer px-3 py-5 text-left transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#25d3c4] sm:px-4 sm:py-6",
           isSelected
             ? "bg-white/[0.06]"
             : "hover:bg-white/5"
@@ -482,7 +488,7 @@ function RepairListRow({
             </span>
           </div>
         </div>
-      </button>
+      </div>
     </div>
   );
 }
