@@ -1013,8 +1013,16 @@ export default function TemplatesPage() {
         buttons: normalizedButtons
       })
     });
-    const payload = response.ok ? await response.json() : null;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      window.alert(payload.error ?? "The template could not be submitted to Zernio. Check that the Zernio API key has WhatsApp template permissions and that the selected account is connected.");
+      return;
+    }
     const zernioTemplateId = payload?.data?.template?.id ?? payload?.data?.saved?.externalTemplateId;
+    if (!zernioTemplateId) {
+      window.alert("Zernio did not confirm the template creation. The template was not saved locally; check the Zernio account and try again.");
+      return;
+    }
     const zernioStatus = payload?.data?.template?.status ?? payload?.data?.saved?.variablesSchema?.zernioStatus ?? "PENDING";
 
     const newTemplate: Template = {

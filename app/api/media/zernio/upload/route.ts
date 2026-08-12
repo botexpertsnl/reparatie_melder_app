@@ -28,7 +28,14 @@ export async function POST(request: NextRequest) {
     const uploaded = await uploadZernioMedia(file);
     return NextResponse.json({ data: uploaded });
   } catch (error) {
-    if (error instanceof ZernioError) return NextResponse.json({ error: error.message }, { status: error.status >= 400 && error.status < 500 ? error.status : 502 });
+    if (error instanceof ZernioError) {
+      const missingPublishingScope = error.message.includes("'publishing' resource group disabled");
+      return NextResponse.json({
+        error: missingPublishingScope
+          ? "Images cannot be sent yet: update the Zernio API key in the Zernio dashboard and enable the Publishing permission, then replace ZERNIO_API_KEY in Vercel."
+          : error.message
+      }, { status: error.status >= 400 && error.status < 500 ? error.status : 502 });
+    }
     return NextResponse.json({ error: "Media upload failed" }, { status: 500 });
   }
 }
