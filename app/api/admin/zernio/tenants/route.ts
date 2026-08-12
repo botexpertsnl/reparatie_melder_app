@@ -12,6 +12,13 @@ function toApiError(error: unknown) {
   console.error("[ZERNIO_ADMIN] Connection management failed", message.replace(/Bearer\s+[^\s]+/gi, "Bearer [redacted]"));
   if (message === "Unauthorized") return NextResponse.json({ error: "Sign in as a system administrator to manage Zernio connections." }, { status: 401 });
   if (message === "System admin access required") return NextResponse.json({ error: "System administrator access is required." }, { status: 403 });
+  if (message.includes("No connected WhatsApp account was found")) {
+    return NextResponse.json({ error: "No active WhatsApp account was found for this Zernio profile. Connect and activate a WhatsApp number in Zernio first, then test the connection again." }, { status: 409 });
+  }
+  if (message.includes("Multiple WhatsApp accounts")) return NextResponse.json({ error: message }, { status: 409 });
+  if (message.includes("ZERNIO_WEBHOOK_SECRET") || message.includes("APP_BASE_URL") || message.includes("NEXTAUTH_URL")) {
+    return NextResponse.json({ error: "The Zernio webhook is not configured on the server. Add the required Zernio webhook settings in Vercel, then test again." }, { status: 503 });
+  }
   return NextResponse.json({ error: "Unable to manage Zernio connections. Check the server logs for details." }, { status: 500 });
 }
 

@@ -49,7 +49,7 @@ function pickResolvedWhatsappAccount(params: {
 
   const connected = accounts.filter((item) =>
     (item.platform ?? "whatsapp").toLowerCase() === "whatsapp" &&
-    (item.status ?? "connected").toLowerCase() === "connected"
+    ["connected", "active", "ready", "verified"].includes((item.status ?? "connected").toLowerCase())
   );
   return connected.length === 1 ? connected[0] : null;
 }
