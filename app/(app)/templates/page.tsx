@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Plus, MoreHorizontal, X, ChevronDown, ChevronUp, Pencil, Trash2, Link2 } from "lucide-react";
+import { Plus, MoreHorizontal, X, ChevronDown, ChevronUp, Pencil, Trash2, Link2, Info } from "lucide-react";
 import clsx from "clsx";
 import { ModalShell } from "@/components/ui/modal-shell";
 import Link from "next/link";
@@ -339,7 +339,7 @@ function TemplateModal({
   templates: Template[];
   initialValues: TemplateFormValues;
   onClose: () => void;
-  onSubmit: (values: TemplateFormValues) => void;
+  onSubmit: (values: TemplateFormValues) => void | Promise<void>;
 }) {
   const isTemplateLocked = mode === "edit";
   const assetLabel = useTenantAssetLabel();
@@ -354,6 +354,8 @@ function TemplateModal({
   const [isButtonsOpen, setIsButtonsOpen] = useState(initialValues.buttons.length > 0);
   const [highlightedVariableId, setHighlightedVariableId] = useState<string | null>(null);
   const [highlightedButtonId, setHighlightedButtonId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [bodySelection, setBodySelection] = useState({ start: 0, end: 0 });
   const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const modalScrollRef = useRef<HTMLDivElement | null>(null);
@@ -580,24 +582,32 @@ function TemplateModal({
     });
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isValid) return;
+    if (!isValid || isSubmitting) return;
 
     const normalized = normalizeBodyAndVariables(values.body.trim(), syncVariablesMetadata(values.variables));
 
-    onSubmit({
-      ...values,
-      name: values.name.trim(),
-      category: normalizeCategory(values.category),
-      body: normalized.body,
-      variables: normalized.variables.map((variable) => ({
-        ...variable,
-        label: variable.label.trim(),
-        manualValue: variable.manualValue.trim()
-      })),
-      buttons: sanitizeButtonsForSave(values.buttons)
-    });
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        ...values,
+        name: values.name.trim(),
+        category: normalizeCategory(values.category),
+        body: normalized.body,
+        variables: normalized.variables.map((variable) => ({
+          ...variable,
+          label: variable.label.trim(),
+          manualValue: variable.manualValue.trim()
+        })),
+        buttons: sanitizeButtonsForSave(values.buttons)
+      });
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "The template could not be submitted to Zernio.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -857,8 +867,9 @@ function TemplateModal({
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t border-[#e2e8f0] bg-[#f4f6fa] px-6 py-4">
+            {submitError ? <p className="mr-auto max-w-sm text-sm text-red-600" role="alert">{submitError}</p> : null}
             <button type="button" onClick={onClose} className="rounded-xl border border-[#d0d6e0] bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-100">Close</button>
-            <button type="submit" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", isValid ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!isValid}>{mode === "create" ? "Create" : "Save"}</button>
+            <button type="submit" className={clsx("rounded-xl px-5 py-2 text-sm font-semibold text-white", isValid && !isSubmitting ? "bg-[#2fb2a3] hover:bg-[#2a9f91]" : "cursor-not-allowed bg-slate-400")} disabled={!isValid || isSubmitting}>{isSubmitting ? "Submitting…" : mode === "create" ? "Create" : "Save"}</button>
           </div>
         </form>
       </div>
@@ -1013,10 +1024,10 @@ export default function TemplatesPage() {
         buttons: normalizedButtons
       })
     });
-    const payload = await response.json().catch(() => ({}));
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      window.alert(payload.error ?? "The template could not be submitted to Zernio. Check that the Zernio API key has WhatsApp template permissions and that the selected account is connected.");
-      return;
+      const detail = typeof payload?.error === "string" ? payload.error : "The template could not be submitted to Zernio.";
+      throw new Error(detail);
     }
     const zernioTemplateId = payload?.data?.template?.id ?? payload?.data?.saved?.externalTemplateId;
     if (!zernioTemplateId) {
@@ -1098,6 +1109,7 @@ export default function TemplatesPage() {
         <section className="grid gap-4 md:grid-cols-2">
           {templates.map((template) => {
             const linkedStages = visibleWorkflowStages.filter((stage) => stage.templateAutomationEnabled && stage.templateId === template.id);
+            const isPending = (template.zernioStatus ?? "").toUpperCase() === "PENDING";
 
             return (
             <article
@@ -1113,8 +1125,27 @@ export default function TemplatesPage() {
               }}
               className="relative cursor-pointer rounded-2xl border border-[#253149] bg-[#121b2b]/65 p-5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105"
             >
-              <div className="flex items-start justify-between">
-                <h2 className="text-lg font-semibold text-white">{template.name}</h2>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold text-white">{template.name}</h2>
+                  {isPending ? (
+                    <span
+                      className="group/pending relative inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-1 text-xs font-semibold text-amber-200"
+                      aria-label="Pending: Meta is reviewing this template"
+                      tabIndex={0}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      Pending
+                      <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span
+                        role="tooltip"
+                        className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-64 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-left text-xs font-normal leading-5 text-slate-200 shadow-xl group-hover/pending:block group-focus/pending:block"
+                      >
+                        Meta is reviewing this template. It cannot be used until its status changes to Approved.
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
                 <button
                   data-action-menu="true"
                   className="rounded-md p-1 text-slate-400 hover:bg-slate-800/70"
