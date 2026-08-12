@@ -1096,7 +1096,7 @@ function WorkItemsPageContent() {
     setConversations((prev) => {
       const updated = existingContactConversation
         ? prev.map((thread) => thread.id === existingContactConversation.id
-          ? { ...thread, contactIdentityId: contactIdentity.id, linkedRepairId: newRepair.id, dismissedRepairId: undefined }
+          ? { ...thread, contactIdentityId: contactIdentity.id, customerName: customerName || thread.customerName, customerPhone: payload.customerPhone, linkedRepairId: newRepair.id, dismissedRepairId: undefined }
           : thread)
         : [linkedConversation, ...prev];
       writeStoredConversations(updated);
@@ -1181,8 +1181,10 @@ function WorkItemsPageContent() {
   );
 
   const linkConversationToRepair = (threadId: string, repairId: string) => {
+    const repair = repairs.find((item) => item.id === repairId);
+    if (!repair) return;
     const updated = conversations.map((thread) => {
-      if (thread.id === threadId) return { ...thread, linkedRepairId: repairId, dismissedRepairId: undefined };
+      if (thread.id === threadId) return { ...thread, contactIdentityId: repair.contactIdentityId, customerName: repair.customerName || thread.customerName, customerPhone: repair.customerPhone, linkedRepairId: repairId, dismissedRepairId: undefined };
       if (thread.linkedRepairId === repairId) return { ...thread, linkedRepairId: undefined, dismissedRepairId: repairId };
       return thread;
     });
