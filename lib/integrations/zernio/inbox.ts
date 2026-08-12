@@ -3,7 +3,8 @@ import { zernioFetch, zernioRawFetch } from "@/lib/integrations/zernio/client";
 
 export type ZernioAccount = {
   id: string;
-  profileId?: string;
+  profileId?: string | { id?: string; _id?: string };
+  profile?: { id?: string; _id?: string };
   platform?: string;
   providerAccountId?: string;
   displayName?: string;
@@ -17,11 +18,26 @@ type ZernioAccountPayload = Omit<ZernioAccount, "id"> & {
   accountId?: string;
 };
 
+type ZernioAccountsResponse = {
+  data?: ZernioAccountPayload[] | { accounts?: ZernioAccountPayload[] };
+  accounts?: ZernioAccountPayload[];
+};
+
 function normalizeZernioAccounts(items: ZernioAccountPayload[] | undefined): ZernioAccount[] {
   return (items ?? []).flatMap((item) => {
     const id = item.id ?? item._id ?? item.accountId;
     return id ? [{ ...item, id }] : [];
   });
+}
+
+function getResponseAccounts(response: ZernioAccountsResponse) {
+  const nestedAccounts = !Array.isArray(response.data) ? response.data?.accounts : undefined;
+  return normalizeZernioAccounts(Array.isArray(response.data) ? response.data : response.accounts ?? nestedAccounts);
+}
+
+function getAccountProfileId(account: ZernioAccount) {
+  if (typeof account.profileId === "string") return account.profileId;
+  return account.profileId?.id ?? account.profileId?._id ?? account.profile?.id ?? account.profile?._id;
 }
 
 export type ZernioConversation = {
@@ -59,15 +75,34 @@ export type ZernioMessage = {
   attachments?: Array<{ id?: string; type?: string; url?: string; filename?: string; mimeType?: string; previewUrl?: string }>;
 };
 
-export async function listZernioAccounts(profileId: string, platform = "whatsapp") {
-  const response = await zernioFetch<{ data?: ZernioAccountPayload[]; accounts?: ZernioAccountPayload[] }>(
-    `/v1/accounts?profileId=${encodeURIComponent(profileId)}&platform=${encodeURIComponent(platform)}`
-  );
+export async function listZernioAccounts(profileId?: string, platform = "whatsapp") {
+  const query = new URLSearchParams({ platform });
+  if (profileId) query.set("profileId", profileId);
+  const response = await zernioFetch<ZernioAccountsResponse>(`/v1/accounts?${query.toString()}`);
+  const accounts = getResponseAccounts(response);
   return {
     ...response,
-    data: normalizeZernioAccounts(response.data),
-    accounts: normalizeZernioAccounts(response.accounts)
+    data: accounts,
+    accounts
   };
+}
+
+/**
+ * Zernio installations can expose an account through the unscoped accounts
+ * endpoint before the profile-scoped endpoint catches up. Prefer a profile
+ * match, but accept a single unambiguous WhatsApp account as a safe fallback.
+ */
+export async function listZernioWhatsappAccountsForProfile(profileId: string) {
+  const scoped = await listZernioAccounts(profileId, "whatsapp");
+  const scopedAccounts = scoped.data ?? scoped.accounts ?? [];
+  if (scopedAccounts.length > 0) return scopedAccounts;
+
+  const all = await listZernioAccounts(undefined, "whatsapp");
+  const allAccounts = all.data ?? all.accounts ?? [];
+  const profileAccounts = allAccounts.filter((account) => getAccountProfileId(account) === profileId);
+  if (profileAccounts.length > 0) return profileAccounts;
+
+  return allAccounts.length === 1 ? allAccounts : [];
 }
 
 export async function listZernioPhoneNumbers() {

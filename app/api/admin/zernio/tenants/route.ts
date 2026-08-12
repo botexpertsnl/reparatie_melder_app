@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireTenantContext } from "@/lib/multitenancy/tenant-context";
 import { listZernioProfiles } from "@/lib/integrations/zernio/profiles";
-import { listZernioAccounts, listZernioPhoneNumbers } from "@/lib/integrations/zernio/inbox";
+import { listZernioPhoneNumbers, listZernioWhatsappAccountsForProfile } from "@/lib/integrations/zernio/inbox";
 import { ensureTenantZernioChannel } from "@/server/services/zernio-sync-service";
 import { ensureZernioWebhook } from "@/lib/integrations/zernio/webhook-settings";
 
@@ -43,8 +43,7 @@ export async function GET(request: NextRequest) {
     await requireSystemAdmin();
     const profileId = request.nextUrl.searchParams.get("profileId");
     if (profileId) {
-      const accountResponse = await listZernioAccounts(profileId, "whatsapp");
-      const accounts = (accountResponse.data ?? accountResponse.accounts ?? [])
+      const accounts = (await listZernioWhatsappAccountsForProfile(profileId))
         .filter((account) => isConnectedWhatsappAccount(account.status))
         .map((account) => ({ id: account.id, displayName: account.displayName, username: account.username, status: account.status }));
       return NextResponse.json({ data: { accounts } });
@@ -88,8 +87,7 @@ export async function PATCH(request: NextRequest) {
   const profile = profiles.find((item) => item._id === profileId);
   if (!profile) return NextResponse.json({ error: "Zernio profile ID was not found for this API key" }, { status: 400 });
 
-  const accountResponse = await listZernioAccounts(profileId, "whatsapp");
-  const accounts = accountResponse.data ?? accountResponse.accounts ?? [];
+  const accounts = await listZernioWhatsappAccountsForProfile(profileId);
   const connectedAccounts = accounts.filter((item) => isConnectedWhatsappAccount(item.status));
   const selectedAccount = accountId
     ? accounts.find((item) => item.id === accountId)

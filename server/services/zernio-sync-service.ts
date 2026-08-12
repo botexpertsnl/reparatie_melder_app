@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getZernioConversation,
   createZernioWhatsappConversation,
-  listZernioAccounts,
+  listZernioWhatsappAccountsForProfile,
   listZernioConversationMessages,
   listZernioConversations,
   listZernioPhoneNumbers,
@@ -82,8 +82,7 @@ export async function ensureTenantZernioChannel(tenantId: string) {
   const profileId = existing?.zernioProfileId;
   if (!profileId) throw new Error("No Zernio profile configured for tenant");
 
-  const accountsResponse = await listZernioAccounts(profileId, "whatsapp");
-  const accounts = accountsResponse.data ?? accountsResponse.accounts ?? [];
+  const accounts = await listZernioWhatsappAccountsForProfile(profileId);
   const phoneResponse = await listZernioPhoneNumbers();
   const phoneNumbers = phoneResponse.data ?? [];
   const resolvedAccount = pickResolvedWhatsappAccount({
