@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolveTenantByWhatsappAccount } from "@/server/services/tenant-channel-service";
-import { syncConversationFromZernio } from "@/server/services/zernio-sync-service";
+import { ingestInboundZernioWebhookMessage, syncConversationFromZernio } from "@/server/services/zernio-sync-service";
 
 const SUPPORTED_EVENTS = new Set([
   "message.received",
@@ -27,9 +27,11 @@ function resolveEventType(payload: Record<string, unknown>) {
 }
 
 function resolveWebhookAccountId(payload: Record<string, unknown>) {
+  const account = payload?.account as { id?: string; accountId?: string } | undefined;
   const accountId =
     payload?.accountId ??
-    (payload?.account as { id?: string } | undefined)?.id ??
+    account?.accountId ??
+    account?.id ??
     (payload?.message as { accountId?: string } | undefined)?.accountId;
   return typeof accountId === "string" ? accountId : undefined;
 }
@@ -57,6 +59,8 @@ export async function POST(request: NextRequest) {
   const whatsappAccountId = resolveWebhookAccountId(payload);
   const conversationId = (
     (payload?.message as { conversationId?: string } | undefined)?.conversationId ??
+    (payload?.conversation as { id?: string; platformConversationId?: string } | undefined)?.id ??
+    (payload?.conversation as { platformConversationId?: string } | undefined)?.platformConversationId ??
     payload?.conversationId
   ) as string | undefined;
   const messageId = ((payload?.message as { id?: string } | undefined)?.id ?? payload?.messageId) as string | undefined;
@@ -118,7 +122,17 @@ export async function POST(request: NextRequest) {
   }
 
   if (eventType.startsWith("message.")) {
+    let directlyIngested = null;
     try {
+      directlyIngested = eventType === "message.received"
+        ? await ingestInboundZernioWebhookMessage({
+            tenantId,
+            whatsappAccountId: channel.whatsappAccountId,
+            conversationId,
+            message: (payload.message ?? {}) as Parameters<typeof ingestInboundZernioWebhookMessage>[0]["message"],
+            receivedAt: typeof payload.timestamp === "string" ? payload.timestamp : undefined
+          })
+        : null;
       if (conversationId) {
         await syncConversationFromZernio(tenantId, conversationId);
         console.info("[ZERNIO_WEBHOOK] Canonical refresh completed", {
@@ -144,11 +158,13 @@ export async function POST(request: NextRequest) {
         eventType,
         error: error instanceof Error ? error.message : "sync failed"
       });
-      await prisma.webhookEvent.update({
-        where: { id: event.id },
-        data: { tenantId, processingStatus: "FAILED", processingError: error instanceof Error ? error.message : "sync failed" }
-      });
-      return NextResponse.json({ ok: true });
+      if (!directlyIngested) {
+        await prisma.webhookEvent.update({
+          where: { id: event.id },
+          data: { tenantId, processingStatus: "FAILED", processingError: error instanceof Error ? error.message : "sync failed" }
+        });
+        return NextResponse.json({ ok: true });
+      }
     }
   }
 

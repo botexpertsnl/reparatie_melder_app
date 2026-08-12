@@ -74,6 +74,106 @@ function mapStatus(status?: string) {
   return "QUEUED" as const;
 }
 
+type ZernioInboundWebhookMessage = {
+  id?: string;
+  conversationId?: string;
+  text?: string;
+  body?: string;
+  message?: string;
+  type?: string;
+  createdAt?: string;
+  receivedAt?: string;
+  timestamp?: string;
+  sender?: { phone?: string; phoneNumber?: string; id?: string };
+  from?: string;
+  attachments?: Array<{ id?: string; type?: string; url?: string; filename?: string; mimeType?: string }>;
+};
+
+function normalizeInboundPhoneNumber(value?: string) {
+  const compact = value?.replace(/[^\d+]/g, "") ?? "";
+  if (!compact) return "";
+  if (compact.startsWith("+")) return compact;
+  if (compact.startsWith("00")) return `+${compact.slice(2)}`;
+  return `+${compact}`;
+}
+
+/** Stores a received webhook immediately, before the eventual canonical API refresh. */
+export async function ingestInboundZernioWebhookMessage(params: {
+  tenantId: string;
+  whatsappAccountId: string;
+  conversationId?: string;
+  message: ZernioInboundWebhookMessage;
+  receivedAt?: string;
+}) {
+  const conversationId = params.conversationId ?? params.message.conversationId;
+  const messageId = params.message.id;
+  const phoneNumber = normalizeInboundPhoneNumber(
+    params.message.sender?.phone ?? params.message.sender?.phoneNumber ?? params.message.sender?.id ?? params.message.from
+  );
+  if (!conversationId || !messageId || !phoneNumber) return null;
+
+  const receivedAt = new Date(params.message.receivedAt ?? params.message.createdAt ?? params.message.timestamp ?? params.receivedAt ?? Date.now());
+  const customer = await prisma.customer.upsert({
+    where: { tenantId_phoneNumber: { tenantId: params.tenantId, phoneNumber } },
+    update: {},
+    create: {
+      tenantId: params.tenantId,
+      phoneNumber,
+      // For a new inbound contact, the number is the intentional initial name.
+      firstName: phoneNumber,
+      lastName: "",
+      fullName: phoneNumber
+    }
+  });
+  const thread = await prisma.conversationThread.upsert({
+    where: {
+      tenantId_whatsappAccountId_externalConversationId: {
+        tenantId: params.tenantId,
+        whatsappAccountId: params.whatsappAccountId,
+        externalConversationId: conversationId
+      }
+    },
+    update: { customerId: customer.id, phoneNumber, lastMessageAt: receivedAt },
+    create: {
+      tenantId: params.tenantId,
+      customerId: customer.id,
+      whatsappAccountId: params.whatsappAccountId,
+      externalConversationId: conversationId,
+      phoneNumber,
+      lastMessageAt: receivedAt
+    }
+  });
+
+  const body = params.message.message ?? params.message.text ?? params.message.body ?? "";
+  const existingMessage = await prisma.message.findUnique({
+    where: { tenantId_externalMessageId: { tenantId: params.tenantId, externalMessageId: messageId } }
+  });
+  if (existingMessage) {
+    await prisma.message.update({
+      where: { id: existingMessage.id },
+      data: { body, type: params.message.type ?? "TEXT", rawPayload: { ...params.message, accountId: params.whatsappAccountId }, receivedAt }
+    });
+    return thread;
+  }
+
+  await prisma.message.create({
+    data: {
+      tenantId: params.tenantId,
+      threadId: thread.id,
+      customerId: customer.id,
+      direction: "INBOUND",
+      type: params.message.type ?? "TEXT",
+      body,
+      status: "QUEUED",
+      externalMessageId: messageId,
+      receivedAt,
+      rawPayload: { ...params.message, accountId: params.whatsappAccountId }
+    }
+  });
+  await prisma.conversationThread.update({ where: { id: thread.id }, data: { unreadCount: { increment: 1 }, lastMessageAt: receivedAt } });
+  return thread;
+}
+
 export async function ensureTenantZernioChannel(tenantId: string) {
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant) throw new Error("Tenant not found");

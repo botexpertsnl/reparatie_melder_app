@@ -90,7 +90,8 @@ function toNationalNumber(normalizedPhone: string, countryCode: string) {
 }
 
 function isValidDutchPhone(nationalPhone: string) {
-  return /^0\d{9}$/.test(nationalPhone);
+  // Besides geographic/mobile numbers, WhatsApp Business supports Dutch +31 970 numbers.
+  return /^0(?:\d{9}|970\d{8})$/.test(nationalPhone);
 }
 
 function isValidBelgianPhone(nationalPhone: string) {
