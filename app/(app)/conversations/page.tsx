@@ -71,6 +71,7 @@ import { findContactIdentityByPhone, getContactIdentityById, migrateContactIdent
 type LinkModalState = { open: boolean; threadId: string | null };
 type TouchGesture = { x: number; y: number };
 type ChatImagePreview = { url: string; alt: string };
+type PendingImage = { file: File; previewUrl: string };
 
 
 type ApiConversationThread = {
@@ -122,7 +123,7 @@ function mapApiThreadToStored(thread: ApiConversationThread): StoredConversation
     return {
       id: message.id,
       role: message.direction === "INBOUND" ? "customer" : "agent",
-      text: message.body || (attachment ? `📷 ${attachment.filename ?? "Image"}` : ""),
+       text: message.body || "",
       at: message.receivedAt ?? message.sentAt ?? message.createdAt,
       imageUrl: attachment?.url,
       imageAlt: attachment?.filename ?? "Conversation image"
@@ -175,7 +176,8 @@ function normalizePhoneInput(value: string) {
 
 function toNationalNumber(normalizedPhone: string, countryCode: string) {
   if (!normalizedPhone.startsWith(`+${countryCode}`)) return null;
-  return `0${normalizedPhone.slice(countryCode.length + 1)}`;
+  const nationalDigits = normalizedPhone.slice(countryCode.length + 1).replace(/^0/, "");
+  return `0${nationalDigits}`;
 }
 
 function isValidDutchPhone(nationalPhone: string) {
@@ -286,6 +288,28 @@ function formatMessageDayLabel(message: StoredConversationMessage) {
   const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
   if (messageDayKey(message) === todayKey) return "Today";
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(timestamp);
+}
+
+async function compressSelectedImage(file: File) {
+  if (!file.type.startsWith("image/")) return file;
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("The selected image could not be read."));
+      element.src = sourceUrl;
+    });
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+    return blob ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : file;
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }
 
 function getThreadLatestMessageTimestamp(thread: StoredConversation) {
@@ -1052,6 +1076,7 @@ function ConversationsPageContent() {
   const [editingRepairId, setEditingRepairId] = useState<string | null>(null);
   const [isMessageInputFocused, setIsMessageInputFocused] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<ChatImagePreview | null>(null);
+  const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const [fullScreenImageDragOffset, setFullScreenImageDragOffset] = useState(0);
   const sessionState = useSession();
   const session = sessionState?.data;
@@ -1525,8 +1550,9 @@ function ConversationsPageContent() {
   }, [updateConversationOpenState]);
 
   const sendMessage = async ({ closeConversation = false }: { closeConversation?: boolean } = {}) => {
-    if (!selectedThread || !message.trim()) return;
+    if (!selectedThread || (!message.trim() && !pendingImage)) return;
     const body = message.trim();
+    const selectedImage = pendingImage;
     const threadId = selectedThread.id;
     const sentAt = new Date().toISOString();
     const optimisticMessage: StoredConversationMessage = {
@@ -1534,10 +1560,13 @@ function ConversationsPageContent() {
       role: "agent",
       text: body,
       at: sentAt,
+      imageUrl: selectedImage?.previewUrl,
+      imageAlt: selectedImage?.file.name,
     };
 
     // Give the operator instant feedback; the server remains the source of truth.
     setMessage("");
+    setPendingImage(null);
     updateThreads((prev) => prev.map((thread) => thread.id === threadId
       ? {
           ...thread,
@@ -1549,10 +1578,26 @@ function ConversationsPageContent() {
       : thread
     ));
 
+    let attachment: { url: string; filename: string; mimeType: string } | undefined;
+    if (selectedImage) {
+      const uploadForm = new FormData();
+      uploadForm.append("file", selectedImage.file);
+      const uploadResponse = await fetch("/api/media/zernio/upload", { method: "POST", body: uploadForm });
+      const uploadPayload = await uploadResponse.json().catch(() => ({}));
+      if (!uploadResponse.ok || !uploadPayload.data?.url) {
+        updateThreads((prev) => prev.map((thread) => thread.id === threadId ? { ...thread, messages: thread.messages.filter((item) => item.id !== optimisticMessage.id) } : thread));
+        setMessage(body);
+        setPendingImage(selectedImage);
+        window.alert(uploadPayload.error ?? "Image upload failed");
+        return;
+      }
+      attachment = { url: uploadPayload.data.url, filename: selectedImage.file.name, mimeType: selectedImage.file.type };
+    }
+
     const response = await fetch(`/api/conversations/${threadId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: body, phoneNumber: selectedThread.customerPhone })
+      body: JSON.stringify({ text: body || undefined, phoneNumber: selectedThread.customerPhone, ...(attachment ? { attachments: [attachment] } : {}) })
     });
 
     if (response.status === 409) {
@@ -1561,6 +1606,7 @@ function ConversationsPageContent() {
         : thread
       ));
       setMessage(body);
+      setPendingImage(selectedImage);
       openTemplateMessageModal();
       return;
     }
@@ -1571,6 +1617,7 @@ function ConversationsPageContent() {
         : thread
       ));
       setMessage(body);
+      setPendingImage(selectedImage);
       window.alert(payload.error ?? "Message could not be sent");
       return;
     }
@@ -1931,9 +1978,20 @@ function ConversationsPageContent() {
   };
 
   const handleImageSelected = async (file: File | null) => {
-    if (!selectedThread || !file) return;
+    if (!file) return;
+    try {
+      const compressed = await compressSelectedImage(file);
+      setPendingImage((current) => {
+        if (current) URL.revokeObjectURL(current.previewUrl);
+        return { file: compressed, previewUrl: URL.createObjectURL(compressed) };
+      });
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Image preparation failed");
+    }
+    return;
 
-    const toDataUrl = () =>
+    /* Legacy immediate-upload flow intentionally disabled: image selection now queues a preview. */
+    /* const toDataUrl = () =>
       new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
@@ -1983,7 +2041,7 @@ function ConversationsPageContent() {
             }
           : thread
       )
-    );
+    ); */
   };
 
 
@@ -2612,6 +2670,22 @@ function ConversationsPageContent() {
                 className="sticky bottom-0 z-20 mt-auto shrink-0 border-t bg-[var(--surface-1)] p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
                 style={{ borderColor: "var(--border)" }}
               >
+                {pendingImage ? (
+                  <div className="mb-2 inline-flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-1.5">
+                    <img src={pendingImage.previewUrl} alt="Selected image preview" className="h-16 w-16 rounded-lg object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPendingImage((current) => {
+                        if (current) URL.revokeObjectURL(current.previewUrl);
+                        return null;
+                      })}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/70"
+                      aria-label="Remove selected image"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-2">
                   {isOutsideMetaWindow ? (
                     <button
