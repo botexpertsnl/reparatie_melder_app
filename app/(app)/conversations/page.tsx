@@ -882,7 +882,7 @@ function ConversationListRow({
   });
 
   return (
-    <div className="relative overflow-hidden rounded-2xl px-0.5 py-1">
+    <div className="relative overflow-hidden border-b-4 border-double border-[var(--border)]">
       <div
         onClick={onOpenConversation}
         onKeyDown={(event) => {
@@ -892,14 +892,12 @@ function ConversationListRow({
         }}
         role="button"
         tabIndex={0}
-        className={`relative w-full rounded-2xl border py-3 pl-16 pr-3 text-left transition-all duration-200 ${
+        className={`relative w-full py-4 pl-16 pr-3 text-left transition-colors duration-200 ${
           isSelected
-            ? "shadow-[0_12px_30px_rgba(0,0,0,0.18),0_0_0_1px_var(--border-strong)]"
-            : "hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(0,0,0,0.14)]"
+            ? "bg-white/[0.06]"
+            : "hover:bg-white/[0.04]"
         }`}
         style={{
-          borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
-          background: isSelected ? "var(--surface-3)" : "var(--surface-1)",
           ...swipeStyle,
         }}
         {...swipeHandlers}

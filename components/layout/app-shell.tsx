@@ -285,9 +285,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const visibleSections = navSections.filter((section) => section.label !== "System");
 
-  const handleTenantBadgeClick = () => {
+  const handleTenantBadgeClick = async () => {
     if (!superAdmin) return;
     if (impersonatingTenant) {
+      await fetch("/api/admin/impersonation", { method: "DELETE" });
       stopImpersonation();
     }
     window.location.href = "/admin/diagnostics";
@@ -646,7 +647,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 className="font-medium text-slate-200 hover:text-white"
-                onClick={handleTenantBadgeClick}
+                onClick={() => void handleTenantBadgeClick()}
               >
                 {impersonatingTenant ?? "AutoGarage De Vries"}
               </button>

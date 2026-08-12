@@ -399,7 +399,7 @@ function RepairListRow({
   const showDetailsIndicator = isMobileSwipeEnabled && previewOffset < 0;
 
   return (
-    <div className="relative overflow-hidden rounded-xl">
+    <div className="relative overflow-hidden border-b-4 border-double border-[var(--border)]">
       {isMobileSwipeEnabled ? (
         <div
           aria-hidden="true"
@@ -423,14 +423,12 @@ function RepairListRow({
         type="button"
         onClick={onOpenRepair}
         className={clsx(
-          "relative z-10 w-full rounded-xl border p-3 text-left transition-all duration-200",
+          "relative z-10 w-full px-3 py-5 text-left transition-colors duration-200 sm:px-4 sm:py-6",
           isSelected
-            ? "shadow-[0_0_0_1px_var(--border-strong)]"
+            ? "bg-white/[0.06]"
             : "hover:bg-white/5"
         )}
         style={{
-          borderColor: isSelected ? "var(--border-strong)" : "var(--border)",
-          background: "var(--surface-1)",
           ...swipeStyle,
         }}
         {...swipeHandlers}
